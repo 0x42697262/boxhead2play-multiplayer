@@ -393,7 +393,7 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
     }
   }
 
-  private enterDead(): void {
+  protected enterDead(): void {
     const seconds = this.isPlayer ? PLAYER_CORPSE_SECONDS : CORPSE_SECONDS;
     this.stateCount = this.world.ticksPerSecond * seconds;
     this.flags |= ThingFlag.SortFloor;
