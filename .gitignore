@@ -1,0 +1,10 @@
+node_modules/
+dist/
+re/
+public/assets/
+scripts/local/
+*.swf
+.env
+.env.*
+!.env.example
+*.log

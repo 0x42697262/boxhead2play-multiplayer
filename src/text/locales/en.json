@@ -1,0 +1,7 @@
+{
+  "app.title": "Boxhead: 2Play Rooms",
+  "app.copyright": "Original game © Sean Cooper 2007",
+  "boot.loading": "Loading…",
+  "boot.failed": "The game could not start: {reason}",
+  "boot.missingAssets": "Game assets are missing. Run \"npm run extract\" with the original SWF first."
+}
