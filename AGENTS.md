@@ -57,10 +57,29 @@ application of the team architecture rules.
 * Character art is not bitmap data. It is pre-projected vector polygons per rotation and
   frame (`DefineSprite_755` DoAction, `mItems`), rasterized at runtime with materials from
   style sheets (`CDrawPrimitive_XSI_StyleSheet`).
+* FFDec `-swf2xml` (XML export major version 4) matrix attributes map as `a = scaleX`,
+  `b = rotateSkew0`, `c = rotateSkew1`, `d = scaleY`, translate in twips. Flash `_rotation`
+  is `atan2(b, a)`. Checked against FFDec's sprite SVG/PNG of ROOM_Single_0001 (skewed
+  floor splat, Player2 markers at +90/-90/180 degrees). Verified 2026-10-22.
+* `-selectid` does not restrict `-export script`. Every script is exported (about 15 s).
+* Rooms: every frame 0 places children in ascending depth. Every
+  `World_Init_CollisionSolid` is nested in a `Piece.*` sprite. No piece is rotated or
+  scaled. `_Size` (sprite 98) hides itself with the frame script `_visible = false;`.
+  ROOM_Single_0001 is 704x544 px.
+* Sounds: `CSound` registers only `sfx`, and nothing as `music`. The only unexported
+  sounds (174, 175, 184, 192, 193) are StartSound tags in the intro logo clips
+  `_Logo_CrazyMonkeys` (sprite 186) and `_Logo_SeanCooper` (sprite 194).
+* XSI data: 40 animation sets, and the 23 materials never conflict between sets. The style
+  sheet texture linkages `Bond_Head_*`, `GIJOE_Head_*` and `Swat_Head_*` are not exported
+  in the SWF.
+* librsvg (`rsvg-convert`) renders a nested SVG `<image>` wrongly under a skewing
+  transform. Inline the SVG markup for debug composites.
 
 ## Verification checklist
 
 Add one line per behavior change: what to do, and the result you expect.
 
 * `npm run extract` -> `public/assets/manifest.json` exists and lists 18 rooms.
+* `npm run extract:debug` -> prints composite SVG paths for ROOM_Single_0001/0002 and
+  "FFDec PNG 727x807, library frame bounds 721x800.65 (delta 6x6)" for room 1.
 * `npm run dev`, choose a room, press arrows -> player 1 walks. `/` fires the pistol.

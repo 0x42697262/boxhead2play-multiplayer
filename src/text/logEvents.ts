@@ -12,6 +12,11 @@ export const LogEvent = {
   WorldCompleted: 'world.completed',
   AudioUnavailable: 'audio.unavailable',
   FrameBudgetExceeded: 'loop.frame_budget_exceeded',
+  ExtractStarted: 'extract.started',
+  ExtractStep: 'extract.step',
+  ExtractWarning: 'extract.warning',
+  ExtractFinished: 'extract.finished',
+  ExtractFailed: 'extract.failed',
 } as const;
 
 export type LogEvent = (typeof LogEvent)[keyof typeof LogEvent];
