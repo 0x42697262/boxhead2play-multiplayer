@@ -44,10 +44,23 @@ export const PLAYER_CHARACTER_STYLES: readonly CharacterStyle[] = [
 
 export const OPAQUE_ALPHA = 100;
 
+export const DEFAULT_STYLE_SCALE = 0.35;
+export const DEVIL_STYLE_SCALE = 0.42;
+
+export const CHARACTER_STYLE_SCALES: Readonly<Record<CharacterStyle, number>> = {
+  swat: DEFAULT_STYLE_SCALE,
+  bond: DEFAULT_STYLE_SCALE,
+  giJoe: DEFAULT_STYLE_SCALE,
+  bambo: DEFAULT_STYLE_SCALE,
+  zombie: DEFAULT_STYLE_SCALE,
+  devil: DEVIL_STYLE_SCALE,
+};
+
 export interface CharacterVisual {
   readonly kind: typeof VisualKind.Character;
   readonly layer: typeof VisualLayer.World;
   readonly style: CharacterStyle;
+  readonly styleScale: number;
   readonly animation: string;
   readonly direction: number;
   readonly directionCount: number;

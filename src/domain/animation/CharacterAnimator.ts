@@ -1,6 +1,6 @@
 import { angleToDirectionIndex, type Angle } from '../math/Angle.ts';
 import type { Position } from '../math/Position.ts';
-import { OPAQUE_ALPHA, VisualKind, VisualLayer, type CharacterStyle, type CharacterVisual } from '../visuals.ts';
+import { CHARACTER_STYLE_SCALES, OPAQUE_ALPHA, VisualKind, VisualLayer, type CharacterStyle, type CharacterVisual } from '../visuals.ts';
 import {
   modelPointToCells,
   projectionFactor,
@@ -112,6 +112,7 @@ export class CharacterAnimator {
       kind: VisualKind.Character,
       layer: VisualLayer.World,
       style: this.style,
+      styleScale: CHARACTER_STYLE_SCALES[this.style],
       animation: this.linkage,
       direction: this.directionIndex(angle),
       directionCount: animation.directionCount,
