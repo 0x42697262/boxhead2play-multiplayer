@@ -23,6 +23,7 @@ export const GRENADE = {
   startHeightPx: 40,
   upwardSpeed: 0.5,
   gravity: 0.06,
+  restSpeed: 0.06,
   floorBounce: 0.5,
   wallBounce: 0.25,
   radius: 0.1,

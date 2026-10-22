@@ -41,6 +41,7 @@ export class FakePlayer extends FakeThing implements PlayerThing {
   maxLife = 200;
   readonly unlocked: WeaponName[] = [];
   resets = 0;
+  pickups = 0;
 
   constructor(
     world: WorldContext,
@@ -66,8 +67,13 @@ export class FakePlayer extends FakeThing implements PlayerThing {
     this.resets++;
   }
 
+  randomPickup(): boolean {
+    this.pickups++;
+    return true;
+  }
+
   hudStatus(): PlayerHudStatus {
-    return { lifeRatio: this.life / this.maxLife, weaponShortName: 'Pistol', ammo: undefined, visible: true };
+    return { lifeRatio: this.life / this.maxLife, weaponShortName: 'weapon.pistol.shortName', ammo: undefined, visible: true };
   }
 }
 
