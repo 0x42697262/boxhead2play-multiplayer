@@ -44,6 +44,10 @@ application of the team architecture rules.
 * Tests: `test/` mirrors `src/`. Domain rules get fast unit tests without mocks. Services
   get tests with in-memory fakes. Use `SequenceRng` or `SeededRng` for deterministic tests.
 * Relative imports include the `.ts` extension.
+* pi-lsp (`npm:@spences10/pi-lsp`) uses the project-local `typescript-language-server`
+  dev dependency. Check changed `.ts` files with `lsp_diagnostics_many` before reporting
+  completion. Use `lsp_hover`, `lsp_definition` and `lsp_references` for type and symbol
+  questions.
 * Use American English everywhere.
 
 ## Confirmed facts
