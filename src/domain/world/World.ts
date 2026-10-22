@@ -1,0 +1,403 @@
+import { worldProjectionFactor, type AnimationCatalog } from '../animation/AnimationCatalog.ts';
+import { DomainEventType, EventQueue, type Point2, type Point3 } from '../events.ts';
+import { HudState } from '../hud/HudState.ts';
+import { Angle } from '../math/Angle.ts';
+import type { Position } from '../math/Position.ts';
+import type { Rng } from '../math/Rng.ts';
+import { CollideFlag, CollideMask } from '../map/CollideFlag.ts';
+import { GameMap } from '../map/GameMap.ts';
+import { NAV_FRESHNESS_SECONDS } from '../map/tuning.ts';
+import { isPlayer, type PlayerThing } from '../things/PlayerThing.ts';
+import type { Thing } from '../things/Thing.ts';
+import { ThingClass } from '../things/ThingClass.ts';
+import { ThingCollection } from '../things/ThingCollection.ts';
+import { ThingFlag } from '../things/ThingFlag.ts';
+import type { ThingFactory } from '../things/ThingFactory.ts';
+import { ThingIds } from '../things/ThingIds.ts';
+import { Upgrades, type UpgradesHost } from '../upgrades/Upgrades.ts';
+import type { DrawEntry } from '../visuals.ts';
+import { INITIAL_AMBIENCE, stepAmbience, type AmbienceState } from './ambience.ts';
+import { cellToScreen, trackCamera, type CameraRect } from './camera.ts';
+import { CompletionState } from './CompletionState.ts';
+import { GameMode } from './GameMode.ts';
+import { IDLE_PLAYER_INPUT, IDLE_TICK_INPUT, type PlayerInput, type TickInput } from './input.ts';
+import { initObjectsInOrder, InitKind, screenToCell, type RoomDefinition, type RoomInitObject } from './RoomDefinition.ts';
+import { ScreenEffects } from './ScreenEffects.ts';
+import type { SimulationSettings } from './SimulationSettings.ts';
+import {
+  pickSpawnPoint,
+  pickSpawnPointClose,
+  pickSpawnPointFar,
+  pickSpawnPointNonStrict,
+  validateSpawnPoints,
+  type SpawnPoint,
+} from './spawning.ts';
+import {
+  DROPPED_PICKUP_SECONDS,
+  KILLS_TO_WIN,
+  PICKUP_EVERY_N_KILLS,
+  SCREEN_HEIGHT_PX,
+  SCREEN_WIDTH_PX,
+  SPLIT_SCREEN_SIZE_PX,
+  TRACK_BLEND,
+} from './tuning.ts';
+import type { WorldContext } from './WorldContext.ts';
+
+export interface WorldDependencies {
+  readonly rng: Rng;
+  readonly factory: ThingFactory;
+  readonly animations: AnimationCatalog;
+  readonly events?: EventQueue;
+}
+
+export interface CameraView {
+  readonly playerIndex: number | undefined;
+  readonly rect: CameraRect;
+  readonly drawOrigin: Point2;
+}
+
+export interface Presentation {
+  readonly cameras: readonly CameraView[];
+  readonly shake: Point2;
+  readonly brightness: number;
+}
+
+const FIRST_PLAYER = 0;
+const SECOND_PLAYER = 1;
+const DEGREES_TO_RADIANS = Math.PI / 180;
+
+export class World implements WorldContext, UpgradesHost {
+  readonly events: EventQueue;
+  readonly rng: Rng;
+  readonly factory: ThingFactory;
+  readonly animations: AnimationCatalog;
+  readonly projectionFactor: number;
+  readonly ids = new ThingIds();
+  readonly map: GameMap;
+  readonly hud: HudState;
+  readonly upgrades: Upgrades;
+  readonly things: ThingCollection;
+  readonly screen = new ScreenEffects();
+  paused = true;
+  tick = 0;
+  private currentTicksPerSecond: number;
+  private completionState: CompletionState | undefined = undefined;
+  private tickInput: TickInput = IDLE_TICK_INPUT;
+  private zombiePoints: SpawnPoint[] = [];
+  private devilPoints: SpawnPoint[] = [];
+  private playerPoints: SpawnPoint[] = [];
+  private playerStart: SpawnPoint | undefined = undefined;
+  private trackPosition: Position | undefined = undefined;
+  private lastTracked: Point3 | undefined = undefined;
+  private readonly trackedPlayers: (PlayerThing | undefined)[] = [];
+  private ambience: AmbienceState = INITIAL_AMBIENCE;
+  private view: Presentation = { cameras: [], shake: { x: 0, y: 0 }, brightness: 0 };
+  private drawOrigin: Point2 = { x: 0, y: 0 };
+
+  constructor(
+    readonly room: RoomDefinition,
+    readonly settings: SimulationSettings,
+    dependencies: WorldDependencies,
+  ) {
+    this.rng = dependencies.rng;
+    this.factory = dependencies.factory;
+    this.animations = dependencies.animations;
+    this.events = dependencies.events ?? new EventQueue();
+    this.projectionFactor = worldProjectionFactor(this.animations);
+    this.currentTicksPerSecond = settings.loadTicksPerSecond;
+    this.map = new GameMap({
+      widthPx: room.widthPx,
+      heightPx: room.heightPx,
+      collisionsActive: settings.collisionsActive,
+      rng: this.rng,
+      events: this.events,
+      animations: this.animations,
+      navFreshnessTicks: () => NAV_FRESHNESS_SECONDS * this.currentTicksPerSecond,
+    });
+    this.hud = new HudState(this.events, this);
+    this.upgrades = new Upgrades(this);
+    this.ids.renew();
+    this.things = new ThingCollection(this.map);
+    this.initThings();
+  }
+
+  static create(room: RoomDefinition, settings: SimulationSettings, dependencies: WorldDependencies): World {
+    const world = new World(room, settings, dependencies);
+    world.start();
+    return world;
+  }
+
+  get ticksPerSecond(): number {
+    return this.currentTicksPerSecond;
+  }
+
+  get completion(): CompletionState | undefined {
+    return this.completionState;
+  }
+
+  get presentation(): Presentation {
+    return this.view;
+  }
+
+  get spawnPoints(): { readonly zombies: readonly SpawnPoint[]; readonly devils: readonly SpawnPoint[]; readonly players: readonly SpawnPoint[] } {
+    return { zombies: this.zombiePoints, devils: this.devilPoints, players: this.playerPoints };
+  }
+
+  start(): void {
+    this.paused = false;
+    this.step();
+    this.upgrades.setDifficulty(this.settings.difficulty);
+    if (this.settings.gameMode === GameMode.DeathMatch) {
+      for (const player of this.things.players()) player.resetWeapons();
+    }
+    this.currentTicksPerSecond = this.settings.ticksPerSecond;
+  }
+
+  update(input: TickInput = IDLE_TICK_INPUT): void {
+    if (this.completionState) return;
+    this.tickInput = input;
+    if (input.quitRequested) this.complete(CompletionState.Quit);
+    if (input.pausePressed) {
+      this.paused = !this.paused;
+      this.hud.paused = this.paused;
+      this.events.emit({ type: DomainEventType.PauseChanged, paused: this.paused });
+    }
+    if (!this.paused) this.step();
+    if (this.completionState) this.events.emit({ type: DomainEventType.WorldCompleted, state: this.completionState });
+  }
+
+  drawList(camera: CameraView): DrawEntry[] {
+    const entries: DrawEntry[] = [];
+    for (const thing of this.map.drawOrder(camera.rect)) {
+      const visual = thing.visual();
+      if (!visual) continue;
+      const { x, y, z } = thing.position;
+      entries.push({ thingKey: thing.key, sortFloor: thing.hasFlag(ThingFlag.SortFloor), position: { x, y, z }, visual });
+    }
+    return entries;
+  }
+
+  screenPosition(position: Position): Point2 {
+    const screen = cellToScreen(position, this.projectionFactor);
+    return { x: screen.x - this.drawOrigin.x, y: screen.y - this.drawOrigin.y };
+  }
+
+  input(playerIndex: number): PlayerInput {
+    return this.tickInput.players[playerIndex] ?? IDLE_PLAYER_INPUT;
+  }
+
+  enemiesAlive(): boolean {
+    return this.things.count(ThingClass.Zombie) > 0 || this.things.count(ThingClass.Devil) > 0;
+  }
+
+  players(): readonly PlayerThing[] {
+    return this.things.players();
+  }
+
+  spawnZombie(): boolean {
+    const point = pickSpawnPoint(this.zombiePoints, this.rng);
+    if (!point) return false;
+    this.upgrades.zombieSpawned();
+    this.things.add(this.factory.zombie(this, point.position.clone()));
+    return true;
+  }
+
+  spawnDevil(): boolean {
+    const point = pickSpawnPointNonStrict(this.devilPoints, this.rng);
+    if (!point) return false;
+    this.upgrades.devilSpawned();
+    this.things.add(this.factory.devil(this, point.position.clone()));
+    return true;
+  }
+
+  playerRespawnPoint(otherPlayer: PlayerThing | undefined): SpawnPoint | undefined {
+    const anchor = otherPlayer ?? this.things.closestPlayer();
+    if (!anchor) return undefined;
+    return this.settings.gameMode === GameMode.Coop
+      ? pickSpawnPointClose(this.playerPoints, this.rng, anchor.position)
+      : pickSpawnPointFar(this.playerPoints, this.rng, anchor.position);
+  }
+
+  logKill(thing: Thing): void {
+    switch (thing.classId) {
+      case ThingClass.Zombie:
+        this.upgrades.zombieKilled();
+        if (this.upgrades.multipleKill % PICKUP_EVERY_N_KILLS === 0) this.createPickup(thing.position);
+        break;
+      case ThingClass.Devil:
+        this.upgrades.devilKilled();
+        this.createPickup(thing.position);
+        break;
+      case ThingClass.Player:
+        this.upgrades.playerCount--;
+        this.hud.recordDeath(this.playerIndexOf(thing));
+        if (this.settings.gameMode === GameMode.DeathMatch) this.createPickup(thing.position);
+        return;
+      default:
+        break;
+    }
+    const { x, y, z } = thing.position;
+    this.hud.addScore(thing.score * this.upgrades.multiplier, { x, y, z }, this.screenPosition(thing.position), this.settings.detail);
+  }
+
+  playerDead(): void {
+    if (this.settings.gameMode === GameMode.DeathMatch) {
+      const killsToWin = KILLS_TO_WIN[this.settings.gameAmount];
+      if (this.hud.deathsOf(FIRST_PLAYER) === killsToWin) this.complete(CompletionState.Player2Wins);
+      if (this.hud.deathsOf(SECOND_PLAYER) === killsToWin) this.complete(CompletionState.Player1Wins);
+    } else if (this.upgrades.playerCount <= 0) {
+      this.complete(CompletionState.PlayerDead);
+    }
+  }
+
+  trackPlayer(player: PlayerThing): void {
+    this.trackPosition = this.trackPosition ? this.trackPosition.add(player.position).scale(TRACK_BLEND) : player.position.clone();
+    this.trackedPlayers[player.playerIndex] = player;
+  }
+
+  shake(dx: number, dy: number): void {
+    this.screen.shake(dx, dy);
+    this.events.emit({ type: DomainEventType.CameraShaken, dx, dy });
+  }
+
+  flashBrightness(level: number): void {
+    this.screen.flash(level);
+    this.events.emit({ type: DomainEventType.BrightnessFlashed, brightness: level });
+  }
+
+  complete(state: CompletionState): void {
+    this.completionState = state;
+  }
+
+  createPickup(position: Position): void {
+    if (this.map.collideAt(position.x, position.y) & CollideMask.StaticImpassable) return;
+    this.things.add(this.factory.droppedPickup(this, position.clone(), this.ticksPerSecond * DROPPED_PICKUP_SECONDS));
+  }
+
+  private step(): void {
+    this.things.process();
+    this.upgrades.process();
+    this.tick++;
+    this.present();
+  }
+
+  private present(): void {
+    this.screen.decayShake();
+    const cameras = this.settings.gameMode === GameMode.DeathMatch ? this.splitCameras() : [this.sharedCamera()];
+    const last = cameras[cameras.length - 1];
+    if (last) this.drawOrigin = last.drawOrigin;
+    const brightness = this.settings.detail ? this.screen.decayBrightness() : 0;
+    this.hud.pruneMessages();
+    let visibleZombies = 0;
+    for (const camera of cameras) {
+      visibleZombies += this.map.drawOrder(camera.rect).filter((thing) => thing.classId === ThingClass.Zombie).length;
+    }
+    const ambience = stepAmbience(this.ambience, visibleZombies, this.tickInput.ambienceSamplesPlaying);
+    this.ambience = ambience.state;
+    for (const event of ambience.events) this.events.emit(event);
+    this.view = { cameras, shake: { x: this.screen.shakeX, y: this.screen.shakeY }, brightness };
+    this.trackPosition = undefined;
+  }
+
+  private sharedCamera(): CameraView {
+    const result = trackCamera({
+      target: this.trackPosition,
+      last: this.lastTracked,
+      smooth: true,
+      viewWidth: SCREEN_WIDTH_PX,
+      viewHeight: SCREEN_HEIGHT_PX,
+      areaWidthPx: this.room.widthPx,
+      areaHeightPx: this.room.heightPx,
+      projectionFactor: this.projectionFactor,
+    });
+    this.lastTracked = result.tracked;
+    return this.cameraView(undefined, result.rect);
+  }
+
+  private splitCameras(): CameraView[] {
+    return [FIRST_PLAYER, SECOND_PLAYER].map((index) => {
+      const result = trackCamera({
+        target: this.trackedPlayers[index]?.position,
+        last: undefined,
+        smooth: false,
+        viewWidth: SPLIT_SCREEN_SIZE_PX,
+        viewHeight: SPLIT_SCREEN_SIZE_PX,
+        areaWidthPx: this.room.widthPx,
+        areaHeightPx: this.room.heightPx,
+        projectionFactor: this.projectionFactor,
+      });
+      return this.cameraView(index, result.rect);
+    });
+  }
+
+  private cameraView(playerIndex: number | undefined, rect: CameraRect): CameraView {
+    return {
+      playerIndex,
+      rect,
+      drawOrigin: { x: rect.x + this.screen.shakeX, y: rect.y + this.screen.shakeY },
+    };
+  }
+
+  private playerIndexOf(thing: Thing): number {
+    return isPlayer(thing) ? thing.playerIndex : FIRST_PLAYER;
+  }
+
+  private initThings(): void {
+    for (const init of initObjectsInOrder(this.room)) this.initObject(init);
+    this.zombiePoints = validateSpawnPoints(this.zombiePoints);
+    this.devilPoints = validateSpawnPoints(this.devilPoints);
+    this.spawnPlayer(FIRST_PLAYER, this.playerStart ?? pickSpawnPoint(this.playerPoints, this.rng));
+    if (this.settings.gameMode !== GameMode.Single) this.spawnPlayer(SECOND_PLAYER, this.playerRespawnPoint(undefined));
+  }
+
+  private initObject(init: RoomInitObject): void {
+    const position = screenToCell(init.positionPx);
+    const position2 = screenToCell(init.position2Px);
+    switch (init.kind) {
+      case InitKind.CollisionSolid:
+        position.round();
+        position2.round();
+        this.map.markArea(position.x, position.y, position2.x, position2.y, CollideFlag.Solid);
+        return;
+      case InitKind.Barrel:
+        this.things.add(this.factory.barrel(this, position.snapToCellCentre()));
+        return;
+      case InitKind.Wall:
+        this.things.add(this.factory.wall(this, position.snapToCellCentre()));
+        return;
+      case InitKind.Zombie:
+        this.addSpawnPoint(this.zombiePoints, position.snapToCellCentre(), new Angle(0));
+        return;
+      case InitKind.Devil:
+        this.addSpawnPoint(this.devilPoints, position.snapToCellCentre(), new Angle(0));
+        return;
+      case InitKind.Player1:
+      case InitKind.Player2: {
+        const point = this.addSpawnPoint(this.playerPoints, position.snapToCellCentre(), new Angle(init.rotationDegrees * DEGREES_TO_RADIANS));
+        if (point && init.kind === InitKind.Player1) this.playerStart = point;
+        return;
+      }
+      case InitKind.Pickup:
+        this.things.add(this.factory.pickup(this, position));
+        return;
+      case InitKind.Piece:
+        return;
+    }
+  }
+
+  private addSpawnPoint(list: SpawnPoint[], position: Position, angle: Angle): SpawnPoint | undefined {
+    const cell = this.map.cellAt(position.x, position.y);
+    if (!cell) return undefined;
+    const point: SpawnPoint = { position, cell, angle, nextCell: undefined };
+    list.push(point);
+    return point;
+  }
+
+  private spawnPlayer(playerIndex: number, point: SpawnPoint | undefined): boolean {
+    if (!point) return false;
+    this.upgrades.totalPlayerCount++;
+    this.upgrades.playerCount++;
+    this.things.addPlayer(this.factory.player(this, point.position.clone(), playerIndex, point.angle.clone()));
+    return true;
+  }
+}

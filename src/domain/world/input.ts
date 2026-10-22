@@ -33,6 +33,7 @@ export interface TickInput {
   readonly pausePressed: boolean;
   readonly quitRequested: boolean;
   readonly players: readonly PlayerInput[];
+  readonly ambienceSamplesPlaying: number;
 }
 
 export const IDLE_CONTROL: ControlState = { down: false, pressed: false, released: false, heldTicks: 0 };
@@ -41,4 +42,4 @@ export const IDLE_PLAYER_INPUT: PlayerInput = Object.fromEntries(
   Object.values(PlayerControl).map((control) => [control, IDLE_CONTROL]),
 ) as PlayerInput;
 
-export const IDLE_TICK_INPUT: TickInput = { pausePressed: false, quitRequested: false, players: [] };
+export const IDLE_TICK_INPUT: TickInput = { pausePressed: false, quitRequested: false, players: [], ambienceSamplesPlaying: 0 };

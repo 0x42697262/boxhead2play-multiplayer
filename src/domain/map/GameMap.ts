@@ -155,10 +155,7 @@ export class GameMap {
     for (let row = top * CELL_SIZE_PX; row <= lastRow; row++) {
       const bucket = buckets.get(row);
       if (!bucket) continue;
-      for (const thing of bucket.slice().reverse()) {
-        thing.flags |= ThingFlag.Drawn;
-        ordered.push(thing);
-      }
+      ordered.push(...bucket.slice().reverse());
     }
     return ordered;
   }

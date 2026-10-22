@@ -23,3 +23,13 @@ export const BRIGHTNESS_STEP = 0.2;
 
 export const CAMERA_FOLLOW_SPEED_CELLS = 0.16;
 export const CAMERA_CATCH_UP_DIVISOR = 5;
+
+export const AMBIENCE_LEVELS = [
+  { maxZombies: 1, channels: 1, frequencyTicks: 150 },
+  { maxZombies: 2, channels: 1, frequencyTicks: 150 },
+  { maxZombies: 4, channels: 2, frequencyTicks: 150 },
+  { maxZombies: 8, channels: 3, frequencyTicks: 60 },
+  { maxZombies: Number.POSITIVE_INFINITY, channels: 3, frequencyTicks: 1 },
+] as const;
+export const AMBIENCE_SAMPLE_SLOTS = 4;
+export const TRACK_BLEND = 0.5;

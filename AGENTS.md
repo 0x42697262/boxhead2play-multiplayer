@@ -87,3 +87,5 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run extract:debug` -> prints composite SVG paths for ROOM_Single_0001/0002 and
   "FFDec PNG 727x807, library frame bounds 721x800.65 (delta 6x6)" for room 1.
 * `npm run dev`, choose a room, press arrows -> player 1 walks. `/` fires the pistol.
+* `npm test -- test/domain` -> domain suites pass (map, navigation, collision, affects,
+  spawning, upgrades, world completion, camera, ambience).
