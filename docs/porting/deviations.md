@@ -19,6 +19,15 @@
 | `MoveInDirection2` | Direction arithmetic without wrapping | Wraps with `& 7` | The function has no caller. |
 | Quit | Only the pause screen button sets `quit` | `TickInput.quitRequested` at any time | The UI decides when the request can be made. |
 | Thing ids | Static `CThing.mAllocate_ID`, renewed per world | `ThingIds` per world | Same numbers, no global state. |
+| Creatures without a target | Zombies and devils read `mTarget_Player.mPosition` even when no player exists and aim at cell (0, 0) | They wait a second (`wait`) | The original only reached this after the game had ended. |
+| Key edges | `CInput` latched presses and releases from keyboard events. `Renew()` on a held key let the next key event (usually auto-repeat) latch a new press | `LatchedControl.sync` rebuilds the latches from the per-tick `ControlState`. A key still held after `renew()` latches a new press on the next tick | No keyboard events in the domain. The difference is the auto-repeat delay. |
+| Grenade hold time | `getTimer()` milliseconds between press and release | Ticks between press and release divided by `ticksPerSecond` | Determinism. Same value at a steady frame rate. |
+| Explosion brightness | `mWorld.mBrightness = 1` twice per explosion | One `flashBrightness(1)` | Same state, one event. |
+| Weapon and pickup texts | Literal strings built with `+` (`mName + " selected!"`, `"Picked up " + mName`). `AddMessage_Info` ignored its player index | `TextKey`s per weapon (`weapon.<id>.name`, `hud.weaponSelected.<id>`, `hud.outOfAmmo.<id>`, `hud.pickedUp.<id>`, `hud.lifeUp`). The event carries the player index | Text lives in `en.json`. The renderer may ignore the index to look like the original. |
+| HUD short names of unlisted weapons | The Devastator and the Smart Bomb have no `mShortName` (the HUD would show `undefined`) | Short name = full name | Both weapons are unreachable in the game. |
+| D-laser drawing | `CThing_Shot_DLaser.Draw` used room coordinates without the camera offset | Same `line` descriptor as the other shots | Rendering bug in an unused class. |
+| Devil hand anchors | `FillXSIInfo` scaled anchors with the global scale at load time | `AnimationCatalog.modelScale` (0.35) | The devil sets have no hand anchors in the extracted data, so the fallback position is always used, as in the original. |
+| Player infinite-life cheat | `_global.mInfinateLife` limited the player's affects to line of sight | Not ported | Debug switch, never set by the game. |
 
 ## Processing order (AS2 `for..in`)
 
@@ -33,6 +42,11 @@ newest first and takes a snapshot of the keys before the loop. The port does thi
   index order. See `affectorsInProcessingOrder`.
 * Draw buckets in `CMap.Draw` are arrays iterated with `for..in`, so the last thing pushed
   into a bucket draws first.
+* The player's number keys are read over `mWeapons` with `for..in` (railgun first, pistol
+  last) and the last released key wins. `WeaponInventory` slots are read in reverse.
+* `RandomPickup` builds its chance list over `mWeapons` with `for..in`, so the list (and
+  which weapon a roll picks) runs from the railgun down to the UZI, then life.
+* `CThing_Object_Barrel` and `CThing_Object_Wall` consume their affect queues newest first.
 
 ## Kept quirks
 
@@ -45,3 +59,21 @@ These look like bugs but are kept because they shape gameplay:
 * Ambience slot 0 is silent and ambience sample 4 never plays.
 * No "LEVEL 1" message is shown at the start (the HUD did not exist yet when the first level was set).
 * Zombie and devil corpses keep the thing counters up until they fade out, which delays the next level.
+* A dead or respawning player still sets `CollideFlag.Player` on its cell every tick:
+  zombies keep attacking the corpse cell, deathmatch mines trigger on it, and the corpse
+  blocks its own spawn marker for the respawn.
+* Releasing a reservation (`&= ~Creature`) also clears another creature's reservation of the
+  same cell.
+* Every queued hit re-enters the hit state, so two hits in one tick splat blood, pick a hit
+  animation and play the hit sound twice.
+* Zombie attacks hurt players even when the damage option is off.
+* The devil's line-of-sight test compares class ids, so the other player in the way counts
+  as a clear shot. Objects do not block the line (they lack `PlayerLineOfSight`), so a
+  devil throws player fireballs through fake walls when the player is in range.
+* Any affect wakes a wall into its affect step, even before its init or while it waits for a
+  player to leave the cell. Such a wall never becomes collidable. A destroyed wall sets
+  `Collidable` (instead of clearing it) while it fades.
+* The pistol fires with a fixed range of 8 instead of its `range` (no pistol range upgrade
+  exists).
+* A pickup is used up even when `RandomPickup` finds nothing to give.
+* `CThing_Shot_Laser` never deletes itself (`mLife` is never set). No weapon fires it.

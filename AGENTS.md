@@ -89,3 +89,15 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run dev`, choose a room, press arrows -> player 1 walks. `/` fires the pistol.
 * `npm test -- test/domain` -> domain suites pass (map, navigation, collision, affects,
   spawning, upgrades, world completion, camera, ambience).
+* `npx vitest run test/domain/things` -> creature, weapon, object, effect, input latch and
+  factory suites pass, and the integration suite runs 2000 ticks of single, coop and
+  deathmatch play on ROOM_Single_0001 (a built-in room when assets are missing) with no NaN
+  positions and identical traces for the same seed.
+* Zombie next to a player -> the player loses 50 life per attack (also with damage off).
+  Devil within 5 cells, facing the player with a clear line -> a fireball for 50.
+* Shoot a barrel next to another barrel -> two explosions two ticks apart, both
+  barrels gone, scorch decals and a `(0, 30)` shake.
+* Multiplier x5 -> every player gets the UZI (key 2, 100 rounds). Weapon out of ammo ->
+  red `hud.outOfAmmo.<id>` message and the pistol.
+* Coop death -> respawn after 4 s + 1 s near the other player with 200 life, empty
+  weapons and 5 s of blinking. Single death -> `worldCompleted` with `playerDead`.

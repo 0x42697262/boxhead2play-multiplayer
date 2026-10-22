@@ -52,11 +52,26 @@ in the original draw order (`docs/domain/map-and-collision.md`).
 
 | Kind | Original primitive | Fields |
 |---|---|---|
-| `character` | `CDrawPrimitive_XSI_Animation.Render` | `style` (`swat/bond/giJoe/bambo/zombie/devil`), `animation` (XSI set id such as `Zombie_Zombie_Walk`), `direction` of `directionCount`, `frame` and `sourceFrame` (after `frameSequence`), `alpha` 0..100, `position` in cells |
+| `character` | `CDrawPrimitive_XSI_Animation.Render` | `style` (`swat/bond/giJoe/bambo/zombie/devil`), `styleScale` (the style sheet's `mScale`: 0.35, devils 0.42), `animation` (XSI set id such as `Zombie_Zombie_Walk`), `direction` of `directionCount`, `frame` and `sourceFrame` (after `frameSequence`), `alpha` 0..100, `position` in cells |
 | `clip` | `CDrawPrimitive_MovieClip_{Static,Animation,Directional,OmniDirectional}` | `mode`, `symbol` (linkage, for example `Object.Pickup`), `frame`, `rotationIndex`/`rotationCount` (directional), `angleRadians` (omni-directional, which picks one of N pre-rendered angles through the 256-step lookup), `scale`, `alpha`, `position` |
 | `line` | `CDrawPrimitive_Line` into `mcScratch` (bullets, railgun, lasers) | `from`, `to` (cells, projected like positions), `thickness`, `color`, `alpha`; drawn on the overlay layer after all things |
 | `square` | `CDrawPrimitive_Square` (debug) | `topLeftPx`, `sizePx`, `color`, `alpha`, `solid` |
 | `group` | several primitives from one thing | `items` |
+
+Who draws what (see `docs/domain/creatures.md`, `weapons-and-shots.md` and
+`objects-and-effects.md`):
+
+* Creatures: `character`. The `animation` is the XSI set id from the creature's collection
+  (`characterCollections.ts`), so the player's weapon group is part of it
+  (`Player_Handgun_Walk`, `Player_UZI_Stand`, ...). A blinking (invincible) or respawning
+  player has no visual.
+* Objects, rockets, grenades, fireballs and effects: `clip` with the linkage from
+  `ClipSymbol` (`Object.Barrel`, `Effect.Explosion`, `Pistol.MuzzleFlash`, ...). Muzzle
+  flashes are `omniDirectional` with `angleRadians` and `rotationCount` 8. Walls, pickups and
+  corpses carry their fade in `alpha`. An explosion has no visual before its delay ends.
+* Bullets, railgun shots and lasers: `line` (lasers and D-lasers a `group` of two lines).
+
+`PlayerThing.hudStatus().weaponShortName` is a `TextKey` (`weapon.<id>.shortName`).
 
 Projection: `screen = (round(x * 32), round((y + z * pFactor) * 32)) - drawOrigin`, where
 `pFactor = -sin(tilt)` from the character data (`World.projectionFactor`, from

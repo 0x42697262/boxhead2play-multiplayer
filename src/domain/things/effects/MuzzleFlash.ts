@@ -1,6 +1,6 @@
 import type { Angle } from '../../math/Angle.ts';
 import type { Position } from '../../math/Position.ts';
-import { ClipMode, type Visual } from '../../visuals.ts';
+import { ClipMode, type ClipVisual } from '../../visuals.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { clipVisual, STATIC_FRAME, type ClipSymbol } from '../clipVisual.ts';
 import { ThingClass } from '../ThingClass.ts';
@@ -24,7 +24,7 @@ export class MuzzleFlash extends Effect {
     this.delete();
   }
 
-  override visual(): Visual {
+  override visual(): ClipVisual {
     return clipVisual(this.symbol, ClipMode.OmniDirectional, STATIC_FRAME, this.position, {
       angleRadians: this.angle.radians,
       rotationCount: MUZZLE_FLASH_DIRECTIONS,
