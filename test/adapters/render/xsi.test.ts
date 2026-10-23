@@ -57,9 +57,9 @@ describe('XSI frame drawings against the real data', () => {
     const names = drawing?.planes.map((plane) => plane.model) ?? [];
     expect(names).not.toContain('GunPosition_Right');
     expect(names).not.toContain('Body_Front');
-    expect(names[0]).toBe('Head');
+    expect(names.at(-1)).toBe('Head');
     const alternateHead = xsi.sets.Player_Alternate1_Walk?.directions[0]?.[0]?.Models.Head?.Shape_vList ?? [];
-    const head = drawing?.planes[0];
+    const head = drawing?.planes.at(-1);
     expect(head?.polygons.map((polygon) => polygon.points)).toEqual(newestFirst(alternateHead));
     const body = drawing?.planes.find((plane) => plane.model === 'Body');
     expect(body?.polygons.length).toBeGreaterThan(0);
@@ -67,6 +67,14 @@ describe('XSI frame drawings against the real data', () => {
     expect(drawing?.shadows.length).toBeGreaterThan(0);
     expect(drawing?.edgeStyle).toEqual({ thickness: 2, color: 0, alpha: 1 });
     expect(drawing && drawingBounds(drawing)).not.toBeNull();
+  });
+
+  it.skipIf(assetsMissing)('draws the models of a frame bottom to top in reverse literal order, so the first listed model ends on top', () => {
+    const xsi = assetXsi();
+    const sheet = buildStyleSheet(CharacterStyle.Zombie, xsi, DEFAULT_STYLE_SCALE);
+    const drawing = buildXsiDrawing(xsi, indexSets(xsi), sheet, 'Zombie_Zombie_Walk', 0, 0);
+    const listed = Object.keys(xsi.sets.Zombie_Zombie_Walk?.directions[0]?.[0]?.Models ?? {}).filter((name) => sheet.models[name]?.visible !== false);
+    expect(drawing?.planes.map((plane) => plane.model)).toEqual(listed.reverse());
   });
 
   it.skipIf(assetsMissing)('a zombie frame hides the weapon and remaps the head to the Zombie group', () => {

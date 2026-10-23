@@ -92,8 +92,12 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
   invisible style model is skipped, a remapped model takes `mGroups[sheet.mGroup_Remap][animID]`.
   The plane holds the profile edges (`PEdge` material, 2 px) and the polygons. Arrays are
   walked newest first (AS2 `for..in`), so the last polygon of a list is drawn first.
-  Model plane depth `10000 - n` for the n-th visited model means source order bottom to
-  top.
+  `Models` is an object literal, and AVM1 visits a literal's keys in source order (see
+  `docs/porting/deviations.md`, processing order). The n-th visited model gets plane
+  depth `10000 - n`, so the first listed model is on top: `literalKeysBottomToTop` draws
+  the models in reverse source order. Each direction lists its models front to back
+  (direction 0 of a walk: `Head` first, the feet last), so this is what hides the far arm
+  behind the body.
 * Fills: `Shape_Matrix` non-zero and a texture linkage gives a repeating pattern of the
   linkage sprite rendered at `mSize` (64 x 64) with the shape matrix. Otherwise a flat
   `mColor`/`mAlpha` fill. `Shape_Brightness` adds a white (positive) or black (negative)

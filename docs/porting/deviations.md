@@ -68,6 +68,11 @@ newest first and takes a snapshot of the keys before the loop. The port does thi
 * Online player indexes follow lobby member order at match start (the host is 0); late
   joiners take the lowest free index. Players are processed newest first, so a late
   joiner acts before the players who started.
+* Object literals are the exception. `ActionInitObject` pops the name/value pairs off the
+  stack, so the last pair in the source is set first and the first pair is the newest
+  property: `for..in` over a literal visits its keys in source order. This decides the
+  XSI model plane order (`literalKeysBottomToTop`). Arrays from `ActionInitArray` keep
+  index order and are visited from the last index.
 * Cell occupants (`MapCell.newestFirst`), players (`ThingCollection.players`) and area
   cell lists (`GameMap.cellsInArea`, reverse scan order) are read newest first.
 * `CThing_Creature.ProcessAffects` walks its affect array with `for..in`, which is reverse

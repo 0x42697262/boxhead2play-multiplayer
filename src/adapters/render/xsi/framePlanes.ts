@@ -76,6 +76,10 @@ export function newestFirst<T>(items: readonly T[] | undefined): T[] {
   return items ? items.slice().reverse() : [];
 }
 
+export function literalKeysBottomToTop<T>(literal: Readonly<Record<string, T>>): [string, T][] {
+  return Object.entries(literal).reverse();
+}
+
 function colorFill(material: XsiMaterial | undefined): ColorFill {
   return { kind: 'color', color: material?.mColor ?? NO_COLOR, alpha: (material?.mAlpha ?? ALPHA_PERCENT) / ALPHA_PERCENT };
 }
@@ -125,7 +129,7 @@ export function buildXsiDrawing(xsi: XsiCatalog, index: SetIndex, sheet: StyleSh
   if (!set || !models) return undefined;
   const planes: XsiPlane[] = [];
   const shadows: (readonly number[])[] = [];
-  for (const [name, source] of Object.entries(models)) {
+  for (const [name, source] of literalKeysBottomToTop(models)) {
     const model = resolveModel(index, sheet, set, name, source, direction, frame);
     if (!model) continue;
     const polygons = newestFirst(model.Shape_vList?.map((points, polygon) => ({ points, polygon }))).map(({ points, polygon }) => {

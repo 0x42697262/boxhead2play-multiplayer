@@ -121,6 +121,8 @@ Add one line per behavior change: what to do, and the result you expect.
   render math, XSI plane lists, HUD animation, mixer, input edges, settings migration,
   session routing and loop accounting pass (asset-based suites skip without
   `public/assets`).
+* Zombies walking left next to the player -> solid figures: head and body over the arms on the
+  far side, no arms or feet showing through the body (like the SWF).
 * Fire the rocket launcher (key 8 after unlocking) -> one yellow-white glowing projectile, not
   three separate white dots.
 * Hold two arrow keys (for example Down + Right) -> player 1 walks diagonally at the same speed
