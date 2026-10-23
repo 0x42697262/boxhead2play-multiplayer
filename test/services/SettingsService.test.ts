@@ -11,6 +11,7 @@ import {
   SETTINGS_VERSION,
   SettingsService,
   toGameOptions,
+  toLobbyOptions,
   withLevelIndex,
 } from '../../src/services/SettingsService.ts';
 
@@ -19,8 +20,8 @@ describe('settings reading', () => {
     const { settings } = readSettings(undefined);
     expect(settings).toEqual(DEFAULT_SETTINGS);
     expect(settings.levelIndex.single).toBe(8);
-    expect(settings.characters).toEqual([PlayerCharacter.Bambo, PlayerCharacter.Swat]);
-    expect(settings.viewSideDeathMatch).toBe(1);
+    expect(settings.character).toBe(PlayerCharacter.Bambo);
+    expect(settings.playerName).toBe('');
   });
 
   it('migrates an unversioned SharedObject-style blob', () => {
@@ -31,9 +32,26 @@ describe('settings reading', () => {
     expect(result.settings.soundActive).toBe(false);
     expect(result.settings.devilsActive).toBe(false);
     expect(result.settings.difficulty).toBe(Difficulty.Expert);
-    expect(result.settings.keys.player1.fire).toBe(32);
-    expect(result.settings.keys.player1.up).toBe(38);
+    expect(result.settings.keys.fire).toBe(32);
+    expect(result.settings.keys.up).toBe(38);
     expect(result.settings.levelIndex.coop).toBe(4);
+  });
+
+  it('migrates version 1 (local two player) to one character, one key set and an empty name', () => {
+    const v1 = {
+      ...DEFAULT_SETTINGS,
+      version: 1,
+      character: undefined,
+      playerName: undefined,
+      characters: [PlayerCharacter.GiJoe, PlayerCharacter.Swat],
+      keys: { player1: { ...DEFAULT_SETTINGS.keys, fire: 70 }, player2: DEFAULT_SETTINGS.keys },
+      viewSideDeathMatch: 0,
+      difficulty: Difficulty.Expert,
+    };
+    const result = readSettings(JSON.stringify(v1));
+    expect(result.migratedFrom).toBe(1);
+    expect(result.rejected).toBeUndefined();
+    expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, character: PlayerCharacter.GiJoe, keys: { ...DEFAULT_SETTINGS.keys, fire: 70 }, difficulty: Difficulty.Expert });
   });
 
   it('rejects invalid JSON, invalid values and future versions', () => {
@@ -74,6 +92,7 @@ describe('SettingsService', () => {
     const settings = withLevelIndex(DEFAULT_SETTINGS, GameMode.DeathMatch, 3);
     expect(levelIndexFor(settings, GameMode.DeathMatch)).toBe(3);
     expect(levelIndexFor(settings, GameMode.Single)).toBe(8);
-    expect(toGameOptions(settings, GameMode.Coop)).toMatchObject({ gameMode: GameMode.Coop, playerCharacters: [3, 0], detail: true });
+    expect(toGameOptions(settings, GameMode.Coop)).toMatchObject({ gameMode: GameMode.Coop, playerCharacters: [3], detail: true });
+    expect(toLobbyOptions(settings)).toEqual({ difficulty: 0, gameSpeed: 1, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: 1, detail: true });
   });
 });

@@ -23,23 +23,24 @@ import { GameMode } from './GameMode.ts';
 import { IDLE_PLAYER_INPUT, IDLE_TICK_INPUT, type PlayerInput, type TickInput } from './input.ts';
 import { initObjectsInOrder, InitKind, screenToCell, type RoomDefinition, type RoomInitObject } from './RoomDefinition.ts';
 import { ScreenEffects } from './ScreenEffects.ts';
-import type { SimulationSettings } from './SimulationSettings.ts';
+import type { PlayerCharacter, SimulationSettings } from './SimulationSettings.ts';
 import {
   pickSpawnPoint,
   pickSpawnPointClose,
   pickSpawnPointFar,
   pickSpawnPointNonStrict,
+  openSpawnNear,
   validateSpawnPoints,
   type SpawnPoint,
 } from './spawning.ts';
 import {
   DROPPED_PICKUP_SECONDS,
   KILLS_TO_WIN,
+  MAX_PLAYERS,
+  OPEN_SPAWN_SEARCH_CELLS,
   PICKUP_EVERY_N_KILLS,
   SCREEN_HEIGHT_PX,
   SCREEN_WIDTH_PX,
-  SPLIT_SCREEN_SIZE_PX,
-  TRACK_BLEND,
 } from './tuning.ts';
 import type { WorldContext } from './WorldContext.ts';
 
@@ -51,7 +52,7 @@ export interface WorldDependencies {
 }
 
 export interface CameraView {
-  readonly playerIndex: number | undefined;
+  readonly playerIndex: number;
   readonly rect: CameraRect;
   readonly drawOrigin: Point2;
 }
@@ -63,7 +64,6 @@ export interface Presentation {
 }
 
 const FIRST_PLAYER = 0;
-const SECOND_PLAYER = 1;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
 export class World implements WorldContext, UpgradesHost {
@@ -82,14 +82,14 @@ export class World implements WorldContext, UpgradesHost {
   tick = 0;
   private currentTicksPerSecond: number;
   private completionState: CompletionState | undefined = undefined;
+  private winner: number | undefined = undefined;
   private tickInput: TickInput = IDLE_TICK_INPUT;
   private zombiePoints: SpawnPoint[] = [];
   private devilPoints: SpawnPoint[] = [];
   private playerPoints: SpawnPoint[] = [];
   private playerStart: SpawnPoint | undefined = undefined;
-  private trackPosition: Position | undefined = undefined;
-  private lastTracked: Point3 | undefined = undefined;
-  private readonly trackedPlayers: (PlayerThing | undefined)[] = [];
+  private readonly trackTargets = new Map<number, Point3>();
+  private readonly lastTracked = new Map<number, Point3>();
   private ambience: AmbienceState = INITIAL_AMBIENCE;
   private view: Presentation = { cameras: [], shake: { x: 0, y: 0 }, brightness: 0 };
   private drawOrigin: Point2 = { x: 0, y: 0 };
@@ -135,6 +135,10 @@ export class World implements WorldContext, UpgradesHost {
     return this.completionState;
   }
 
+  get winnerIndex(): number | undefined {
+    return this.winner;
+  }
+
   get presentation(): Presentation {
     return this.view;
   }
@@ -164,6 +168,32 @@ export class World implements WorldContext, UpgradesHost {
     }
     if (!this.paused) this.step();
     if (this.completionState) this.events.emit({ type: DomainEventType.WorldCompleted, state: this.completionState });
+  }
+
+  cameraFor(playerIndex: number): CameraView | undefined {
+    return this.view.cameras.find((camera) => camera.playerIndex === playerIndex);
+  }
+
+  freePlayerIndex(): number | undefined {
+    const taken = new Set(this.things.players().map((player) => player.playerIndex));
+    return Array.from({ length: MAX_PLAYERS }, (_unused, index) => index).find((index) => !taken.has(index));
+  }
+
+  joinPlayer(playerIndex: number, character: PlayerCharacter): boolean {
+    if (this.things.playerByIndex(playerIndex) || playerIndex >= MAX_PLAYERS) return false;
+    const anchor = this.things.players().find((player) => !player.hasFlag(ThingFlag.Dead));
+    return this.spawnPlayer(playerIndex, character, this.unoccupied(anchor ? this.playerRespawnPoint(anchor) : pickSpawnPoint(this.playerPoints, this.rng)));
+  }
+
+  leavePlayer(playerIndex: number): boolean {
+    const player = this.things.playerByIndex(playerIndex);
+    if (!player) return false;
+    if (!player.hasFlag(ThingFlag.Dead)) this.upgrades.playerCount--;
+    this.upgrades.totalPlayerCount--;
+    player.delete();
+    this.trackTargets.delete(playerIndex);
+    this.lastTracked.delete(playerIndex);
+    return true;
   }
 
   drawList(camera: CameraView): DrawEntry[] {
@@ -230,7 +260,7 @@ export class World implements WorldContext, UpgradesHost {
         break;
       case ThingClass.Player:
         this.upgrades.playerCount--;
-        this.hud.recordDeath(this.playerIndexOf(thing));
+        this.recordPlayerDeath(thing);
         if (this.settings.gameMode === GameMode.DeathMatch) this.createPickup(thing.position);
         return;
       default:
@@ -243,16 +273,19 @@ export class World implements WorldContext, UpgradesHost {
   playerDead(): void {
     if (this.settings.gameMode === GameMode.DeathMatch) {
       const killsToWin = KILLS_TO_WIN[this.settings.gameAmount];
-      if (this.hud.deathsOf(FIRST_PLAYER) === killsToWin) this.complete(CompletionState.Player2Wins);
-      if (this.hud.deathsOf(SECOND_PLAYER) === killsToWin) this.complete(CompletionState.Player1Wins);
+      const leader = this.things.players().find((player) => this.hud.fragsOf(player.playerIndex) >= killsToWin);
+      if (leader) {
+        this.winner = leader.playerIndex;
+        this.complete(CompletionState.PlayerWon);
+      }
     } else if (this.upgrades.playerCount <= 0) {
       this.complete(CompletionState.PlayerDead);
     }
   }
 
   trackPlayer(player: PlayerThing): void {
-    this.trackPosition = this.trackPosition ? this.trackPosition.add(player.position).scale(TRACK_BLEND) : player.position.clone();
-    this.trackedPlayers[player.playerIndex] = player;
+    const { x, y, z } = player.position;
+    this.trackTargets.set(player.playerIndex, { x, y, z });
   }
 
   shake(dx: number, dy: number): void {
@@ -283,54 +316,52 @@ export class World implements WorldContext, UpgradesHost {
 
   private present(): void {
     this.screen.decayShake();
-    const cameras = this.settings.gameMode === GameMode.DeathMatch ? this.splitCameras() : [this.sharedCamera()];
-    const last = cameras[cameras.length - 1];
-    if (last) this.drawOrigin = last.drawOrigin;
+    const cameras = this.playerCameras();
+    const first = cameras[0];
+    if (first) this.drawOrigin = first.drawOrigin;
     const brightness = this.settings.detail ? this.screen.decayBrightness() : 0;
     this.hud.pruneMessages();
-    let visibleZombies = 0;
+    const visibleZombies = new Set<Thing>();
     for (const camera of cameras) {
-      visibleZombies += this.map.drawOrder(camera.rect).filter((thing) => thing.classId === ThingClass.Zombie).length;
+      for (const thing of this.map.drawOrder(camera.rect)) if (thing.classId === ThingClass.Zombie) visibleZombies.add(thing);
     }
-    const ambience = stepAmbience(this.ambience, visibleZombies, this.tickInput.ambienceSamplesPlaying);
+    const ambience = stepAmbience(this.ambience, visibleZombies.size, this.tickInput.ambienceSamplesPlaying);
     this.ambience = ambience.state;
     for (const event of ambience.events) this.events.emit(event);
     this.view = { cameras, shake: { x: this.screen.shakeX, y: this.screen.shakeY }, brightness };
-    this.trackPosition = undefined;
+    this.trackTargets.clear();
   }
 
-  private sharedCamera(): CameraView {
-    const result = trackCamera({
-      target: this.trackPosition,
-      last: this.lastTracked,
-      smooth: true,
-      viewWidth: SCREEN_WIDTH_PX,
-      viewHeight: SCREEN_HEIGHT_PX,
-      areaWidthPx: this.room.widthPx,
-      areaHeightPx: this.room.heightPx,
-      projectionFactor: this.projectionFactor,
-    });
-    this.lastTracked = result.tracked;
-    return this.cameraView(undefined, result.rect);
-  }
-
-  private splitCameras(): CameraView[] {
-    return [FIRST_PLAYER, SECOND_PLAYER].map((index) => {
+  private playerCameras(): CameraView[] {
+    const indexes = this.things
+      .players()
+      .map((player) => player.playerIndex)
+      .sort((first, second) => first - second);
+    const smooth = this.settings.gameMode !== GameMode.DeathMatch;
+    return indexes.map((index) => {
       const result = trackCamera({
-        target: this.trackedPlayers[index]?.position,
-        last: undefined,
-        smooth: false,
-        viewWidth: SPLIT_SCREEN_SIZE_PX,
-        viewHeight: SPLIT_SCREEN_SIZE_PX,
+        target: smooth ? this.trackTargets.get(index) : this.lockedTarget(index),
+        last: this.lastTracked.get(index),
+        smooth,
+        viewWidth: SCREEN_WIDTH_PX,
+        viewHeight: SCREEN_HEIGHT_PX,
         areaWidthPx: this.room.widthPx,
         areaHeightPx: this.room.heightPx,
         projectionFactor: this.projectionFactor,
       });
+      if (result.tracked) this.lastTracked.set(index, result.tracked);
       return this.cameraView(index, result.rect);
     });
   }
 
-  private cameraView(playerIndex: number | undefined, rect: CameraRect): CameraView {
+  private lockedTarget(playerIndex: number): Point3 | undefined {
+    const tracked = this.trackTargets.get(playerIndex);
+    if (tracked) return tracked;
+    const player = this.things.playerByIndex(playerIndex);
+    return player && this.lastTracked.has(playerIndex) ? { x: player.position.x, y: player.position.y, z: player.position.z } : undefined;
+  }
+
+  private cameraView(playerIndex: number, rect: CameraRect): CameraView {
     return {
       playerIndex,
       rect,
@@ -338,16 +369,23 @@ export class World implements WorldContext, UpgradesHost {
     };
   }
 
-  private playerIndexOf(thing: Thing): number {
-    return isPlayer(thing) ? thing.playerIndex : FIRST_PLAYER;
+  private recordPlayerDeath(thing: Thing): void {
+    if (!isPlayer(thing)) return;
+    const opponents = this.things
+      .players()
+      .filter((player) => player !== thing)
+      .map((player) => player.playerIndex);
+    this.hud.recordDeath({ victim: thing.playerIndex, killer: thing.lastAttackerIndex, opponents });
   }
 
   private initThings(): void {
     for (const init of initObjectsInOrder(this.room)) this.initObject(init);
     this.zombiePoints = validateSpawnPoints(this.zombiePoints);
     this.devilPoints = validateSpawnPoints(this.devilPoints);
-    this.spawnPlayer(FIRST_PLAYER, this.playerStart ?? pickSpawnPoint(this.playerPoints, this.rng));
-    if (this.settings.gameMode !== GameMode.Single) this.spawnPlayer(SECOND_PLAYER, this.playerRespawnPoint(undefined));
+    this.settings.playerCharacters.forEach((character, index) => {
+      const point = index === FIRST_PLAYER ? (this.playerStart ?? pickSpawnPoint(this.playerPoints, this.rng)) : this.playerRespawnPoint(undefined);
+      this.spawnPlayer(index, character, this.unoccupied(point));
+    });
   }
 
   private initObject(init: RoomInitObject): void {
@@ -385,6 +423,14 @@ export class World implements WorldContext, UpgradesHost {
     }
   }
 
+  private unoccupied(point: SpawnPoint | undefined): SpawnPoint | undefined {
+    const origin = point ?? this.playerStart ?? this.playerPoints[0];
+    if (!origin) return undefined;
+    const occupied = new Set(this.things.players().map((player) => this.map.cellAt(player.position.x, player.position.y)));
+    if (point && !occupied.has(point.cell) && !(point.cell.collide & CollideFlag.Player)) return point;
+    return openSpawnNear(origin, new Set([...occupied].filter((cell) => cell !== undefined)), OPEN_SPAWN_SEARCH_CELLS);
+  }
+
   private addSpawnPoint(list: SpawnPoint[], position: Position, angle: Angle): SpawnPoint | undefined {
     const cell = this.map.cellAt(position.x, position.y);
     if (!cell) return undefined;
@@ -393,11 +439,11 @@ export class World implements WorldContext, UpgradesHost {
     return point;
   }
 
-  private spawnPlayer(playerIndex: number, point: SpawnPoint | undefined): boolean {
+  private spawnPlayer(playerIndex: number, character: PlayerCharacter, point: SpawnPoint | undefined): boolean {
     if (!point) return false;
     this.upgrades.totalPlayerCount++;
     this.upgrades.playerCount++;
-    this.things.addPlayer(this.factory.player(this, point.position.clone(), playerIndex, point.angle.clone()));
+    this.things.addPlayer(this.factory.player(this, point.position.clone(), playerIndex, point.angle.clone(), character));
     return true;
   }
 }

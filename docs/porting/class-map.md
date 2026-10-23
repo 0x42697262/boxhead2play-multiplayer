@@ -85,9 +85,10 @@
 | `Screen.CScreen` (`GoBack`, `Open`, `_Icon_Back`) | `src/ui/screens/menu/MenuCore.ts`, `FlowControls.showMainMenu` |
 | `Screen.CScreen_Collection` | `src/services/ScreenFlow.ts` (`ScreenFactory`, pending transitions) |
 | `Screen.CScreen_Transition` | `src/ui/screens/menu/ScreenTransition.ts` |
-| `Screen.CScreen_Main` | `src/ui/screens/menu/MainMenuScreen.ts`, `rollOver.ts` (`Register_Button` filters), `labelWord.ts` (PLAY label) |
+| `Screen.CScreen_Main` | `src/ui/screens/menu/MainMenuScreen.ts`, `rollOver.ts` (`Register_Button` filters) |
 | `Screen.CScreen_SelectWorld` | `src/ui/screens/menu/SelectWorldScreen.ts`, `frameCycle.ts` (`mcGotoFrame`), `KeyCapture.ts` (`Activate_WaitForKeypress`), `src/services/menuSettings.ts` (option groups, `ResetOptions`, `ResetControls`) |
 | `CScreen_SelectWorld` exclusives (`Single_Exclusives` ...) | `rooms/index.json` `exclusive` (unused at runtime, see `docs/runtime/screens.md`) |
 | `CInput.mValidKeys`, `isValidKey` | `src/adapters/input/validKeys.ts` |
 | `CMain.State_Main`, `State_SelectWorld_*`, `mReturn_SelectWorld` | `src/services/ScreenFlow.ts` |
 | `Screen.CScreen_Intro`, `CScreen_LoadingWorld`, `CScreen_Debrief`, `CScreen_Debrief_Winner`, `CScreen_Init` | Not ported yet |
+| none (online play, ADR 0005) | `src/net/` (protocol, control masks, frames), `src/server/` (`Hub`, `Lobby`, `Match`, Node adapters), `src/adapters/net/ServerConnection.ts`, `src/services/online/`, `src/ui/screens/online/` |

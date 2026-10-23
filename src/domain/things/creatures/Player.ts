@@ -7,7 +7,7 @@ import { SoundId } from '../../sounds.ts';
 import { CharacterStyle, OPAQUE_ALPHA, PLAYER_CHARACTER_STYLES, type Visual } from '../../visuals.ts';
 import { INFINITE_AMMO, WeaponName } from '../../weapons/WeaponName.ts';
 import { GameMode } from '../../world/GameMode.ts';
-import { PLAYER_SCOPE_CELLS_X, PLAYER_SCOPE_CELLS_Y } from '../../world/tuning.ts';
+import type { PlayerCharacter } from '../../world/SimulationSettings.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { AffectType } from '../affects/AffectType.ts';
 import type { PlayerHudStatus, PlayerThing } from '../PlayerThing.ts';
@@ -27,8 +27,7 @@ import { WeaponInventory, type WeaponSlot } from './WeaponInventory.ts';
 const PLAYER_AFFECTS =
   AffectType.Bullet | AffectType.Explosion | AffectType.ZombieAttack | AffectType.PlayerLineOfSight | AffectType.FireBall;
 
-export function playerStyle(world: WorldContext, playerIndex: number): CharacterStyle {
-  const character = world.settings.playerCharacters[playerIndex] ?? 0;
+export function playerStyle(character: PlayerCharacter): CharacterStyle {
   return PLAYER_CHARACTER_STYLES[character] ?? CharacterStyle.Swat;
 }
 
@@ -43,13 +42,14 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     position: Position,
     readonly playerIndex: number,
     angle: Angle,
+    readonly character: PlayerCharacter,
   ) {
-    super(world, position, { angle }, Player.createAnimator(world, playerIndex));
+    super(world, position, { angle }, Player.createAnimator(world, character));
     this.inventory = new WeaponInventory(this);
   }
 
-  private static createAnimator(world: WorldContext, playerIndex: number): CharacterAnimator {
-    return new CharacterAnimator(world.animations, PLAYER_COLLECTION, playerStyle(world, playerIndex));
+  private static createAnimator(world: WorldContext, character: PlayerCharacter): CharacterAnimator {
+    return new CharacterAnimator(world.animations, PLAYER_COLLECTION, playerStyle(character));
   }
 
   get visible(): boolean {
@@ -106,6 +106,8 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     this.height = PLAYER.height;
     this.maxLife = this.life = PLAYER.life;
     this.inventory.init();
+    for (const weapon of this.world.upgrades.unlockedWeapons) this.inventory.newWeapon(weapon);
+    if (this.world.settings.gameMode === GameMode.DeathMatch) this.inventory.reset();
     this.inventory.select(WeaponName.Pistol);
     this.sounds.death = SoundId.PlayerScream1;
     this.world.upgrades.registerCreature(this);
@@ -141,7 +143,6 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     const dy = controls.up.isDown() ? -1 : controls.down.isDown() ? 1 : 0;
     this.delta = new Position(dx, dy, 0).normalize2D(this.speed);
     if (!this.delta.isZero()) this.angle.delta = this.delta;
-    this.keepDistance();
     const moved = this.moveAndReport(this.world.map.collide.playerCollide(this));
     const animations = WEAPON_ANIMATIONS[this.inventory.currentName ?? WeaponName.Pistol];
     const animation = moved === MoveResult.None ? animations.stand : animations.walk;
@@ -168,27 +169,12 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
   private selectedSlot(): WeaponSlot | undefined {
     const { controls } = this;
     let selected: WeaponSlot | undefined;
-    if (this.world.upgrades.totalPlayerCount === 1) {
-      for (const slot of this.inventory.slots.slice().reverse()) {
-        if (controls.select(slot.keyId)?.isReleased()) selected = slot;
-      }
+    for (const slot of this.inventory.slots.slice().reverse()) {
+      if (controls.select(slot.keyId)?.isReleased()) selected = slot;
     }
     if (controls.nextWeapon.isReleased()) selected = this.inventory.next();
     if (controls.prevWeapon.isReleased()) selected = this.inventory.previous();
     return selected;
-  }
-
-  private keepDistance(): void {
-    if (this.world.settings.gameMode !== GameMode.Coop) return;
-    const other = this.world.things.otherPlayer(this);
-    if (!other || other.hasFlag(ThingFlag.Dead)) return;
-    const { position, delta } = this;
-    const gapX = Math.abs(other.position.x - position.x);
-    const nextGapX = Math.abs(other.position.x - (position.x + delta.x));
-    const gapY = Math.abs(other.position.y - position.y);
-    const nextGapY = Math.abs(other.position.y - (position.y + delta.y));
-    if (nextGapX > gapX && nextGapX > PLAYER_SCOPE_CELLS_X) delta.x = 0;
-    if (nextGapY > gapY && nextGapY > PLAYER_SCOPE_CELLS_Y) delta.y = 0;
   }
 
   private tickPlayerDead(): void {
@@ -205,10 +191,11 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
 
   private tickRespawn(): void {
     if (--this.stateCount >= 0) return;
-    const point = this.world.playerRespawnPoint(this.world.things.otherPlayer(this));
+    const point = this.world.playerRespawnPoint(this.world.things.nearestOtherPlayer(this));
     if (!point) return;
     this.alpha = OPAQUE_ALPHA;
-    this.animator = Player.createAnimator(this.world, this.playerIndex);
+    this.lastAttackerIndex = undefined;
+    this.animator = Player.createAnimator(this.world, this.character);
     this.affectSetup(PLAYER_AFFECTS);
     this.flags = ThingFlag.Collidable;
     this.move(point.position.clone());

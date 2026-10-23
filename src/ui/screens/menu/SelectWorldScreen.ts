@@ -1,15 +1,13 @@
 import type { DisplayItem, RoomIndex } from '../../../adapters/assets/schemas.ts';
 import { keyCodeForCode, validKey } from '../../../adapters/input/validKeys.ts';
 import type { StageScene } from '../../../adapters/render/menu/LayeredStage.ts';
-import type { SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
+import { depthKey, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import { GameMode } from '../../../domain/world/GameMode.ts';
 import { PlayerCharacter } from '../../../domain/world/SimulationSettings.ts';
 import type { Logger } from '../../../observability/logger.ts';
 import {
   optionValue,
-  playerKeys,
-  PlayerSlot,
   resetKeys,
   resetOptions,
   withCharacter,
@@ -29,14 +27,16 @@ import { Trigger, type MenuTarget } from './MenuPointer.ts';
 import { OverrideTree } from './overrideTree.ts';
 import {
   CHANGE_KEY_PREFIX,
-  CONTROL_PANELS,
+  CONTROL_PANEL,
   KEY_ROWS,
   KEY_TEXT_PREFIX,
   MENU_TICKS_PER_SECOND,
   MenuSymbol,
   MS_PER_SECOND,
   OPTION_GROUPS,
-  PLAYER_CHARACTER_CARDS,
+  PLAYER_CHARACTER_CARD,
+  SECOND_CHARACTER_CARD,
+  SECOND_CHARACTER_LABEL_DEPTH,
   SELECT_WORLD_BANNER_DEPTHS,
   SELECT_WORLD_EXPANDED,
   SELECT_WORLD_REMOVED_NAMES,
@@ -68,7 +68,7 @@ export type SelectAction =
   | { readonly kind: typeof SelectAction.CloseControls }
   | { readonly kind: typeof SelectAction.ResetControls }
   | { readonly kind: typeof SelectAction.Option; readonly field: OptionField; readonly value: number }
-  | { readonly kind: typeof SelectAction.Character; readonly slot: PlayerSlot; readonly delta: number }
+  | { readonly kind: typeof SelectAction.Character; readonly delta: number }
   | { readonly kind: typeof SelectAction.Level; readonly delta: number }
   | { readonly kind: typeof SelectAction.Play }
   | { readonly kind: typeof SelectAction.ChangeKey; readonly target: KeyTarget };
@@ -103,11 +103,10 @@ const OPTIONS = [Child.WindowOptions] as const;
 const CONTROLS = [Child.WindowControls] as const;
 const PRESS_KEY = [...CONTROLS, Child.PressKey] as const;
 
-const PLAYER_SLOTS: Readonly<Record<GameMode, readonly PlayerSlot[]>> = {
-  [GameMode.Single]: [PlayerSlot.First],
-  [GameMode.Coop]: [PlayerSlot.First, PlayerSlot.Second],
-  [GameMode.DeathMatch]: [PlayerSlot.First, PlayerSlot.Second],
-};
+const OWN_CARD = [...SUB, PLAYER_CHARACTER_CARD] as const;
+const HIDDEN_CARD = [...SUB, SECOND_CHARACTER_CARD] as const;
+const HIDDEN_CARD_LABEL = [...SUB, depthKey(SECOND_CHARACTER_LABEL_DEPTH)] as const;
+const OWN_KEYS = [...CONTROLS, CONTROL_PANEL] as const;
 
 function frameCount(library: SymbolLibrary, item: DisplayItem | undefined): number {
   return (item ? library.sprite(item.characterId)?.frameCount : undefined) ?? SINGLE_FRAME;
@@ -135,7 +134,7 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
           name: Child.LevelIcons,
           ...(shadow?.filters ? { filters: shadow.filters } : {}),
         };
-  const card = subScreenId === undefined ? undefined : library.findChild(subScreenId, PLAYER_CHARACTER_CARDS[PlayerSlot.First]);
+  const card = subScreenId === undefined ? undefined : library.findChild(subScreenId, PLAYER_CHARACTER_CARD);
   const character = card ? library.findChild(card.characterId, Child.Character) : undefined;
   const controls = library.resolve(items, PRESS_KEY, undefined);
   const pressAKey = controls ? library.findChild(controls.item.characterId, Child.PressAKey) : undefined;
@@ -153,8 +152,8 @@ function buttonPath(...path: string[]): string[] {
   return [...path, Child.Button];
 }
 
-function keyButtonPath(slot: PlayerSlot, variable: string): string[] {
-  return [...CONTROLS, CONTROL_PANELS[slot], `${CHANGE_KEY_PREFIX}${variable}`];
+function keyButtonPath(variable: string): string[] {
+  return [...OWN_KEYS, `${CHANGE_KEY_PREFIX}${variable}`];
 }
 
 export class SelectWorldScreen implements Screen {
@@ -163,7 +162,6 @@ export class SelectWorldScreen implements Screen {
   private readonly core: MenuCore<SelectAction>;
   private readonly layout: SelectWorldLayout;
   private readonly capture = new KeyCapture();
-  private readonly slots: readonly PlayerSlot[];
   private optionsOpen = false;
   private controlsOpen = false;
   private ticks = 0;
@@ -172,7 +170,6 @@ export class SelectWorldScreen implements Screen {
   constructor(private readonly deps: SelectWorldDependencies) {
     this.core = new MenuCore(deps.kit);
     this.layout = selectWorldLayout(deps.kit.renderer.library, deps.mode);
-    this.slots = PLAYER_SLOTS[deps.mode];
   }
 
   get cursor(): Cursor {
@@ -183,8 +180,8 @@ export class SelectWorldScreen implements Screen {
     return cycleFrame(levelIndexFor(this.deps.settings.settings, this.deps.mode), 0, this.layout.levelCount);
   }
 
-  characterFrame(slot: PlayerSlot): number {
-    return cycleFrame(this.deps.settings.settings.characters[slot], 0, this.layout.characterCount);
+  get characterFrame(): number {
+    return cycleFrame(this.deps.settings.settings.character, 0, this.layout.characterCount);
   }
 
   tick(): void {
@@ -212,9 +209,9 @@ export class SelectWorldScreen implements Screen {
     if (!this.capture.active) return false;
     const result = this.capture.press(keyCodeForCode(code), this.nowMs());
     if (result.outcome === KeyPressOutcome.Assigned) {
-      const { slot, field } = result.target;
-      this.deps.settings.update((settings) => withKey(settings, slot, field, result.keyCode));
-      this.deps.logger.info(LogEvent.KeyRebound, { player: slot + 1, field, keyCode: result.keyCode });
+      const { field } = result.target;
+      this.deps.settings.update((settings) => withKey(settings, field, result.keyCode));
+      this.deps.logger.info(LogEvent.KeyRebound, { field, keyCode: result.keyCode });
     }
     if (!this.capture.active) this.core.refresh(this.scene(), this.targets());
     return true;
@@ -230,7 +227,8 @@ export class SelectWorldScreen implements Screen {
     switch (action.kind) {
       case SelectAction.Back:
         audio.play(SoundId.Click);
-        this.deps.controls.showMainMenu();
+        if (this.deps.mode === GameMode.Single) this.deps.controls.showMainMenu();
+        else this.deps.controls.openLobby(this.deps.mode);
         return;
       case SelectAction.Play:
         this.play();
@@ -262,9 +260,9 @@ export class SelectWorldScreen implements Screen {
         settings.update((current) => withOption(current, action.field, action.value));
         return;
       case SelectAction.Character: {
-        const next = cycleFrame(this.characterFrame(action.slot), action.delta, this.layout.characterCount);
+        const next = cycleFrame(this.characterFrame, action.delta, this.layout.characterCount);
         const character = Object.values(PlayerCharacter).find((value) => value === next);
-        if (character !== undefined) settings.update((current) => withCharacter(current, action.slot, character));
+        if (character !== undefined) settings.update((current) => withCharacter(current, character));
         return;
       }
       case SelectAction.Level: {
@@ -284,13 +282,10 @@ export class SelectWorldScreen implements Screen {
     if (this.controlsOpen) return this.controlsTargets();
     if (this.optionsOpen) return this.optionsTargets();
     const release = (path: readonly string[], action: SelectAction): MenuTarget<SelectAction> => ({ path, trigger: Trigger.Release, action });
-    const cards = this.slots.flatMap((slot) => {
-      const card = [...SUB, PLAYER_CHARACTER_CARDS[slot]];
-      return [
-        release([...card, Child.Left], { kind: SelectAction.Character, slot, delta: PREVIOUS }),
-        release([...card, Child.Right], { kind: SelectAction.Character, slot, delta: NEXT }),
-      ];
-    });
+    const cards = [
+      release([...OWN_CARD, Child.Left], { kind: SelectAction.Character, delta: PREVIOUS }),
+      release([...OWN_CARD, Child.Right], { kind: SelectAction.Character, delta: NEXT }),
+    ];
     return [
       release(buttonPath(Child.GameOptions), { kind: SelectAction.OpenOptions }),
       release(buttonPath(Child.GameControls), { kind: SelectAction.OpenControls }),
@@ -317,7 +312,10 @@ export class SelectWorldScreen implements Screen {
   private play(): void {
     const index = this.levelIndex;
     const room = this.deps.rooms.rooms.find((entry) => entry.iconFrame === index);
-    if (room) this.deps.controls.startGame({ mode: this.deps.mode, roomId: room.id });
+    if (!room) return;
+    const selection = { mode: this.deps.mode, roomId: room.id };
+    if (this.deps.mode === GameMode.Single) this.deps.controls.startGame(selection);
+    else this.deps.controls.hostLobby(selection);
   }
 
   private optionsTargets(): MenuTarget<SelectAction>[] {
@@ -337,18 +335,15 @@ export class SelectWorldScreen implements Screen {
   }
 
   private controlsTargets(): MenuTarget<SelectAction>[] {
-    const keys = [PlayerSlot.First, PlayerSlot.Second].flatMap((slot) =>
-      KEY_ROWS.map((row) => ({
-        path: keyButtonPath(slot, row.variable),
-        trigger: Trigger.Release,
-        action: { kind: SelectAction.ChangeKey, target: { slot, field: row.field } } as const,
-      })),
-    );
-    const cover: MenuTarget<SelectAction>[] = this.deps.mode === GameMode.Single ? [{ path: [...CONTROLS, Child.TwoPlayerCover], trigger: Trigger.Block }] : [];
+    const keys = KEY_ROWS.map((row) => ({
+      path: keyButtonPath(row.variable),
+      trigger: Trigger.Release,
+      action: { kind: SelectAction.ChangeKey, target: { field: row.field } } as const,
+    }));
     return [
       { path: buttonPath(...CONTROLS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetControls } },
       { path: buttonPath(...CONTROLS, Child.Close), trigger: Trigger.Release, action: { kind: SelectAction.CloseControls } },
-      ...cover,
+      { path: [...CONTROLS, Child.TwoPlayerCover], trigger: Trigger.Block },
       ...keys,
       { path: [...CONTROLS, Child.Lock], trigger: Trigger.Block },
     ];
@@ -369,12 +364,11 @@ export class SelectWorldScreen implements Screen {
     this.button(tree, [...LEVEL_ICONS, Child.Button]);
     this.button(tree, [...LEVEL, Child.Left]);
     this.button(tree, [...LEVEL, Child.Right]);
-    for (const slot of this.slots) {
-      const card = [...SUB, PLAYER_CHARACTER_CARDS[slot]];
-      tree.set([...card, Child.Character], { frame: this.characterFrame(slot) });
-      this.button(tree, [...card, Child.Left]);
-      this.button(tree, [...card, Child.Right]);
-    }
+    tree.set([...OWN_CARD, Child.Character], { frame: this.characterFrame });
+    this.button(tree, [...OWN_CARD, Child.Left]);
+    this.button(tree, [...OWN_CARD, Child.Right]);
+    tree.set(HIDDEN_CARD, { visible: false });
+    tree.set(HIDDEN_CARD_LABEL, { visible: false });
   }
 
   private sceneOptions(tree: OverrideTree): void {
@@ -394,15 +388,12 @@ export class SelectWorldScreen implements Screen {
   private sceneControls(tree: OverrideTree): void {
     tree.set(CONTROLS, { visible: this.controlsOpen });
     if (!this.controlsOpen) return;
-    tree.set([...CONTROLS, Child.TwoPlayerCover], { visible: this.deps.mode === GameMode.Single });
-    const settings = this.deps.settings.settings;
-    for (const slot of [PlayerSlot.First, PlayerSlot.Second]) {
-      const keys = playerKeys(settings, slot);
-      for (const row of KEY_ROWS) {
-        const key = validKey(keys[row.field]);
-        tree.set([...CONTROLS, CONTROL_PANELS[slot], `${KEY_TEXT_PREFIX}${row.variable}`], { text: key ? t(key.name) : '' });
-        this.button(tree, keyButtonPath(slot, row.variable));
-      }
+    tree.set([...CONTROLS, Child.TwoPlayerCover], { visible: true });
+    const keys = this.deps.settings.settings.keys;
+    for (const row of KEY_ROWS) {
+      const key = validKey(keys[row.field]);
+      tree.set([...OWN_KEYS, `${KEY_TEXT_PREFIX}${row.variable}`], { text: key ? t(key.name) : '' });
+      this.button(tree, keyButtonPath(row.variable));
     }
     this.windowButtons(tree, CONTROLS);
     tree.set(PRESS_KEY, { visible: this.capture.active });

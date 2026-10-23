@@ -103,7 +103,7 @@ Add one line per behavior change: what to do, and the result you expect.
   barrels gone, scorch decals and a `(0, 30)` shake.
 * Multiplier x5 -> every player gets the UZI (key 2, 100 rounds). Weapon out of ammo ->
   red `hud.outOfAmmo.<id>` message and the pistol.
-* Coop death -> respawn after 4 s + 1 s near the other player with 200 life, empty
+* Coop death -> respawn after 4 s + 1 s near the nearest living player with 200 life, empty
   weapons and 5 s of blinking. Single death -> `worldCompleted` with `playerDead`.
 * `npm run dev`, PLAY, go to level 1/18 BOXY, click the preview -> the room, the score total
   `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
@@ -111,8 +111,9 @@ Add one line per behavior change: what to do, and the result you expect.
   and the life bar above the player shrinks.
 * Press P -> "PAUSED!" with the upgrade list (new weapons in green, inactive ones faded);
   click QUIT? -> back to the single select-world screen.
-* DEATH MATCH, click a level -> two 480 px views scaled side by side with 80 px bars, "Player 2 00"
-  on the left (view side 1); clicking the arrows at the bottom swaps the views.
+* Two browser tabs on `npm run dev`: DEATH MATCH in both, host a game in one, JOIN in the
+  other, START GAME -> each tab shows a full 640 x 480 view of its own player, the frags bar
+  with the local name on the left and the opponent on the right, no switch-sides arrows.
 * Switch to another tab while playing -> the game is paused on return.
 * `npx vitest run test/adapters test/services test/entry test/ui` -> asset mapping,
   render math, XSI plane lists, HUD animation, mixer, input edges, settings migration,
@@ -123,23 +124,40 @@ Add one line per behavior change: what to do, and the result you expect.
 * Hold two arrow keys (for example Down + Right) -> player 1 walks diagonally at the same speed
   as straight (0.16 cells per tick).
 * `npm run dev` -> after loading, a fade from black to the main menu: background, BOXHEAD 2PLAY
-  title, "PLAY" (the PLAY of the original SINGLE PLAY art) and "DEATH MATCH" below it at 50 %.
-  Hover one -> full alpha with a jittering drop shadow and a hand cursor.
-* PLAY -> select world with "Back to menu", OBJECTIVE KILL ZOMBIES, one character card and the
-  level preview (no More Games, banners, Sean Cooper text or View Highscores); DEATH MATCH ->
-  OBJECTIVE KILL EACH OTHER with cards 1 and 2. Back to menu -> the main menu.
+  title, "SINGLE PLAY", "COOPERATIVE" and "DEATH MATCH" at 50 %. Hover one -> full alpha with
+  a jittering drop shadow and a hand cursor.
+* SINGLE PLAY -> select world with "Back to menu", OBJECTIVE KILL ZOMBIES, one character card and
+  the level preview (no More Games, banners, Sean Cooper text or View Highscores). COOPERATIVE
+  or DEATH MATCH -> the online lobby ("Connected", "No games yet. Host one!"); HOST GAME ->
+  select world with one character card and no "2" label. Back to menu -> the main menu.
 * Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),
   kept after a reload; the game uses the chosen characters. Every level starts (no exclusive lock).
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET
-  -> Beginner, Normal, on, on, on, first to 10. CONTROLS -> the key names (player 2 covered in
-  single); click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->
+  -> Beginner, Normal, on, on, on, first to 10. CONTROLS -> the key names (player 2 always
+  covered); click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->
   `'K'` stored; Escape cancels; RESET restores the defaults.
 * `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
-  (wraparound, PLAY word cut, roll-over filters, valid keys, key capture, pointer, transition),
-  option mapping, screen flow and hit testing pass.
+  (wraparound, roll-over filters, valid keys, key capture, pointer, transition), option
+  mapping, settings v1 -> v2 migration, screen flow (including lobby routing), lobby view
+  model, online client and online playback pass.
 * Run `npm run extract` while `npm run dev` keeps running, then reload -> the loading screen
   says the server returned a web page instead of an asset and to restart the dev server; it
   does not freeze at a percentage. After restarting, the main menu appears.
 * Fresh clone, `npm install`, `npm run dev` (Java 8+ on PATH) -> FFDec is downloaded once into
   `.cache/`, assets are extracted, the main menu loads. A second `npm run dev` prints "Game
   assets are up to date." and starts immediately.
+* `npx vitest run test/server test/net test/adapters/net` -> hub sessions and resume, lobby
+  host rules, a fifth player refused, per-player frames, remote input moving a player 0.16
+  cells per tick, late join and leave, game over, the 45 s reconnect grace, control masks and
+  the protocol codec pass.
+* `npx vitest run test/domain/world test/domain/things` -> four players spawn on four
+  different cells, every player gets a 640 px camera, late join takes the lowest free index,
+  a deathmatch kill is credited to the shooter, and a coop late joiner gets the unlocked
+  weapons.
+* Two tabs on `npm run dev`, COOPERATIVE, host in tab 1, JOIN in tab 2 (lobby shows both names
+  and characters), START GAME -> both tabs play the same world with one shared score; arrows
+  move only that tab's player; P in tab 2 shows the upgrade list there while tab 1 keeps
+  playing; QUIT? -> tab 2 is back in the lobby with "You left the match." and JOIN GAME.
+* `npm run build`, then `BOXHEAD_ASSET_DIR=public/assets PORT=8099 npm start` -> one port serves
+  the page (`/` 200, `/../package.json` 404) and `ws://localhost:8099/ws`; a match streams 25
+  frames per second of about 4 KB.

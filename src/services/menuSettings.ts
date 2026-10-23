@@ -1,6 +1,6 @@
 import type { PlayerKeyCodes } from '../adapters/input/TickInputSampler.ts';
 import { Difficulty, GameAmount, GameSpeed, type PlayerCharacter } from '../domain/world/SimulationSettings.ts';
-import { DEFAULT_PLAYER1_KEYS, DEFAULT_PLAYER2_KEYS, type UserSettings } from './SettingsService.ts';
+import { DEFAULT_KEYS, PLAYER_NAME_MAX_LENGTH, type UserSettings } from './SettingsService.ts';
 
 export const OptionField = {
   Difficulty: 'difficulty',
@@ -43,29 +43,20 @@ export function resetOptions(settings: UserSettings): UserSettings {
   return next;
 }
 
-export const PlayerSlot = {
-  First: 0,
-  Second: 1,
-} as const;
-
-export type PlayerSlot = (typeof PlayerSlot)[keyof typeof PlayerSlot];
-
-export function withCharacter(settings: UserSettings, slot: PlayerSlot, character: PlayerCharacter): UserSettings {
-  const characters: UserSettings['characters'] = slot === PlayerSlot.First ? [character, settings.characters[1]] : [settings.characters[0], character];
-  return { ...settings, characters };
+export function withCharacter(settings: UserSettings, character: PlayerCharacter): UserSettings {
+  return { ...settings, character };
 }
 
 export type KeyField = keyof PlayerKeyCodes;
 
-export function playerKeys(settings: UserSettings, slot: PlayerSlot): PlayerKeyCodes {
-  return slot === PlayerSlot.First ? settings.keys.player1 : settings.keys.player2;
-}
-
-export function withKey(settings: UserSettings, slot: PlayerSlot, field: KeyField, keyCode: number): UserSettings {
-  const keys = { ...playerKeys(settings, slot), [field]: keyCode };
-  return { ...settings, keys: slot === PlayerSlot.First ? { ...settings.keys, player1: keys } : { ...settings.keys, player2: keys } };
+export function withKey(settings: UserSettings, field: KeyField, keyCode: number): UserSettings {
+  return { ...settings, keys: { ...settings.keys, [field]: keyCode } };
 }
 
 export function resetKeys(settings: UserSettings): UserSettings {
-  return { ...settings, keys: { player1: DEFAULT_PLAYER1_KEYS, player2: DEFAULT_PLAYER2_KEYS } };
+  return { ...settings, keys: DEFAULT_KEYS };
+}
+
+export function withPlayerName(settings: UserSettings, name: string): UserSettings {
+  return { ...settings, playerName: name.slice(0, PLAYER_NAME_MAX_LENGTH) };
 }

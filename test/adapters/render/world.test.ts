@@ -3,10 +3,7 @@ import {
   floorSourceOrigin,
   omniIndex,
   roundedScreenPoint,
-  splitScreenLayout,
-  splitScreenMatrix,
   thingScreenPoint,
-  viewSideFor,
 } from '../../../src/adapters/render/world/projection.ts';
 import { roomBitmapSize } from '../../../src/adapters/render/world/RoomPlanes.ts';
 import { playerLabelText } from '../../../src/adapters/render/world/WorldRenderer.ts';
@@ -28,17 +25,6 @@ describe('world projection', () => {
     expect(omniIndex(Math.PI / 2, 8)).toBe(2);
     expect(omniIndex(-Math.PI / 2, 8)).toBe(6);
     expect(omniIndex(Math.PI * 2 - 0.01, 8)).toBe(0);
-  });
-
-  it('lays out two 480 px views scaled into 640 x 480 with the original 1 px nudge', () => {
-    const layout = splitScreenLayout();
-    expect(layout.scalar).toBeCloseTo(2 / 3);
-    expect(layout.offsets[0]?.y).toBeCloseTo(80);
-    expect(layout.offsets[1]?.x).toBeCloseTo(320);
-    expect(splitScreenMatrix(layout, 0)[4]).toBe(-1);
-    expect(splitScreenMatrix(layout, 1)[4]).toBeCloseTo(320);
-    expect(viewSideFor(0, 1)).toBe(1);
-    expect(viewSideFor(1, 1)).toBe(0);
   });
 
   it('labels the weapon with ammo unless it is infinite', () => {

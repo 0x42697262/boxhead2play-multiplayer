@@ -8,9 +8,11 @@ import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import type { ThingFactory } from '../../../src/domain/things/ThingFactory.ts';
 import type { WeaponName } from '../../../src/domain/weapons/WeaponName.ts';
 import { InitKind, type RoomDefinition, type RoomInitObject } from '../../../src/domain/world/RoomDefinition.ts';
+import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import {
   createSimulationSettings,
   DEFAULT_GAME_OPTIONS,
+  PlayerCharacter,
   type GameOptions,
   type SimulationSettings,
 } from '../../../src/domain/world/SimulationSettings.ts';
@@ -42,6 +44,7 @@ export class FakePlayer extends FakeThing implements PlayerThing {
   readonly unlocked: WeaponName[] = [];
   resets = 0;
   pickups = 0;
+  lastAttackerIndex: number | undefined = undefined;
 
   constructor(
     world: WorldContext,
@@ -84,6 +87,7 @@ export interface DroppedPickup {
 
 export class FakeFactory implements ThingFactory {
   readonly dropped: DroppedPickup[] = [];
+  readonly characters: PlayerCharacter[] = [];
 
   barrel(world: WorldContext, cellCentre: Position): Thing {
     return new FakeThing(world, cellCentre, ThingClass.Barrel);
@@ -111,7 +115,8 @@ export class FakeFactory implements ThingFactory {
     return new FakeThing(world, position, ThingClass.Devil);
   }
 
-  player(world: WorldContext, position: Position, playerIndex: number, angle: Angle): PlayerThing {
+  player(world: WorldContext, position: Position, playerIndex: number, angle: Angle, character: PlayerCharacter): PlayerThing {
+    this.characters.push(character);
     return new FakePlayer(world, position, playerIndex, angle);
   }
 }
@@ -146,8 +151,12 @@ export interface TestWorldOptions {
   readonly start?: boolean;
 }
 
+export const TWO_PLAYERS: readonly PlayerCharacter[] = [PlayerCharacter.Bambo, PlayerCharacter.Swat];
+
 export function settingsWith(options: Partial<GameOptions> = {}): SimulationSettings {
-  return createSimulationSettings({ ...DEFAULT_GAME_OPTIONS, ...options });
+  const multiplayer = options.gameMode !== undefined && options.gameMode !== GameMode.Single;
+  const playerCharacters = options.playerCharacters ?? (multiplayer ? TWO_PLAYERS : DEFAULT_GAME_OPTIONS.playerCharacters);
+  return createSimulationSettings({ ...DEFAULT_GAME_OPTIONS, ...options, playerCharacters });
 }
 
 export function makeWorld(definition: RoomDefinition, test: TestWorldOptions = {}): { world: World; factory: FakeFactory } {

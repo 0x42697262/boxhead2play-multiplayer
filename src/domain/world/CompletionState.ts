@@ -2,8 +2,7 @@ export const CompletionState = {
   Error: 'error',
   Quit: 'quit',
   PlayerDead: 'playerDead',
-  Player1Wins: 'player1Wins',
-  Player2Wins: 'player2Wins',
+  PlayerWon: 'playerWon',
 } as const;
 
 export type CompletionState = (typeof CompletionState)[keyof typeof CompletionState];

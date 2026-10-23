@@ -141,8 +141,10 @@ describe('GameSession', () => {
     expect(record.ambienceStops).toBe(1);
   });
 
-  it('builds two split-screen cameras in deathmatch', () => {
-    const { record } = startSession(GameMode.DeathMatch);
-    expect(record.frames[0]?.cameras.map((camera) => camera.view.playerIndex)).toEqual([0, 1]);
+  it('renders one camera for the only local player', () => {
+    const { record } = startSession(GameMode.Single);
+    expect(record.frames[0]?.cameras.map((camera) => camera.view.playerIndex)).toEqual([0]);
+    expect(record.frames[0]?.localPlayerIndex).toBe(0);
+    expect(record.frames[0]?.hud.frags).toHaveLength(4);
   });
 });

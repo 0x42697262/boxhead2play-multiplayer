@@ -18,10 +18,12 @@ export interface PlayerHudFrame {
 }
 
 export interface HudFrame {
+  readonly localPlayerIndex: number;
+  readonly playerNames: Readonly<Record<number, string>>;
   readonly totalScore: number;
   readonly multiplier: number;
   readonly multiplierTickRatio: number;
-  readonly deaths: readonly number[];
+  readonly frags: readonly number[];
   readonly messages: readonly HudMessageEntry[];
   readonly players: readonly PlayerHudFrame[];
   readonly upgrades: readonly MultiplierListEntry[];
@@ -29,6 +31,7 @@ export interface HudFrame {
 
 export interface WorldFrame {
   readonly gameMode: GameMode;
+  readonly localPlayerIndex: number;
   readonly cameras: readonly CameraFrame[];
   readonly brightness: number;
   readonly projectionFactor: number;

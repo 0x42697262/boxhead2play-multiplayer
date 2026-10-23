@@ -4,28 +4,32 @@ Source: `Screen/CScreen.as`, `CScreen_Main.as`, `CScreen_SelectWorld.as`,
 `CScreen_Transition.as`, `CScreen_Collection.as`, `CMain.as` (`State_*`), `CInput.as`
 (`Setup_ValidKeys`). Port: `src/ui/screens/menu/`, `src/services/ScreenFlow.ts`,
 `src/services/menuSettings.ts`, `src/adapters/input/validKeys.ts`,
-`src/adapters/render/menu/LayeredStage.ts`.
+`src/adapters/render/menu/LayeredStage.ts`. The online lobby is described in
+`docs/runtime/online.md`.
 
 ## Flow
 
 ```
-boot -> main menu -> select world (mode) -> game -> select world (same mode)
-            ^               |
-            +---- back -----+
+boot -> main menu -> SINGLE PLAY -> select world (single) -> game -> select world (single)
+                  -> COOPERATIVE / DEATH MATCH -> lobby (mode)
+lobby -> host / change level -> select world (mode) -> level clicked -> lobby
+lobby -> start -> online game -> lobby (same mode)
 ```
 
 | Original state | Port |
 |---|---|
 | `State_Intro` (`Screen_Intro`, logo clips) | Not ported. Boot goes straight to the main menu. |
 | `State_Main` (`Screen_Main`) | `MainMenuScreen` |
-| `State_SelectWorld_Single/Coop/DeathMatch` | `SelectWorldScreen` with a `GameMode`; only Single and DeathMatch are reachable |
+| `State_SelectWorld_Single/Coop/DeathMatch` | `SelectWorldScreen` with a `GameMode`. Single starts a local game; Coop and DeathMatch pick the level of an online game. |
 | `State_LoadWorld`, `State_LoadingWorld` (`Screen_LoadingWorld`) | Not ported. `GameScreen` starts the world directly. |
-| `State_RunWorld` | `GameScreen` / `GameSession` |
-| `State_Debrief`, `State_Debrief_Winner` | Not ported. Every completion returns to select world in the mode that was played (`mReturn_SelectWorld`). |
+| `State_RunWorld` | `GameScreen` / `GameSession` (single), `OnlineGameScreen` / `OnlineGameSession` (coop, deathmatch) |
+| `State_Debrief`, `State_Debrief_Winner` | Not ported. A single game returns to select world (`mReturn_SelectWorld`); an online game returns to the lobby, which shows the result. |
+| none | `LobbyScreen` (online lobby browser and waiting room) |
 
-`ScreenFlow` keeps the select-world mode (`mReturn_SelectWorld`). A room that cannot be
+`ScreenFlow` keeps the mode to return to (`mReturn_SelectWorld`). A room that cannot be
 created also returns there, like the original `error` completion. `CScreen.GoBack`
-(`_Icon_Back.onPress`) requests the main menu.
+(`_Icon_Back.onPress`) requests the main menu in single and the lobby in coop and
+deathmatch.
 
 ## Main menu (`Screen_Main`)
 
@@ -33,35 +37,15 @@ Only these parts of sprite 253 are drawn:
 
 * the background (depth 1, sprite 198) and the title (depth 82, sprite 10, the BOXHEAD 2PLAY
   logo with the characters, checked visually);
-* **PLAY** in the `mcSinglePlay` slot (depth 8);
-* **DEATH MATCH** (`mcDeathPlay`) moved to depth 10 with `mcCoopPlay`'s matrix, so the two
-  buttons stack with the original spacing.
+* **SINGLE PLAY** (`mcSinglePlay`, depth 8), **COOPERATIVE** (`mcCoopPlay`, depth 10) and
+  **DEATH MATCH** (`mcDeathPlay`, depth 12) at their original positions and labels.
 
-Removed: `mcCoopPlay`, `mcInstructions` (external URL), button 203 (a "view the trailer"
-YouTube link), `_IconMoreGames`, `_STC` ("A SEAN COOPER GAME" link), the four game
-banners (depths 60, 66, 70, 75, all external links) and `_Size`.
+Removed: `mcInstructions` (external URL), button 203 (a "view the trailer" YouTube link),
+`_IconMoreGames`, `_STC` ("A SEAN COOPER GAME" link), the four game banners (depths 60,
+66, 70, 75, all external links) and `_Size`.
 
-PLAY merges SINGLE PLAY and COOPERATIVE because LAN multiplayer is planned instead of
-local co-op. Local co-op stays in the domain and services (`GameMode.Coop`,
-`SubScreen_Coop`, `CScreen_SelectWorld` coop setup in `selectWorldLayout`), but no menu
-entry leads to it for now. No networking exists.
-
-### The PLAY label
-
-The label is the second word of the original static text 206 "SINGLE PLAY" (Arial
-Rounded MT Bold), not a substitute font. The extractor writes each glyph's pen position
-and advance into `symbols.json` (`texts[id].glyphs`, see `docs/assets/pipeline.md`).
-`labelWord.wordCut` splits the glyphs on spaces and returns:
-
-* `clip`: from the end of the previous word's advance (the start of the space) to the
-  text bounds' right edge, over the full text height, in text-local pixels;
-* `offsetX`: the label's center minus the word's center, both measured over glyph
-  advances (`83.6 .. 156.3` and `127.95 .. 156.3` for "SINGLE PLAY", so `-22.175`).
-
-`MainMenuScreen` attaches a copy of the text item, shifted by `offsetX` in its own space,
-under the synthetic instance name `playLabelWord` and clips it with `ChildOverride.clip`.
-The word index (`PLAY_LABEL_WORD_INDEX = 1`) lives in `src/ui/screens/menu/tuning.ts`.
-Without glyph data (an older catalog) the full "SINGLE PLAY" label is drawn.
+COOPERATIVE and DEATH MATCH are online modes (ADR 0005): they open the lobby instead of
+select world.
 
 ### Hover (`Register_Button`)
 
@@ -72,7 +56,8 @@ Without glyph data (an older catalog) the full "SINGLE PLAY" label is drawn.
   The random draws keep the original order (distance, angle, blur x, blur y) and use an
   injected `Rng` (`rollOver.ts`).
 * As in Flash, the effect starts on the first frame after the roll-over (`onEnterFrame`).
-* Release plays `Click` and opens select world in `Single` (PLAY) or `DeathMatch`.
+* Release plays `Click` and opens select world in `Single`, or the lobby in `Coop` or
+  `DeathMatch`.
 * The renderer approximates a blur below 2 px as no blur (box radius `floor(blur / 2)`),
   so only the jittering drop shadow is visible.
 
@@ -100,10 +85,10 @@ Removed: `_IconMoreGames`, `_STC`, the four banners (depths 50, 56, 60, 65) and
 
 | Element | Behavior |
 |---|---|
-| `_Icon_Back` | On press: `Click`, back to the main menu. |
-| `mcPlayerN_Character.bLeft/bRight` | `mcGotoFrame(mcCharacter, -1/+1)` with wraparound over the 4 frames, `Click2`, stored in `settings.characters[N - 1]`. Single shows player 1, DeathMatch players 1 and 2. |
+| `_Icon_Back` | On press: `Click`, back to the main menu (single) or the lobby (coop, deathmatch). |
+| `mcPlayer1_Character.bLeft/bRight` | `mcGotoFrame(mcCharacter, -1/+1)` with wraparound over the 4 frames, `Click2`, stored in `settings.character`. `mcPlayer2_Character` and its "2" label (depth 37, addressed as `#37`) are hidden in every mode. |
 | `mcLevel_Selection.bLeft/bRight` | Wraparound over the 18 `LevelIcons_Single` frames, `Click2`, stored per mode in `settings.levelIndex`. The counter ("9/18") and the name are static texts on each frame. |
-| `_mcLevelIcons._Button` | `Click`, starts the room whose `iconFrame` is the shown frame (`ROOM_Single_<index + 1>`). |
+| `_mcLevelIcons._Button` | `Click`, starts the room whose `iconFrame` is the shown frame (`ROOM_Single_<index + 1>`) in single, or hosts (or reconfigures) an online game with it. |
 | `_Game_Options` | Opens `mcWindow_Options`. |
 | `_Game_Controls` | Opens `mcWindow_Controls`. |
 
@@ -144,9 +129,10 @@ covers the stage and swallows clicks, so the window is modal.
 
 ### Controls window (`WindowControls_Setup`)
 
-* `mcPlayer1` and `mcPlayer2` show the bound key names in `tb<Shoot|MoveUp|...>` from the
+* `mcPlayer1` shows the bound key names in `tb<Shoot|MoveUp|...>` from the
   `CInput.mValidKeys` table (`validKeys.ts`, names in `en.json` `key.name.<code>`).
-* In Single, `mc2PlayerCover` covers player 2 and blocks its buttons, as in the original.
+* `mc2PlayerCover` always covers the player 2 panel and blocks its buttons, as the
+  original did in single play. Online, every player uses their own player 1 keys.
 * Clicking `mcChangeKey_<name>` (`Click2`) shows `mcPressKey` (its own `mcLock` blocks the
   pointer) with the blinking "PRESS A KEY" clip. The next key (`KeyCapture`):
   * Escape (27) cancels;
@@ -155,7 +141,7 @@ covers the stage and swallows clicks, so the window is modal.
     ignored;
   * any other key (digits, P, Enter, modifiers, F-keys) shows "INVALID KEY!" for 500 ms,
     then cross-fades back to "PRESS A KEY" over 500 ms.
-* Reset applies `ResetControls` (arrows, `/`, `.`, `,` and W, S, A, D, space, E, Q).
+* Reset applies `ResetControls` for player 1 (arrows, `/`, `.`, `,`).
 * Duplicate bindings are allowed, as in the original.
 * Browser key codes are mapped back to legacy codes with `keyCodeForCode`, the inverse of
   `codeForKeyCode`.
@@ -171,14 +157,16 @@ at `1 - k / 10` and the new screen at `k / 10` alpha over black; the screen igno
 pointer until the fade is done, as an invisible Flash clip does. The original's default
 `DropShadowFilter` on the incoming 640 x 480 bitmap falls entirely outside the stage and
 is not drawn. `GameScreen` starts without a transition because `Screen_LoadingWorld`
-is not ported.
+is not ported. `LobbyScreen` draws the main menu background and puts its HTML panel in
+the shell overlay (`Shell.showPanel`).
 
 ## Rendering
 
 The menus draw through `LayeredStage`: the root display list is split into layers (one per
 top-level item, after expanding plain containers such as `_SubScreen_Container`,
 `mcLevel_Selection` and the windows), each rendered once into a stage-space bitmap keyed
-by its overrides. A hover change or a blinking clip only re-renders its own layer, and
+by its overrides. Overrides address children by instance name, or by depth as `#<depth>`
+for unnamed items (`depthKey`). A hover change or a blinking clip only re-renders its own layer, and
 an unchanged frame is not recomposed. Hit testing (`instanceHitArea`) resolves an
 instance path through the same composed tree (replacements, attachments, overrides) and
 tests the point against the button's `hitTest` bounds or the clip's bounds in local

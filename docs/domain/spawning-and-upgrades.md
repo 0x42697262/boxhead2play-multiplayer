@@ -23,9 +23,20 @@ Selection always starts at `rng.int(points.length)` and wraps around:
 Close and Far skip cells with `Creature`, `Object` or `Player`, and only accept points
 within the player scope (`|dx| <= 19`, `|dy| <= 13` cells, about one screen).
 
-Player 1 starts on the `Player1` marker, or on `pickSpawnPoint` when there is none. In coop
-and deathmatch, player 2 spawns with Close/Far relative to player 1. Respawns use
-`World.playerRespawnPoint(otherPlayer)`.
+Player 1 starts on the `Player1` marker, or on `pickSpawnPoint` when there is none. One
+player spawns per entry in `settings.playerCharacters` (up to `MAX_PLAYERS` = 4); players
+2..4 spawn with Close/Far relative to the players already placed. If the chosen cell holds
+a player or a `Player` collide flag, `openSpawnNear` searches up to 64 cells breadth first
+(straight neighbors, skipping static impassable cells) for an open one. Respawns use
+`World.playerRespawnPoint(nearestOtherPlayer)`: the nearest living other player (2D
+distance), or any other player when all are dead.
+
+Online, players can join and leave a running world:
+
+* `World.joinPlayer(index, character)` spawns the player near the first living player
+  (or on a random player point), at the lowest free index.
+* `World.leavePlayer(index)` deletes the player and corrects the live and total player
+  counts.
 
 ## Level progression (`Upgrades.process`, every tick except deathmatch)
 
@@ -104,8 +115,12 @@ created only if its cell is not static impassable. It disappears after 10 s
 | Mode | Rule | State |
 |---|---|---|
 | Single, Coop | a dead player's last second calls `playerDead()` and the player count is `<= 0` | `playerDead` |
-| DeathMatch | player 1 deaths `== KILLS_TO_WIN[gameAmount]` (5/10/20/50) | `player2Wins` |
-| DeathMatch | player 2 deaths `==` target | `player1Wins` |
+| DeathMatch | a player's frags reach `KILLS_TO_WIN[gameAmount]` (5/10/20/50) | `playerWon`, `world.winnerIndex` |
+
+Frags (`HudState.recordDeath`): a player death credits the victim's `lastAttackerIndex`
+when it is another player. Otherwise (suicide by barrel, own grenade, an unknown killer)
+it credits every opponent, which for two players is the original rule (a death counts as
+the other player's kill).
 | any | quit from the pause screen | `quit` |
 
 `World.update` emits `WorldCompleted` at the end of the tick in which the state was set,

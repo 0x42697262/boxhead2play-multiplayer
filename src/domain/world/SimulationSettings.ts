@@ -1,5 +1,5 @@
 import { GameMode } from './GameMode.ts';
-import { BASE_TICKS_PER_SECOND, SLOW_SPEED_FACTOR } from './tuning.ts';
+import { BASE_TICKS_PER_SECOND, MAX_PLAYERS, SLOW_SPEED_FACTOR } from './tuning.ts';
 
 export const Difficulty = {
   Beginner: 0,
@@ -44,7 +44,7 @@ export interface GameOptions {
   readonly collisionsActive: boolean;
   readonly damageActive: boolean;
   readonly gameAmount: GameAmount;
-  readonly playerCharacters: readonly [PlayerCharacter, PlayerCharacter];
+  readonly playerCharacters: readonly PlayerCharacter[];
   readonly detail: boolean;
 }
 
@@ -61,7 +61,7 @@ export const DEFAULT_GAME_OPTIONS: GameOptions = {
   collisionsActive: true,
   damageActive: true,
   gameAmount: GameAmount.Kills10,
-  playerCharacters: [PlayerCharacter.Bambo, PlayerCharacter.Swat],
+  playerCharacters: [PlayerCharacter.Bambo],
   detail: true,
 };
 
@@ -72,7 +72,7 @@ export function speedFactor(speed: GameSpeed): number {
 export function createSimulationSettings(options: GameOptions): SimulationSettings {
   return Object.freeze({
     ...options,
-    playerCharacters: Object.freeze([options.playerCharacters[0], options.playerCharacters[1]] as const),
+    playerCharacters: Object.freeze(options.playerCharacters.slice(0, MAX_PLAYERS)),
     damageActive: options.gameMode === GameMode.DeathMatch ? true : options.damageActive,
     ticksPerSecond: BASE_TICKS_PER_SECOND * speedFactor(options.gameSpeed),
     loadTicksPerSecond: BASE_TICKS_PER_SECOND,

@@ -64,13 +64,19 @@ gone (`removeObject`).
 * Every tick it sets `CollideFlag.Player` on its cell (even while dead) and, unless dead,
   asks the world camera to track it.
 * `playerControl`: arrows give `delta` (left wins over right, up over down), the facing
-  follows a non-zero `delta`, coop players cannot walk more than 19 x 13 cells away from a
-  live partner, `playerCollide` resolves the move. Number keys (single player only, key
-  `(index + 1) % 10`), next and previous are read on release. A selection renews the fire
+  follows a non-zero `delta`, `playerCollide` resolves the move. The original coop leash
+  (no more than 19 x 13 cells from a live partner, so both fit one shared screen) is
+  removed: every player has their own camera. Number keys (key `(index + 1) % 10`, in
+  every mode), next and previous are read on release. A selection renews the fire
   key. The current weapon's `update(fire)` runs before the animation update, so the gun
   position comes from the previous frame.
 * Animation ids are `<weapon>walk` / `<weapon>stand` (`WEAPON_ANIMATIONS`): walk when the
   position changed, stand otherwise, animated at `speed * 2`.
+* `Creature.lastAttackerIndex` records the player index of the owner of the last affect
+  that hit (undefined for zombies, devils and barrels without an owner). Respawn clears
+  it. Deathmatch frags use it.
+* Players spawned after the start (`World.joinPlayer`) get the weapons the world unlocked
+  so far (`Upgrades.unlockedWeapons`); in deathmatch the inventory is reset as on respawn.
 * Death: the shared `dying`, then 4 s `dead`. In the last second it calls
   `World.playerDead()` every tick (which ends single and coop games when nobody is left).
   Then `respawn` waits 25 ticks and retries every tick until `World.playerRespawnPoint`

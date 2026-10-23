@@ -16,10 +16,22 @@ The general rule is: entry -> service -> pure domain -> adapters. In the game, t
 | Domain | `src/domain/` | The simulation: map, collision, navigation, creatures, weapons, shots, effects, spawning, upgrades, scoring, game modes. Deterministic given (inputs, Rng, settings). | Do I/O, read the clock, call `Math.random`, read env, import adapters/services/ui. |
 | Adapters | `src/adapters/` | Canvas rendering, WebAudio, keyboard state, `localStorage`, asset fetching and validation. | Make game decisions. |
 | UI | `src/ui/` | Menu screens and HUD presentation. | Be the authority on game state. |
-| Config | `src/config/` | Env vars, validated with Zod once at boot (`loadSettings`). | Be read ad hoc anywhere else. |
+| Net | `src/net/` | The shared online protocol: Zod message schemas, control bit masks, server frame building. Pure, like the domain. | Do I/O or import adapters/services/ui/server. |
+| Server | `src/server/` | The authoritative online server: `Hub`, `Lobby`, `Match` against ports; Node adapters (`ws`, `http`, timers, asset files) in `src/server/node/`. Reuses the asset loaders and mappers in `src/adapters/assets/`. | Import UI, services or DOM/canvas/WebAudio adapters. |
+| Config | `src/config/` | Env vars, validated with Zod once at boot (`loadSettings` in the browser, `loadServerSettings` on the server). | Be read ad hoc anywhere else. |
 | Text | `src/text/` | `locales/en.json` (every user-facing string), `logEvents.ts`, `errors.ts`. | Be inlined in logic. |
 
-`src/main.ts` is the only composition root: it builds settings, logger, adapters and services, then starts the loop.
+`src/main.ts` is the browser's composition root: it builds settings, logger, adapters and
+services, then starts the loop. `src/server/main.ts` is the server's (`src/server/devServer.ts`
+in development, attached to Vite by `tools/dev/onlineServerPlugin.ts`).
+
+## Multiplayer
+
+Single play runs locally in the browser. Coop and deathmatch are online only: a Node server
+runs the `World` for each match at the game's tick rate and streams every player the
+draw list of that player's own camera. Clients send key state and render what they get.
+There is no local two-player mode. See `docs/runtime/online.md` and
+[ADR 0005](adr/0005-authoritative-online-server.md).
 
 ## Simulation model
 
@@ -60,12 +72,14 @@ versioned JSON catalogs plus SVG/MP3 files under `public/assets/`. See
 
 Only user settings persist (the original `SharedObject` "morerooms_default"). They are stored in
 `localStorage` as a versioned JSON blob. Readers migrate older versions on read. See
-`docs/persistence/settings.md`.
+`docs/persistence/settings.md`. The online session id lives in `sessionStorage` (per tab,
+so reconnects resume); the server persists nothing.
 
 ## Runtime
 
 The browser side is described in `docs/runtime/`: `rendering.md` (display-list replay,
-buffered clips, XSI characters, world planes, HUD), `audio.md`, `input.md` and `loop.md`.
+buffered clips, XSI characters, world planes, HUD), `audio.md`, `input.md`, `loop.md` and
+`online.md`.
 The caching strategy is [ADR 0004](adr/0004-canvas-rendering-and-caching.md).
 `src/main.ts` loads the catalogs, images, fonts and sounds with a progress display, builds
 the adapters and services, and starts `ScreenFlow` with the main menu. The menu screens

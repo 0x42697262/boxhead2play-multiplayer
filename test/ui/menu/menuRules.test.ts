@@ -1,32 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { GlyphPlacement } from '../../../src/adapters/assets/schemas.ts';
 import { ESCAPE_KEY_CODE, keyCodeForCode, validKey, VALID_KEYS } from '../../../src/adapters/input/validKeys.ts';
 import { ButtonState } from '../../../src/adapters/render/symbols/SymbolLibrary.ts';
 import { SequenceRng } from '../../../src/domain/math/Rng.ts';
-import { PlayerSlot } from '../../../src/services/menuSettings.ts';
 import { Cursor, PointerPhase } from '../../../src/services/ScreenFlow.ts';
 import { t } from '../../../src/text/i18n.ts';
 import { cycleFrame } from '../../../src/ui/screens/menu/frameCycle.ts';
 import { invalidKeyDisplay, KeyCapture, KeyPressOutcome } from '../../../src/ui/screens/menu/KeyCapture.ts';
-import { wordCut } from '../../../src/ui/screens/menu/labelWord.ts';
 import { MenuPointer, Trigger, type MenuTarget } from '../../../src/ui/screens/menu/MenuPointer.ts';
 import { rollOverFilters } from '../../../src/ui/screens/menu/rollOver.ts';
 import { ScreenTransition } from '../../../src/ui/screens/menu/ScreenTransition.ts';
-
-const SINGLE_PLAY: readonly GlyphPlacement[] = [
-  { char: 'S', x: 83.6, advance: 7.2 },
-  { char: 'I', x: 90.8, advance: 3.7 },
-  { char: 'N', x: 94.5, advance: 8.15 },
-  { char: 'G', x: 102.65, advance: 8.45 },
-  { char: 'L', x: 111.1, advance: 6.6 },
-  { char: 'E', x: 117.7, advance: 7.2 },
-  { char: ' ', x: 124.9, advance: 3.05 },
-  { char: 'P', x: 127.95, advance: 7.2 },
-  { char: 'L', x: 135.15, advance: 6.6 },
-  { char: 'A', x: 141.75, advance: 7.75 },
-  { char: 'Y', x: 149.5, advance: 6.8 },
-];
-const SINGLE_PLAY_BOUNDS = { xMin: 84.4, yMin: 0.1, xMax: 161.25, yMax: 10.55 };
 
 describe('mcGotoFrame wraparound', () => {
   it('steps through the frames and wraps both ways', () => {
@@ -35,23 +17,6 @@ describe('mcGotoFrame wraparound', () => {
     expect(cycleFrame(0, -1, 18)).toBe(17);
     expect(cycleFrame(20, 0, 18)).toBe(2);
     expect(cycleFrame(5, 0, 0)).toBe(0);
-  });
-});
-
-describe('PLAY label cut out of "SINGLE PLAY"', () => {
-  it('clips from the space before PLAY to the end of the text and centers the word on the label', () => {
-    const cut = wordCut(SINGLE_PLAY, SINGLE_PLAY_BOUNDS, 1);
-    expect(cut?.clip).toEqual({ xMin: 124.9, yMin: 0.1, xMax: 161.25, yMax: 10.55 });
-    const labelCenter = (83.6 + 156.3) / 2;
-    const wordCenter = (127.95 + 156.3) / 2;
-    expect(cut?.offsetX).toBeCloseTo(labelCenter - wordCenter);
-    expect(cut?.offsetX).toBeCloseTo(-22.175);
-  });
-
-  it('starts the first word at the text bounds and rejects missing words', () => {
-    expect(wordCut(SINGLE_PLAY, SINGLE_PLAY_BOUNDS, 0)?.clip.xMin).toBe(84.4);
-    expect(wordCut(SINGLE_PLAY, SINGLE_PLAY_BOUNDS, 0)?.clip.xMax).toBe(127.95);
-    expect(wordCut(SINGLE_PLAY, SINGLE_PLAY_BOUNDS, 2)).toBeUndefined();
   });
 });
 
@@ -86,7 +51,7 @@ describe('CInput valid keys', () => {
 });
 
 describe('key rebinding (Activate_WaitForKeypress)', () => {
-  const target = { slot: PlayerSlot.Second, field: 'fire' } as const;
+  const target = { field: 'fire' } as const;
 
   it('assigns a valid key, ignores known invalid keys and cancels on escape', () => {
     const capture = new KeyCapture();

@@ -11,6 +11,7 @@ import { OPAQUE_ALPHA, type Visual } from '../../visuals.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { AffectType } from '../affects/AffectType.ts';
 import { affectorsInProcessingOrder, resolveHit, type HitTarget } from '../affects/hitReaction.ts';
+import { isPlayer } from '../PlayerThing.ts';
 import { StateMachine, type StateHandler, type StateHandlers } from '../StateMachine.ts';
 import { Thing, type ThingOptions } from '../Thing.ts';
 import { ThingClass } from '../ThingClass.ts';
@@ -59,6 +60,7 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
   readonly targetAngle = new Angle(0);
   targetDirection = 0;
   hitAngle: Angle | undefined = undefined;
+  lastAttackerIndex: number | undefined = undefined;
   currentCell: MapCell | undefined = undefined;
   protected animator: CharacterAnimator;
   protected readonly sounds: CreatureSounds = {};
@@ -206,6 +208,7 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
       for (const affect of affectorsInProcessingOrder(this.affectors)) {
         const reaction = resolveHit(affect, this, this.world.settings.damageActive);
         if (!reaction) continue;
+        this.lastAttackerIndex = affect.owner && isPlayer(affect.owner) ? affect.owner.playerIndex : undefined;
         this.delta = reaction.delta;
         this.angle.radians = reaction.facingRadians;
         this.hitAngle = reaction.hitAngle;

@@ -8,6 +8,7 @@ import { Barrel } from '../../../src/domain/things/objects/Barrel.ts';
 import { Pickup, PickupPhase } from '../../../src/domain/things/objects/Pickup.ts';
 import { Wall } from '../../../src/domain/things/objects/Wall.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
+import { PlayerCharacter } from '../../../src/domain/world/SimulationSettings.ts';
 import { at, cellObject, room } from '../support/fakes.ts';
 import { makeRealWorld } from '../support/realWorld.ts';
 
@@ -24,8 +25,9 @@ describe('createThingFactory', () => {
     expect((dropped as Pickup).deleteOnPickup).toBe(true);
     expect(factory.zombie(world, at(5.5, 5.5))).toBeInstanceOf(Zombie);
     expect(factory.devil(world, at(5.5, 5.5))).toBeInstanceOf(Devil);
-    const player = factory.player(world, at(6.5, 6.5), 1, new Angle(0));
+    const player = factory.player(world, at(6.5, 6.5), 1, new Angle(0), PlayerCharacter.GiJoe);
     expect(player).toBeInstanceOf(Player);
     expect(player.playerIndex).toBe(1);
+    expect((player as Player).character).toBe(PlayerCharacter.GiJoe);
   });
 });

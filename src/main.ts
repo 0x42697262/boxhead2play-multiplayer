@@ -7,6 +7,7 @@ import type { LoadProgress } from './adapters/assets/tuning.ts';
 import { SoundMixer, type AudioOutput } from './adapters/audio/SoundMixer.ts';
 import { WebAudioOutput } from './adapters/audio/WebAudioOutput.ts';
 import { KeyboardState } from './adapters/input/KeyboardState.ts';
+import { defaultServerUrl, ServerConnection } from './adapters/net/ServerConnection.ts';
 import { boundCodes, buildBindings } from './adapters/input/TickInputSampler.ts';
 import { ClipBuffers } from './adapters/render/clips/ClipBuffers.ts';
 import { LayeredStage } from './adapters/render/menu/LayeredStage.ts';
@@ -20,10 +21,11 @@ import { LocalStorageStore } from './adapters/storage/KeyValueStore.ts';
 import { loadSettings, readBrowserEnv } from './config/env.ts';
 import { SeededRng } from './domain/math/Rng.ts';
 import { createThingFactory } from './domain/things/factory.ts';
-import { GameMode } from './domain/world/GameMode.ts';
 import { GameLoop } from './entry/GameLoop.ts';
 import { attachListeners } from './entry/listeners.ts';
+import type { GameStarted } from './net/protocol.ts';
 import { createLogger, type Logger } from './observability/logger.ts';
+import { OnlineClient } from './services/online/OnlineClient.ts';
 import { ScreenFlow, type ScreenFactory } from './services/ScreenFlow.ts';
 import { SettingsService } from './services/SettingsService.ts';
 import { AppError, ErrorCode } from './text/errors.ts';
@@ -33,6 +35,8 @@ import { GameScreen } from './ui/screens/GameScreen.ts';
 import { MainMenuScreen } from './ui/screens/menu/MainMenuScreen.ts';
 import type { MenuKit } from './ui/screens/menu/MenuCore.ts';
 import { SelectWorldScreen } from './ui/screens/menu/SelectWorldScreen.ts';
+import { LobbyScreen } from './ui/screens/online/LobbyScreen.ts';
+import { OnlineGameScreen } from './ui/screens/online/OnlineGameScreen.ts';
 import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX } from './ui/shell/Shell.ts';
 
 const APP_ELEMENT_ID = 'app';
@@ -79,6 +83,21 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   const keyboard = new KeyboardState();
   const menuKit: MenuKit = { shell, renderer, audio, stage: new LayeredStage(renderer, STAGE_WIDTH_PX, STAGE_HEIGHT_PX) };
   const menuRng = new SeededRng(randomSeed());
+  let startOnlineGame: (start: GameStarted) => void = () => undefined;
+  const online = new OnlineClient({
+    session: new LocalStorageStore(window.sessionStorage),
+    name: () => userSettings.settings.playerName,
+    logger,
+    onGameStarted: (start) => startOnlineGame(start),
+  });
+  online.bind(
+    new ServerConnection(settings.serverUrl ?? defaultServerUrl(window.location), {
+      opened: () => online.opened(),
+      closed: () => online.closed(),
+      message: (message) => online.receive(message),
+      rejected: (text) => online.rejected(text),
+    }),
+  );
 
   const screens: ScreenFactory = {
     mainMenu: (controls) => new MainMenuScreen({ kit: menuKit, rng: menuRng, controls }),
@@ -98,13 +117,15 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         controls,
         selection,
       }),
+    lobby: (controls, entry) =>
+      new LobbyScreen({ kit: menuKit, document, client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, entry }),
+    onlineGame: (controls, start) =>
+      new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start }),
   };
   const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor));
+  startOnlineGame = (start) => flow.startOnlineGame(start);
   const loop = new GameLoop(flow);
-  const gameKeys = (): ReadonlySet<string> => {
-    const { player1, player2 } = userSettings.settings.keys;
-    return new Set(Object.values(GameMode).flatMap((mode) => [...boundCodes(buildBindings(player1, player2, mode))]));
-  };
+  const gameKeys = (): ReadonlySet<string> => boundCodes(buildBindings(userSettings.settings.keys));
   let keys = gameKeys();
   userSettings.subscribe(() => (keys = gameKeys()));
   attachListeners(

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CompletionState } from '../../src/domain/world/CompletionState.ts';
 import { GameMode } from '../../src/domain/world/GameMode.ts';
+import type { GameStarted } from '../../src/net/protocol.ts';
 import { silentLogger } from '../../src/observability/logger.ts';
+import { OnlineEnd } from '../../src/services/online/OnlineGameSession.ts';
 import {
   Cursor,
   PointerPhase,
@@ -58,12 +60,57 @@ function harness(failGame = false) {
       if (failGame) throw new Error('unknown room');
       return add(new FakeScreen(`game:${selection.mode}:${selection.roomId}`, controls));
     },
+    lobby: (controls, entry) => add(new FakeScreen(`lobby:${entry.mode}:${entry.host?.roomId ?? ''}:${entry.result?.end ?? ''}`, controls)),
+    onlineGame: (controls, start) => {
+      if (failGame) throw new Error('unknown room');
+      return add(new FakeScreen(`online:${start.mode}:${start.playerIndex}`, controls));
+    },
   };
   const cursors: Cursor[] = [];
   const flow = new ScreenFlow(factory, silentLogger, (cursor) => cursors.push(cursor));
   const names = (): string[] => shown.map((screen) => screen.name);
   return { flow, shown, names, cursors };
 }
+
+const START: GameStarted = {
+  type: 'gameStarted',
+  matchId: 'm1',
+  lobbyId: 'l1',
+  mode: GameMode.Coop,
+  roomId: 'ROOM_Single_0001',
+  options: { difficulty: 0, gameSpeed: 1, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: 1, detail: true },
+  playerIndex: 1,
+  ticksPerSecond: 25,
+  projectionFactor: -0.5,
+};
+
+describe('ScreenFlow online routing', () => {
+  it('goes from the lobby through select world (hosting) and the online game back to the lobby with the result', () => {
+    const { flow, names } = harness();
+    flow.start();
+    flow.openLobby(GameMode.Coop);
+    flow.tick();
+    flow.selectWorld(GameMode.Coop);
+    flow.tick();
+    flow.hostLobby({ mode: GameMode.Coop, roomId: 'ROOM_Single_0002' });
+    flow.tick();
+    flow.startOnlineGame(START);
+    flow.tick();
+    flow.finishOnlineGame({ end: OnlineEnd.Finished, state: CompletionState.PlayerDead, gameOver: undefined });
+    flow.tick();
+    expect(names()).toEqual(['mainMenu', 'lobby:coop::', 'selectWorld:coop', 'lobby:coop:ROOM_Single_0002:', 'online:coop:1', 'lobby:coop::finished']);
+  });
+
+  it('ignores hosting a single player selection and falls back to the lobby when the online game cannot start', () => {
+    const { flow, names } = harness(true);
+    flow.start();
+    flow.hostLobby({ mode: GameMode.Single, roomId: 'ROOM_Single_0001' });
+    flow.tick();
+    flow.startOnlineGame(START);
+    flow.tick();
+    expect(names()).toEqual(['mainMenu', 'lobby:coop::']);
+  });
+});
 
 describe('ScreenFlow transitions', () => {
   it('boots into the main menu, then select world, game and back to select world in the same mode', () => {

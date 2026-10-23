@@ -5,14 +5,14 @@ import {
   OPTION_ON,
   OptionField,
   optionValue,
-  PlayerSlot,
   resetKeys,
   resetOptions,
   withCharacter,
   withKey,
   withOption,
+  withPlayerName,
 } from '../../src/services/menuSettings.ts';
-import { DEFAULT_PLAYER1_KEYS, DEFAULT_SETTINGS, UserSettingsSchema } from '../../src/services/SettingsService.ts';
+import { DEFAULT_KEYS, DEFAULT_SETTINGS, UserSettingsSchema } from '../../src/services/SettingsService.ts';
 import { OPTION_GROUPS } from '../../src/ui/screens/menu/tuning.ts';
 
 describe('option groups to settings (RegisterButton_Option / RegisterButton_SetGroup)', () => {
@@ -59,15 +59,14 @@ describe('option groups to settings (RegisterButton_Option / RegisterButton_SetG
 });
 
 describe('characters and keys', () => {
-  it('stores the character per player', () => {
-    const settings = withCharacter(DEFAULT_SETTINGS, PlayerSlot.Second, PlayerCharacter.GiJoe);
-    expect(settings.characters).toEqual([DEFAULT_SETTINGS.characters[0], PlayerCharacter.GiJoe]);
+  it('stores the character and a name cut to 16 characters', () => {
+    expect(withCharacter(DEFAULT_SETTINGS, PlayerCharacter.GiJoe).character).toBe(PlayerCharacter.GiJoe);
+    expect(withPlayerName(DEFAULT_SETTINGS, 'A very long player name').playerName).toBe('A very long play');
   });
 
   it('rebinds one key and resets to the ResetControls defaults', () => {
-    const settings = withKey(DEFAULT_SETTINGS, PlayerSlot.First, 'left', 75);
-    expect(settings.keys.player1).toEqual({ ...DEFAULT_PLAYER1_KEYS, left: 75 });
-    expect(settings.keys.player2).toEqual(DEFAULT_SETTINGS.keys.player2);
+    const settings = withKey(DEFAULT_SETTINGS, 'left', 75);
+    expect(settings.keys).toEqual({ ...DEFAULT_KEYS, left: 75 });
     expect(resetKeys(settings).keys).toEqual(DEFAULT_SETTINGS.keys);
   });
 });

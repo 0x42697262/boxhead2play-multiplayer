@@ -1,6 +1,6 @@
 import { DomainEventType, type EventSink, type MessageTone, type Point2, type Point3, type TextRef } from '../events.ts';
-
-import { MAX_PLAYERS, MESSAGE_LIFETIME_SECONDS } from './tuning.ts';
+import { MAX_PLAYERS } from '../world/tuning.ts';
+import { MESSAGE_LIFETIME_SECONDS } from './tuning.ts';
 
 export interface HudMessageEntry {
   readonly tone: MessageTone;
@@ -14,11 +14,22 @@ export interface HudClock {
   readonly ticksPerSecond: number;
 }
 
+export interface PlayerDeath {
+  readonly victim: number;
+  readonly killer: number | undefined;
+  readonly opponents: readonly number[];
+}
+
+function perPlayer(): number[] {
+  return Array.from({ length: MAX_PLAYERS }, () => 0);
+}
+
 export class HudState {
   totalScore = 0;
   silentMessages = false;
   paused = false;
-  private readonly deaths: number[] = Array.from({ length: MAX_PLAYERS }, () => 0);
+  private readonly deaths = perPlayer();
+  private readonly kills = perPlayer();
   private recent: HudMessageEntry[] = [];
 
   constructor(
@@ -30,12 +41,22 @@ export class HudState {
     return this.recent;
   }
 
+  get frags(): readonly number[] {
+    return this.kills;
+  }
+
   deathsOf(playerIndex: number): number {
     return this.deaths[playerIndex] ?? 0;
   }
 
-  recordDeath(playerIndex: number): void {
-    this.deaths[playerIndex] = this.deathsOf(playerIndex) + 1;
+  fragsOf(playerIndex: number): number {
+    return this.kills[playerIndex] ?? 0;
+  }
+
+  recordDeath(death: PlayerDeath): void {
+    this.deaths[death.victim] = this.deathsOf(death.victim) + 1;
+    const credited = death.killer !== undefined && death.killer !== death.victim ? [death.killer] : death.opponents;
+    for (const index of credited) this.kills[index] = this.fragsOf(index) + 1;
   }
 
   addMessage(tone: MessageTone, text: TextRef, playerIndex?: number): void {

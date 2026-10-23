@@ -121,14 +121,14 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
 * `stampDecal` ports `QRender_Mask`: the directional buffer frame at
   `floor(xPx + mDisp)`, masked by the decal mask at the same position, drawn into the
   floor.
-* `WorldRenderer.render` ports `CWorld.Draw` for one camera (or two in deathmatch):
+* `WorldRenderer.render` ports `CWorld.Draw` for the local player's camera
+  (`localCamera`: the frame's `localPlayerIndex`, 0 in single play):
   floor copy at `-round(-(rect + shake))`, things in `drawList` order, overlay lines and
   squares after all things (the `mcScratch` clip), then the cover plane. Positions are
   `x * 32 - drawOrigin.x`, `(y + z * pFactor) * 32 - drawOrigin.y`; lines use the rounded
   `ConvertCellToScreen`.
-* Deathmatch: two 480 x 480 views scaled by `640 / 2 / 480`, vertical offset 80, the left
-  view nudged by -1 px, sides chosen by `viewSideDeathMatch`. Smoothing follows the detail
-  option.
+* Every mode draws one full 640 x 480 view. The original deathmatch split screen (two
+  480 x 480 views scaled side by side) is gone with local two-player play (ADR 0005).
 * Brightness: `presentation.brightness * 255` added to RGB with `lighter` over the whole
   stage, before the HUD.
 
@@ -141,12 +141,14 @@ older messages pushed by 19 px, fade after 2.5 s of the 3 s lifetime).
 
 Live layer (the clips that Flash composited above the bitmap): `Hud.ScoreTotal` at
 (320, 0) with the 12-digit score, `x<multiplier>` and the timer frame;
-`Hud_PlayerFrags` in deathmatch; one `HUD.Player` per player (life frame
+`Hud_PlayerFrags` in deathmatch (left: the local player; right: the opponent with the
+most frags, hidden when alone; names are the online names or "Player N"; `mcSwitchSides`
+hidden); one `HUD.Player` per player (life frame
 `floor(min(max(1, 101 * ratio + 1), 101))`, ammo text `<short name>:<ammo>`, letter spacing
 -2); `HUD.Paused` with the upgrade list (one row more than a third per column, 17 px rows,
-green for new weapons, 25 % alpha when inactive). In single and coop the player labels use
-the previous frame's draw origin, as `UpdatePlayer` ran before `Draw_PlayerPlane`.
-`hitTest` maps clicks on `_Quit` (pause screen) and `mcSwitchSides` (deathmatch).
+green for new weapons, 25 % alpha when inactive). The player labels use the previous
+frame's draw origin, as `UpdatePlayer` ran before `Draw_PlayerPlane`.
+`hitTest` maps clicks on `_Quit` (pause screen).
 
 ## Known visual gaps
 
@@ -155,8 +157,6 @@ the previous frame's draw origin, as `UpdatePlayer` ran before `Draw_PlayerPlane
 * Blur kernels and text layout are approximations of Flash's.
 * Nested sprites inside buffered clips always show frame 0 (Flash would advance
   independently playing children between frames).
-* The original drew the deathmatch stage on a transparent bitmap over the stage color;
-  the port clears to black.
 * Character frames render on first use instead of all at load time; the first sight of an
   animation can cost a few milliseconds.
 

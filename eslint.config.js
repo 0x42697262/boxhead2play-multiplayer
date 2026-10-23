@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 're', 'public/assets', 'node_modules', 'scripts/local'] },
+  { ignores: ['dist', 'dist-server', 're', 'public/assets', 'node_modules', 'scripts/local'] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
@@ -23,13 +23,13 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/domain/**/*.ts'],
+    files: ['src/domain/**/*.ts', 'src/net/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
-            { group: ['**/adapters/**', '**/services/**', '**/entry/**', '**/ui/**', '**/config/env*'], message: 'Domain rules must stay pure.' },
+            { group: ['**/adapters/**', '**/services/**', '**/entry/**', '**/ui/**', '**/server/**', '**/config/env*'], message: 'Domain rules must stay pure.' },
           ],
         },
       ],

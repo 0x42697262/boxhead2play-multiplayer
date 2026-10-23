@@ -69,11 +69,30 @@ describe('ThingCollection', () => {
     const { world } = makeWorld(room(20, 10, [cellObject(InitKind.Player1, 2, 2), cellObject(InitKind.Player2, 8, 2)]), {
       options: { gameMode: GameMode.Coop },
     });
-    const [second, first] = world.things.players() as FakePlayer[];
+    const [second, first] = world.things.players() as unknown as FakePlayer[];
     expect(first?.playerIndex).toBe(0);
     expect(world.things.closestPlayer(at(9, 2))).toBe(second);
     if (second) second.flags |= ThingFlag.Dead;
     expect(world.things.closestPlayer(at(9, 2))).toBe(first);
-    expect(world.things.otherPlayer(first)).toBe(second);
+    if (!first || !second) throw new Error('missing players');
+    expect(world.things.nearestOtherPlayer(first)).toBe(second);
+    expect(world.things.playerByIndex(1)).toBe(second);
+  });
+
+  it('picks the nearest living other player among several', () => {
+    const { world } = makeWorld(
+      room(30, 10, [cellObject(InitKind.Player1, 2, 2), cellObject(InitKind.Player2, 8, 2), cellObject(InitKind.Player2, 20, 2), cellObject(InitKind.Player2, 4, 2)]),
+      { options: { gameMode: GameMode.Coop, playerCharacters: [0, 1, 2] } },
+    );
+    const first = world.things.playerByIndex(0);
+    if (!first) throw new Error('missing player');
+    first.move(at(2.5, 2.5));
+    const near = world.things.playerByIndex(1);
+    const far = world.things.playerByIndex(2);
+    near?.move(at(5.5, 2.5));
+    far?.move(at(20.5, 2.5));
+    expect(world.things.nearestOtherPlayer(first)).toBe(near);
+    if (near) near.flags |= ThingFlag.Dead;
+    expect(world.things.nearestOtherPlayer(first)).toBe(far);
   });
 });

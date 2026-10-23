@@ -34,13 +34,21 @@
 | Filters | Flash filters | Glow, gradient glow (outer), drop shadow, blur and color matrix approximated per pixel; bevel, gradient bevel and inner filters skipped | Canvas has no equivalent. See `docs/runtime/rendering.md`. |
 | Diagonal player speed | `State_PlayerControl` scales `(±1, ±1)` by `mSpeed`, so diagonal walking is √2 (about 1.41×) faster | The input vector is normalized to `speed` (0.16 cells per tick in every direction); sliding along a wall while holding a diagonal is correspondingly slower (0.16 × cos 45°) | Owner-requested bug fix. |
 | Copy positions | `copyPixels` converts the destination point to whole pixels | `floor` | Flash's exact rounding is unverified. |
-| Deathmatch stage | Transparent `bmDraw` over the stage color | Cleared to black | The stage color is not part of the exported data. |
 | Stale stage pixels | `bmDraw` is not cleared in single and coop; areas outside the floor keep old pixels | Cleared to black before the floor copy | Only visible in rooms smaller than the view. |
 | HUD message fade | `getTimer()` age of each message | Age from ticks (`(tick - messageTick) / ticksPerSecond`) | Determinism, and it matches the domain's 3 s tick lifetime. |
 | Exclusive rooms | `mcExclusive` shown and the level locked unless `_global.mHostedOnCMG` | `mcExclusive` always hidden, every level playable | Frame 1 sets `mHostedOnCMG` once the date is more than 180 days after 2007-04-23, so the original unlocks everything today. See `docs/runtime/screens.md`. |
 | Debrief screens | `State_Debrief`, `State_Debrief_Winner` | Every completion returns to select world in the mode played (`mReturn_SelectWorld`); the result is logged (`screen.game_finished`) | Not ported yet. |
 | Intro and loading screens | `Screen_Intro` (logos), `Screen_LoadingWorld` | Boot opens the main menu; `GameScreen` starts the world directly | Not ported yet. |
-| Main menu buttons | SINGLE PLAY, COOPERATIVE, DEATH MATCH, INSTRUCTIONS | PLAY (the word "PLAY" cut from the SINGLE PLAY text, in its slot, mode Single) and DEATH MATCH moved into the COOPERATIVE slot | Owner request: co-op will become LAN play. Local co-op stays in the domain, unused by the menu. |
+| Main menu buttons | SINGLE PLAY, COOPERATIVE, DEATH MATCH, INSTRUCTIONS | SINGLE PLAY (local), COOPERATIVE and DEATH MATCH (online lobby) | INSTRUCTIONS was an external link. See ADR 0005. |
+| Local two players | One keyboard, two key sets, two character cards, a shared coop camera, a 480 x 480 split screen in deathmatch with a switch-sides button | Removed. Coop and deathmatch are played online, one player per browser, each with a full 640 x 480 camera and the player 1 key set | Owner request. See ADR 0005 and `docs/runtime/online.md`. |
+| Player count | 1 or 2 players | 1 to 4 (`MAX_PLAYERS`), players can join and leave a running online world | Online lobbies. |
+| Coop leash | A coop player could not walk more than 19 x 13 cells from the live partner (`keepDistance`) | Removed | It kept both players on one shared screen. |
+| Coop camera | The average of both players (`(previous + p) / 2`) | Each player's camera follows that player | One screen per player. |
+| Weapon number keys and Space fire | Only with one player (`mTotalPlayerCount == 1`) | Always | Every player has a keyboard of their own. |
+| Deathmatch score | A death counts as the other player's kill; first to N wins (`player1Wins` / `player2Wins`) | Frags go to the player who dealt the killing hit (`lastAttackerIndex`), or to every opponent when unknown; `playerWon` with `winnerIndex` | Needed for more than two players; identical for two. |
+| Late joiners | none | A player who joins a running coop world gets the weapons unlocked so far; in deathmatch the inventory is reset like a respawn | Online lobbies. |
+| Online pause | P paused the shared world | Online, P shows the pause screen locally and sends idle input; the server world keeps running | One player must not pause the others. |
+| Debrief screens (online) | `State_Debrief_Winner` | The lobby shows the winner or the score | Not ported; same as local. |
 | External links | Instructions, trailer, More Games, Sean Cooper site, four game banners, View Highscores | Removed | The links and the score server are gone. |
 | Menu frame rate | `onEnterFrame` at 50 fps, screen logic at 25/s | Menu screens tick at 50/s, screen logic (transitions) every second tick | Same timing; documented in `docs/runtime/screens.md`. |
 | Stored menu indexes | `mcGotoFrame` wraps the shown frame, `LoadLevel` uses the unwrapped stored index | Both use the wrapped index | An out-of-range saved index would have loaded a missing room. |
@@ -57,6 +65,9 @@ newest first and takes a snapshot of the keys before the loop. The port does thi
 
 * `ThingCollection.process` processes things in reverse insertion order. Things added
   during the pass wait for the next tick.
+* Online player indexes follow lobby member order at match start (the host is 0); late
+  joiners take the lowest free index. Players are processed newest first, so a late
+  joiner acts before the players who started.
 * Cell occupants (`MapCell.newestFirst`), players (`ThingCollection.players`) and area
   cell lists (`GameMap.cellsInArea`, reverse scan order) are read newest first.
 * `CThing_Creature.ProcessAffects` walks its affect array with `for..in`, which is reverse

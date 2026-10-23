@@ -51,8 +51,15 @@ export type Character =
   | { readonly kind: 'button'; readonly button: Button }
   | { readonly kind: 'sprite'; readonly sprite: Sprite };
 
+export const DEPTH_KEY_PREFIX = '#';
+
+export function depthKey(depth: number): string {
+  return `${DEPTH_KEY_PREFIX}${depth}`;
+}
+
 export function childOverride(overrides: Overrides | undefined, item: DisplayItem): ChildOverride | undefined {
-  return item.name === undefined ? undefined : overrides?.[item.name];
+  if (!overrides) return undefined;
+  return (item.name === undefined ? undefined : overrides[item.name]) ?? overrides[depthKey(item.depth)];
 }
 
 export function withReplacements(items: readonly DisplayItem[], overrides: Overrides | undefined): readonly DisplayItem[] {

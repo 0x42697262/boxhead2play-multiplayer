@@ -1,0 +1,191 @@
+import { describe, expect, it } from 'vitest';
+import { PlayerControl } from '../../src/domain/world/input.ts';
+import { GameMode } from '../../src/domain/world/GameMode.ts';
+import { CompletionState } from '../../src/domain/world/CompletionState.ts';
+import { controlBit } from '../../src/net/controlMask.ts';
+import { ErrorReason, LeaveReason, LobbyState, PROTOCOL_VERSION } from '../../src/net/protocol.ts';
+import { RECONNECT_GRACE_MS } from '../../src/server/tuning.ts';
+import { FakeConnection, OPTIONS, ROOM_ID, testHub, type TestHub } from './support.ts';
+
+function lobbyOf(connection: FakeConnection) {
+  const lobby = connection.last('lobby')?.lobby;
+  if (!lobby) throw new Error('no lobby message');
+  return lobby;
+}
+
+function hostAndGuest(setup: TestHub, mode: typeof GameMode.Coop | typeof GameMode.DeathMatch = GameMode.Coop): { host: FakeConnection; guest: FakeConnection; lobbyId: string } {
+  const host = setup.connect('Ann');
+  const guest = setup.connect('Bob');
+  host.say({ type: 'createLobby', mode, roomId: ROOM_ID, options: OPTIONS, character: 3 });
+  const lobbyId = lobbyOf(host).id;
+  guest.say({ type: 'joinLobby', lobbyId, character: 1 });
+  return { host, guest, lobbyId };
+}
+
+describe('Hub sessions', () => {
+  it('welcomes a client and resumes the same session on a new connection', () => {
+    const setup = testHub();
+    const first = setup.connect('Ann');
+    const welcome = first.last('welcome');
+    expect(welcome?.resumed).toBe(false);
+    first.link?.closed();
+    const second = setup.connect('Ann', welcome?.sessionId);
+    expect(second.last('welcome')).toEqual({ type: 'welcome', clientId: welcome?.clientId, sessionId: welcome?.sessionId, resumed: true });
+    expect(setup.hub.clientCount).toBe(1);
+  });
+
+  it('rejects a protocol version mismatch and malformed messages', () => {
+    const setup = testHub();
+    const connection = setup.connect('Ann');
+    connection.link?.receive('{"type":"nonsense"}');
+    expect(connection.last('error')?.reason).toBe(ErrorReason.BadMessage);
+    const outdated = new FakeConnection();
+    outdated.link = setup.hub.connect(outdated);
+    outdated.say({ type: 'hello', version: PROTOCOL_VERSION + 1, sessionId: null, name: 'Old' });
+    expect(outdated.last('error')?.reason).toBe(ErrorReason.VersionMismatch);
+    expect(outdated.closed).toBe(true);
+  });
+
+  it('sanitizes names', () => {
+    const setup = testHub();
+    const host = setup.connect('  \u0007Zed the very long name  ');
+    host.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    expect(lobbyOf(host).members[0]?.name).toBe('Zed the very lon');
+    const blank = setup.connect('   ');
+    blank.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    expect(lobbyOf(blank).members[0]?.name).toBe('Player');
+  });
+});
+
+describe('Hub lobbies', () => {
+  it('lists lobbies to clients watching the same mode', () => {
+    const setup = testHub();
+    const watcher = setup.connect('Watcher');
+    watcher.say({ type: 'watchLobbies', mode: GameMode.Coop });
+    expect(watcher.last('lobbies')?.lobbies).toEqual([]);
+    const { lobbyId } = hostAndGuest(setup);
+    expect(watcher.last('lobbies')?.lobbies).toEqual([
+      { id: lobbyId, name: "Ann's game", mode: GameMode.Coop, roomId: ROOM_ID, state: LobbyState.Waiting, players: 2, maxPlayers: 4 },
+    ]);
+    const deathMatch = setup.connect('Other');
+    deathMatch.say({ type: 'watchLobbies', mode: GameMode.DeathMatch });
+    expect(deathMatch.last('lobbies')?.lobbies).toEqual([]);
+  });
+
+  it('only lets the host configure and start, and rejects unknown rooms', () => {
+    const setup = testHub();
+    const { host, guest } = hostAndGuest(setup);
+    guest.say({ type: 'startGame' });
+    expect(guest.last('error')?.reason).toBe(ErrorReason.NotHost);
+    guest.say({ type: 'configureLobby', roomId: ROOM_ID, options: OPTIONS });
+    expect(guest.last('error')?.reason).toBe(ErrorReason.NotHost);
+    host.say({ type: 'configureLobby', roomId: 'ROOM_NOPE', options: OPTIONS });
+    expect(host.last('error')?.reason).toBe(ErrorReason.RoomUnknown);
+    host.say({ type: 'configureLobby', roomId: ROOM_ID, options: { ...OPTIONS, difficulty: 2 } });
+    expect(lobbyOf(guest).options.difficulty).toBe(2);
+  });
+
+  it('refuses a fifth player', () => {
+    const setup = testHub();
+    const { lobbyId } = hostAndGuest(setup);
+    for (const name of ['C', 'D']) setup.connect(name).say({ type: 'joinLobby', lobbyId, character: 0 });
+    const fifth = setup.connect('E');
+    fifth.say({ type: 'joinLobby', lobbyId, character: 0 });
+    expect(fifth.last('error')?.reason).toBe(ErrorReason.LobbyFull);
+  });
+
+  it('moves the host role to the next member and closes an empty lobby', () => {
+    const setup = testHub();
+    const { host, guest } = hostAndGuest(setup);
+    host.say({ type: 'leaveLobby' });
+    expect(host.last('lobbyLeft')?.reason).toBe(LeaveReason.Left);
+    expect(lobbyOf(guest).members).toEqual([expect.objectContaining({ name: 'Bob', host: true })]);
+    guest.say({ type: 'leaveLobby' });
+    expect(setup.hub.lobbyCount).toBe(0);
+  });
+});
+
+describe('Hub matches', () => {
+  it('starts every member at its own player index and streams per-player frames', () => {
+    const setup = testHub();
+    const { host, guest } = hostAndGuest(setup);
+    host.say({ type: 'startGame' });
+    expect(host.last('gameStarted')).toMatchObject({ mode: GameMode.Coop, roomId: ROOM_ID, playerIndex: 0, ticksPerSecond: 25 });
+    expect(guest.last('gameStarted')?.playerIndex).toBe(1);
+    expect(guest.last('upgrades')?.upgrades.length).toBeGreaterThan(0);
+    expect(setup.ticker.rates).toEqual([25]);
+    setup.ticker.tick(2);
+    expect(host.last('frame')?.camera.playerIndex).toBe(0);
+    expect(guest.last('frame')?.camera.playerIndex).toBe(1);
+    expect(Math.max(...host.all('frame').map((frame) => frame.entries.length))).toBeGreaterThan(0);
+    expect(host.last('frame')?.hud.players.map((player) => player.playerIndex).sort()).toEqual([0, 1]);
+    expect(lobbyOf(host).state).toBe(LobbyState.Playing);
+  });
+
+  it('applies held controls from input messages', () => {
+    const setup = testHub();
+    const { host, lobbyId } = hostAndGuest(setup);
+    host.say({ type: 'startGame' });
+    const player = setup.hub.lobby(lobbyId)?.activeMatch?.world.things.playerByIndex(0);
+    const startX = player?.position.x ?? 0;
+    const right = controlBit(PlayerControl.Right);
+    host.say({ type: 'input', down: right, pressed: right, released: 0 });
+    setup.ticker.tick(10);
+    expect((player?.position.x ?? 0) - startX).toBeCloseTo(10 * 0.16);
+  });
+
+  it('lets a late member join a running match and a leaving one drop out', () => {
+    const setup = testHub();
+    const { host, guest, lobbyId } = hostAndGuest(setup);
+    host.say({ type: 'startGame' });
+    const late = setup.connect('Cat');
+    late.say({ type: 'joinLobby', lobbyId, character: 2 });
+    late.say({ type: 'startGame' });
+    expect(late.last('gameStarted')?.playerIndex).toBe(2);
+    const world = setup.hub.lobby(lobbyId)?.activeMatch?.world;
+    expect(world?.things.players()).toHaveLength(3);
+    guest.say({ type: 'leaveGame' });
+    setup.ticker.tick();
+    expect(world?.things.players()).toHaveLength(2);
+    expect(lobbyOf(host).members.find((member) => member.name === 'Bob')?.playerIndex).toBeNull();
+  });
+
+  it('reports game over to the players and returns the lobby to waiting', () => {
+    const setup = testHub();
+    const { host, guest, lobbyId } = hostAndGuest(setup, GameMode.DeathMatch);
+    host.say({ type: 'startGame' });
+    const match = setup.hub.lobby(lobbyId)?.activeMatch;
+    match?.world.complete(CompletionState.Quit);
+    setup.ticker.tick();
+    expect(host.last('gameOver')).toMatchObject({ state: CompletionState.Quit, winnerName: null });
+    expect(guest.last('gameOver')?.matchId).toBe(match?.setup.id);
+    expect(lobbyOf(host).state).toBe(LobbyState.Waiting);
+    expect(setup.ticker.running).toBe(0);
+  });
+
+  it('holds a disconnected player for the grace period, then removes it', () => {
+    const setup = testHub();
+    const { host, guest, lobbyId } = hostAndGuest(setup);
+    host.say({ type: 'startGame' });
+    const welcome = guest.last('welcome');
+    guest.link?.closed();
+    expect(lobbyOf(host).members.find((member) => member.name === 'Bob')?.connected).toBe(false);
+    setup.timers.advance(RECONNECT_GRACE_MS / 2);
+    const back = setup.connect('Bob', welcome?.sessionId);
+    expect(back.last('gameStarted')?.playerIndex).toBe(1);
+    back.link?.closed();
+    setup.timers.advance(RECONNECT_GRACE_MS);
+    expect(lobbyOf(host).members.map((member) => member.name)).toEqual(['Ann']);
+    expect(setup.hub.lobby(lobbyId)?.activeMatch?.world.things.players()).toHaveLength(1);
+  });
+
+  it('ends the match when every player has left it', () => {
+    const setup = testHub();
+    const { host, guest } = hostAndGuest(setup);
+    host.say({ type: 'startGame' });
+    host.say({ type: 'leaveGame' });
+    guest.say({ type: 'leaveGame' });
+    expect(lobbyOf(host).state).toBe(LobbyState.Waiting);
+    expect(setup.ticker.running).toBe(0);
+  });
+});

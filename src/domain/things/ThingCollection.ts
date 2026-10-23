@@ -80,8 +80,23 @@ export class ThingCollection {
     return best ?? players[0];
   }
 
-  otherPlayer(player: Thing | undefined): PlayerThing | undefined {
-    return this.players().find((other) => other !== player);
+  nearestOtherPlayer(player: Thing): PlayerThing | undefined {
+    const others = this.players().filter((other) => other !== player);
+    let best: PlayerThing | undefined;
+    let bestDistance = Number.MAX_VALUE;
+    for (const other of others) {
+      if (other.hasFlag(ThingFlag.Dead)) continue;
+      const distance = player.position.distance2DSquared(other.position);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = other;
+      }
+    }
+    return best ?? others[0];
+  }
+
+  playerByIndex(playerIndex: number): PlayerThing | undefined {
+    return this.players().find((player) => player.playerIndex === playerIndex);
   }
 
   process(): void {

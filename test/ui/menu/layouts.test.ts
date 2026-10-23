@@ -4,29 +4,26 @@ import { SymbolLibrary } from '../../../src/adapters/render/symbols/SymbolLibrar
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { mainMenuLayout } from '../../../src/ui/screens/menu/MainMenuScreen.ts';
 import { selectWorldLayout } from '../../../src/ui/screens/menu/SelectWorldScreen.ts';
-import { MainMenuChild, PLAY_LABEL_INSTANCE } from '../../../src/ui/screens/menu/tuning.ts';
+import { MainMenuChild } from '../../../src/ui/screens/menu/tuning.ts';
 import { assetsMissing, assetSymbols } from '../../adapters/assets/support.ts';
 
 describe('menu layouts from the real library', () => {
-  it.skipIf(assetsMissing)('main menu keeps the background, the title and two buttons, DEATH MATCH in the COOPERATIVE slot', () => {
+  it.skipIf(assetsMissing)('main menu keeps the background, the title and the SINGLE PLAY, COOPERATIVE and DEATH MATCH buttons in their slots', () => {
     const library = new SymbolLibrary(assetSymbols());
     const layout = mainMenuLayout(library);
-    expect(layout.items.map((item) => item.depth)).toEqual([1, 8, 10, 82]);
-    const coop = library.findChild(library.characterId('Screen_Main') ?? 0, MainMenuChild.CoopPlay);
-    const death = layout.items.find((item) => item.name === MainMenuChild.DeathPlay);
-    expect(death?.matrix).toEqual(coop?.matrix);
-    expect(layout.playLabel?.attach?.[0]?.name).toBe(PLAY_LABEL_INSTANCE);
-    expect(layout.playLabel?.children?.[PLAY_LABEL_INSTANCE]?.clip?.xMin).toBeCloseTo(124.9);
+    expect(layout.items.map((item) => item.depth)).toEqual([1, 8, 10, 12, 82]);
     const play = instanceHitArea(library, layout.items, [MainMenuChild.SinglePlay], {});
+    const coopArea = instanceHitArea(library, layout.items, [MainMenuChild.CoopPlay], {});
     const deathArea = instanceHitArea(library, layout.items, [MainMenuChild.DeathPlay], {});
     expect(play && hitAreaContains(play, { x: 320, y: 226 })).toBe(true);
-    expect(deathArea && hitAreaContains(deathArea, { x: 320, y: 259 })).toBe(true);
-    expect(deathArea && hitAreaContains(deathArea, { x: 320, y: 292 })).toBe(false);
+    expect(coopArea && hitAreaContains(coopArea, { x: 320, y: 259 })).toBe(true);
+    expect(deathArea && hitAreaContains(deathArea, { x: 320, y: 292 })).toBe(true);
+    expect(deathArea && hitAreaContains(deathArea, { x: 320, y: 259 })).toBe(false);
   });
 
   it.skipIf(assetsMissing)('select world drops the external links and finds 18 levels, 4 characters and the 8-frame key prompt', () => {
     const library = new SymbolLibrary(assetSymbols());
-    for (const mode of [GameMode.Single, GameMode.DeathMatch]) {
+    for (const mode of [GameMode.Single, GameMode.Coop, GameMode.DeathMatch]) {
       const layout = selectWorldLayout(library, mode);
       expect(layout.items.some((item) => item.name === '_IconMoreGames' || item.name === '_STC')).toBe(false);
       expect(layout.items.some((item) => [50, 56, 60, 65].includes(item.depth))).toBe(false);

@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { codeForKeyCode } from '../../../src/adapters/input/keyCodes.ts';
 import { KeyboardState } from '../../../src/adapters/input/KeyboardState.ts';
 import { boundCodes, buildBindings, TickInputSampler } from '../../../src/adapters/input/TickInputSampler.ts';
-import { GameMode } from '../../../src/domain/world/GameMode.ts';
-import { DEFAULT_PLAYER1_KEYS, DEFAULT_PLAYER2_KEYS } from '../../../src/services/SettingsService.ts';
+import { DEFAULT_KEYS } from '../../../src/services/SettingsService.ts';
 
 const EXTRAS = { quitRequested: false, ambienceSamplesPlaying: 0 };
 
-function sampler(mode: GameMode = GameMode.Single): TickInputSampler {
-  return new TickInputSampler(buildBindings(DEFAULT_PLAYER1_KEYS, DEFAULT_PLAYER2_KEYS, mode));
+function sampler(): TickInputSampler {
+  return new TickInputSampler(buildBindings(DEFAULT_KEYS));
 }
 
 describe('legacy key codes', () => {
@@ -25,19 +24,17 @@ describe('legacy key codes', () => {
   });
 
   it('bind the original defaults', () => {
-    const bindings = buildBindings(DEFAULT_PLAYER1_KEYS, DEFAULT_PLAYER2_KEYS, GameMode.Coop);
-    expect(bindings.players[0]?.left).toEqual(['ArrowLeft']);
-    expect(bindings.players[0]?.fire).toEqual(['Slash']);
-    expect(bindings.players[1]?.fire).toEqual(['Space']);
-    expect(bindings.players[1]?.prevWeapon).toEqual(['KeyQ']);
-    expect(bindings.players[0]?.select3).toEqual(['Digit3']);
-    expect(bindings.players[1]?.select3).toEqual([]);
+    const bindings = buildBindings(DEFAULT_KEYS);
+    expect(bindings.player.left).toEqual(['ArrowLeft']);
+    expect(bindings.player.prevWeapon).toEqual(['Comma']);
+    expect(bindings.player.select3).toEqual(['Digit3']);
     expect(bindings.pause).toEqual(['KeyP']);
-    expect(boundCodes(bindings).has('KeyD')).toBe(true);
+    expect(boundCodes(bindings).has('KeyD')).toBe(false);
+    expect(boundCodes(bindings).has('Space')).toBe(true);
   });
 
-  it('add space as a second fire key for player 1 in single player only', () => {
-    expect(buildBindings(DEFAULT_PLAYER1_KEYS, DEFAULT_PLAYER2_KEYS, GameMode.Single).players[0]?.fire).toEqual(['Slash', 'Space']);
+  it('add space as a second fire key', () => {
+    expect(buildBindings(DEFAULT_KEYS).player.fire).toEqual(['Slash', 'Space']);
   });
 });
 
@@ -78,10 +75,10 @@ describe('tick input sampling (CInput edges)', () => {
 
   it('releases every key when the window loses focus', () => {
     const keyboard = new KeyboardState();
-    const input = sampler(GameMode.Coop);
-    keyboard.keyDown('KeyW');
+    const input = sampler();
+    keyboard.keyDown('ArrowUp');
     input.sample(keyboard, EXTRAS);
     keyboard.releaseAll();
-    expect(input.sample(keyboard, EXTRAS).players[1]?.up).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
+    expect(input.sample(keyboard, EXTRAS).players[0]?.up).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
   });
 });

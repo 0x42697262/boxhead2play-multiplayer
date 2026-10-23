@@ -8,14 +8,15 @@ Source: `CInput.as`, `CSaveData.as` (default bindings), `CThing_Creature_Player.
 Settings store the original Flash key codes. `keyCodes.ts` maps them to
 `KeyboardEvent.code` (layout independent, so `/` is the physical slash key).
 
-| Player | Up | Down | Left | Right | Fire | Next | Previous |
-|---|---|---|---|---|---|---|---|
-| 1 | ArrowUp (38) | ArrowDown (40) | ArrowLeft (37) | ArrowRight (39) | Slash (191) | Period (190) | Comma (188) |
-| 2 | KeyW | KeyS | KeyA | KeyD | Space | KeyE | KeyQ |
+| Up | Down | Left | Right | Fire | Next | Previous |
+|---|---|---|---|---|---|---|
+| ArrowUp (38) | ArrowDown (40) | ArrowLeft (37) | ArrowRight (39) | Slash (191) | Period (190) | Comma (188) |
 
-`KeyP` pauses. `Digit0`..`Digit9` are bound to player 1's select controls (the domain
-only reads them when there is one player). In single player, Space is a second fire key
-for player 1 (`AddAdditionKeyCode` when `mTotalPlayerCount == 1`).
+There is one local player (ADR 0005). `KeyP` pauses. `Digit0`..`Digit9` select weapons,
+and Space is a second fire key (`AddAdditionKeyCode`, which the original added when
+`mTotalPlayerCount == 1`). Both now apply in every mode, because every player has their
+own keyboard. Online, the same `PlayerInput` is sent to the server as bit masks
+(`docs/runtime/online.md`).
 
 ## Edge semantics
 
@@ -40,6 +41,5 @@ them while it waits for a key, and the listener then calls `preventDefault` too.
 
 Mouse: pointer down, up, move and leave on the canvas are mapped to stage coordinates
 (the canvas captures the pointer on down, so a release outside still arrives). The game
-hit-tests presses against the pause screen's Quit button and the deathmatch switch-sides
-button. Menus track hover and press per target, fire `onPress`/`onRelease` actions and set
+hit-tests presses against the pause screen's Quit button. Menus track hover and press per target, fire `onPress`/`onRelease` actions and set
 the hand cursor (`docs/runtime/screens.md`).

@@ -1,7 +1,9 @@
 import { GameMode } from '../domain/world/GameMode.ts';
+import type { GameStarted, OnlineMode } from '../net/protocol.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import type { SessionResult } from './GameSession.ts';
+import type { OnlineSessionResult } from './online/OnlineGameSession.ts';
 
 export interface StagePoint {
   readonly x: number;
@@ -47,23 +49,37 @@ export interface GameSelection {
   readonly roomId: string;
 }
 
+export interface LobbyEntry {
+  readonly mode: OnlineMode;
+  readonly host: GameSelection | undefined;
+  readonly result: OnlineSessionResult | undefined;
+}
+
 export interface FlowControls {
   showMainMenu(): void;
   selectWorld(mode: GameMode): void;
   startGame(selection: GameSelection): void;
   finishGame(result: SessionResult): void;
+  openLobby(mode: OnlineMode): void;
+  hostLobby(selection: GameSelection): void;
+  startOnlineGame(start: GameStarted): void;
+  finishOnlineGame(result: OnlineSessionResult): void;
 }
 
 export interface ScreenFactory {
   mainMenu(controls: FlowControls): Screen;
   selectWorld(controls: FlowControls, mode: GameMode): Screen;
   game(controls: FlowControls, selection: GameSelection): Screen;
+  lobby(controls: FlowControls, entry: LobbyEntry): Screen;
+  onlineGame(controls: FlowControls, start: GameStarted): Screen;
 }
 
 export const ScreenKind = {
   MainMenu: 'mainMenu',
   SelectWorld: 'selectWorld',
   Game: 'game',
+  Lobby: 'lobby',
+  OnlineGame: 'onlineGame',
 } as const;
 
 export type ScreenKind = (typeof ScreenKind)[keyof typeof ScreenKind];
@@ -71,7 +87,9 @@ export type ScreenKind = (typeof ScreenKind)[keyof typeof ScreenKind];
 export type Transition =
   | { readonly kind: typeof ScreenKind.MainMenu }
   | { readonly kind: typeof ScreenKind.SelectWorld; readonly mode: GameMode }
-  | { readonly kind: typeof ScreenKind.Game; readonly selection: GameSelection };
+  | { readonly kind: typeof ScreenKind.Game; readonly selection: GameSelection }
+  | { readonly kind: typeof ScreenKind.Lobby; readonly entry: LobbyEntry }
+  | { readonly kind: typeof ScreenKind.OnlineGame; readonly start: GameStarted };
 
 export const DEFAULT_RETURN_MODE: GameMode = GameMode.Single;
 const IDLE_TICKS_PER_SECOND = 1;
@@ -127,6 +145,26 @@ export class ScreenFlow implements FlowControls {
     this.pending = { kind: ScreenKind.SelectWorld, mode: this.returnMode };
   }
 
+  openLobby(mode: OnlineMode): void {
+    this.pending = { kind: ScreenKind.Lobby, entry: { mode, host: undefined, result: undefined } };
+  }
+
+  hostLobby(selection: GameSelection): void {
+    if (selection.mode === GameMode.Single) return;
+    this.pending = { kind: ScreenKind.Lobby, entry: { mode: selection.mode, host: selection, result: undefined } };
+  }
+
+  startOnlineGame(start: GameStarted): void {
+    this.pending = { kind: ScreenKind.OnlineGame, start };
+  }
+
+  finishOnlineGame(result: OnlineSessionResult): void {
+    const mode = this.returnMode === GameMode.Single ? undefined : this.returnMode;
+    this.logger.info(LogEvent.GameFinished, { state: result.state, end: result.end, mode: this.returnMode });
+    if (mode) this.pending = { kind: ScreenKind.Lobby, entry: { mode, host: undefined, result } };
+    else this.pending = { kind: ScreenKind.MainMenu };
+  }
+
   tick(): void {
     this.current?.tick();
     this.applyPending();
@@ -175,6 +213,19 @@ export class ScreenFlow implements FlowControls {
         } catch (error) {
           this.logger.error(LogEvent.WorldFailed, { room: transition.selection.roomId, error: String(error) });
           this.show(this.factory.selectWorld(this, transition.selection.mode));
+        }
+        return;
+      case ScreenKind.Lobby:
+        this.returnMode = transition.entry.mode;
+        this.show(this.factory.lobby(this, transition.entry));
+        return;
+      case ScreenKind.OnlineGame:
+        this.returnMode = transition.start.mode;
+        try {
+          this.show(this.factory.onlineGame(this, transition.start));
+        } catch (error) {
+          this.logger.error(LogEvent.WorldFailed, { room: transition.start.roomId, error: String(error) });
+          this.show(this.factory.lobby(this, { mode: transition.start.mode, host: undefined, result: undefined }));
         }
     }
   }

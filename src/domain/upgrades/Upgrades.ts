@@ -104,6 +104,7 @@ export class Upgrades {
   totalPlayerCount = 0;
   playerCount = 0;
   private readonly records = new Map<ThingClass, ClassRecord>();
+  private readonly unlocked = new Set<WeaponName>();
   private readonly levels: readonly LevelDefinition[];
   private readonly slots: readonly MultiplierSlot[];
   private nextStamp = 0;
@@ -129,6 +130,10 @@ export class Upgrades {
 
   get multiplier(): number {
     return this.multiplierIndex;
+  }
+
+  get unlockedWeapons(): readonly WeaponName[] {
+    return [...this.unlocked];
   }
 
   get multipleKill(): number {
@@ -395,6 +400,7 @@ export class Upgrades {
   }
 
   private unlockWeapon(weapon: WeaponName): void {
+    this.unlocked.add(weapon);
     for (const player of this.host.players()) player.newWeapon(weapon);
   }
 

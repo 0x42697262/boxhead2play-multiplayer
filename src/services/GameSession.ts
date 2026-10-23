@@ -11,6 +11,7 @@ import { IDLE_TICK_INPUT, type TickInput } from '../domain/world/input.ts';
 import type { RoomDefinition } from '../domain/world/RoomDefinition.ts';
 import { createSimulationSettings, type GameOptions } from '../domain/world/SimulationSettings.ts';
 import { World } from '../domain/world/World.ts';
+import { playerHudEntries } from '../net/frames.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
@@ -49,17 +50,18 @@ export interface GameSessionDependencies {
   readonly onCompleted: (result: SessionResult) => void;
 }
 
-export function hudFrame(world: World): HudFrame {
+export const LOCAL_PLAYER_INDEX = 0;
+
+export function hudFrame(world: World, localPlayerIndex: number = LOCAL_PLAYER_INDEX, playerNames: HudFrame['playerNames'] = {}): HudFrame {
   return {
+    localPlayerIndex,
+    playerNames,
     totalScore: world.hud.totalScore,
     multiplier: world.upgrades.multiplier,
     multiplierTickRatio: world.upgrades.multiplierTickRatio,
-    deaths: [world.hud.deathsOf(0), world.hud.deathsOf(1)],
+    frags: world.hud.frags,
     messages: world.hud.messages,
-    players: world.players().map((player) => {
-      const { x, y, z } = player.position;
-      return { playerIndex: player.playerIndex, position: { x, y, z }, status: player.hudStatus() };
-    }),
+    players: playerHudEntries(world),
     upgrades: [],
   };
 }
@@ -68,6 +70,7 @@ export function worldFrame(world: World): WorldFrame {
   const presentation = world.presentation;
   return {
     gameMode: world.settings.gameMode,
+    localPlayerIndex: LOCAL_PLAYER_INDEX,
     cameras: presentation.cameras.map((view) => ({ view, entries: world.drawList(view) })),
     brightness: presentation.brightness,
     projectionFactor: world.projectionFactor,

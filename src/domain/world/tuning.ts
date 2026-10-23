@@ -3,9 +3,11 @@ export const SLOW_SPEED_FACTOR = 0.5;
 
 export const SCREEN_WIDTH_PX = 640;
 export const SCREEN_HEIGHT_PX = 480;
-export const SPLIT_SCREEN_SIZE_PX = 480;
 
 export const KILLS_TO_WIN = [5, 10, 20, 50] as const;
+
+export const MAX_PLAYERS = 4;
+export const OPEN_SPAWN_SEARCH_CELLS = 64;
 
 export const SPAWN_MIN_DISTANCE_SQUARED = 4;
 export const PLAYER_SCOPE_CELLS_X = 19;
@@ -32,4 +34,3 @@ export const AMBIENCE_LEVELS = [
   { maxZombies: Number.POSITIVE_INFINITY, channels: 3, frequencyTicks: 1 },
 ] as const;
 export const AMBIENCE_SAMPLE_SLOTS = 4;
-export const TRACK_BLEND = 0.5;

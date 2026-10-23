@@ -21,8 +21,6 @@ import { toGameOptions, type SettingsService } from '../../services/SettingsServ
 import { AppError, ErrorCode } from '../../text/errors.ts';
 import type { Shell } from '../shell/Shell.ts';
 
-export const VIEW_SIDES = 2;
-
 export interface RenderKit {
   readonly renderer: SymbolRenderer;
   readonly clips: ClipBuffers;
@@ -58,15 +56,11 @@ export class GameScreen implements Screen {
     const settings = deps.settings.settings;
     const options = toGameOptions(settings, deps.selection.mode);
     const hud = new HudRenderer(deps.kit.renderer, options.gameMode);
-    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, {
-      gameMode: options.gameMode,
-      detail: options.detail,
-      viewSide: () => deps.settings.settings.viewSideDeathMatch,
-    });
+    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: options.detail });
     for (const collection of prewarmCollections(options)) deps.kit.characters.enqueue(collection);
     deps.keyboard.releaseAll();
     deps.keyboard.clearEdges();
-    const sampler = new TickInputSampler(buildBindings(settings.keys.player1, settings.keys.player2, options.gameMode));
+    const sampler = new TickInputSampler(buildBindings(settings.keys));
     this.session = GameSession.start({
       room: toRoomDefinition(room),
       options,
@@ -106,9 +100,6 @@ export class GameScreen implements Screen {
     if (input.phase !== PointerPhase.Down) return;
     const action = this.renderer.hud.hitTest(input.point);
     if (action === HudAction.Quit) this.session.requestQuit();
-    if (action === HudAction.SwitchSides) {
-      this.deps.settings.update((settings) => ({ ...settings, viewSideDeathMatch: (settings.viewSideDeathMatch + 1) % VIEW_SIDES }));
-    }
   }
 
   key(): boolean {

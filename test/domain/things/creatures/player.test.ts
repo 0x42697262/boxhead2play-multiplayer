@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DomainEventType } from '../../../../src/domain/events.ts';
 import { CollideFlag } from '../../../../src/domain/map/CollideFlag.ts';
+import { BulletAffect } from '../../../../src/domain/things/affects/BulletAffect.ts';
 import { ZombieAttackAffect } from '../../../../src/domain/things/affects/ZombieAttackAffect.ts';
 import { CreatureState } from '../../../../src/domain/things/creatures/CreatureState.ts';
 import type { Player } from '../../../../src/domain/things/creatures/Player.ts';
@@ -11,6 +12,7 @@ import { CompletionState } from '../../../../src/domain/world/CompletionState.ts
 import { GameMode } from '../../../../src/domain/world/GameMode.ts';
 import { PlayerControl } from '../../../../src/domain/world/input.ts';
 import { InitKind } from '../../../../src/domain/world/RoomDefinition.ts';
+import { Difficulty } from '../../../../src/domain/world/SimulationSettings.ts';
 import type { World } from '../../../../src/domain/world/World.ts';
 import { cellObject, room, solid } from '../../support/fakes.ts';
 import { held, tickInput } from '../../support/input.ts';
@@ -81,7 +83,7 @@ describe('Player control', () => {
     expect(player.hudStatus()).toEqual({ lifeRatio: 1, weaponShortName: 'weapon.pistol.shortName', ammo: undefined, visible: true });
   });
 
-  it('switches weapons with the number keys only in single player, and with next/previous', () => {
+  it('switches weapons with the number keys in every mode, and with next/previous', () => {
     const world = makeRealWorld(arena());
     const player = playerOf(world);
     player.newWeapon(WeaponName.Uzi);
@@ -107,7 +109,7 @@ describe('Player control', () => {
     first.newWeapon(WeaponName.Uzi);
     run(coop, 1, tickInput(held(PlayerControl.Select2)));
     run(coop, 1);
-    expect(first.inventory.currentName).toBe(WeaponName.Pistol);
+    expect(first.inventory.currentName).toBe(WeaponName.Uzi);
   });
 });
 
@@ -156,5 +158,37 @@ describe('Player death and respawn', () => {
     expect(player.state).toBe(CreatureState.PlayerControl);
     expect(player.invincible).toBeLessThanOrEqual(25);
     expect(world.hud.deathsOf(1)).toBe(1);
+  });
+
+  it('credits the deathmatch frag to the player whose shot killed', () => {
+    const world = makeRealWorld(arena(), { options: { gameMode: GameMode.DeathMatch, playerCharacters: [0, 1, 2] } });
+    const victim = playerOf(world, 0);
+    const shooter = playerOf(world, 2);
+    run(world, 15);
+    victim.invincible = 0;
+    victim.affect(new BulletAffect(shooter, shooter, 1000, shooter.angle.clone()));
+    for (let tick = 0; tick < 100 && victim.state !== CreatureState.Dead; tick++) world.update();
+    expect(world.hud.frags.slice(0, 3)).toEqual([0, 0, 1]);
+  });
+});
+
+describe('Player joining a running world', () => {
+  it('gets the weapons unlocked so far in coop and empty ones in deathmatch', () => {
+    const coop = makeRealWorld(arena(), { options: { gameMode: GameMode.Coop, difficulty: Difficulty.Expert } });
+    const unlocked = coop.upgrades.unlockedWeapons;
+    expect(unlocked).toContain(WeaponName.Uzi);
+    coop.joinPlayer(2, 3);
+    run(coop, 1);
+    const joined = playerOf(coop, 2);
+    expect(joined.character).toBe(3);
+    for (const weapon of unlocked) expect(joined.inventory.slot(weapon)?.active).toBe(true);
+
+    const deathMatch = makeRealWorld(arena(), { options: { gameMode: GameMode.DeathMatch } });
+    deathMatch.joinPlayer(2, 0);
+    run(deathMatch, 1);
+    const late = playerOf(deathMatch, 2);
+    const filled = late.inventory.slots.filter((slot) => slot.name !== WeaponName.Pistol && (slot.weapon?.ammo ?? 0) > 0);
+    expect(filled).toEqual([]);
+    expect(late.inventory.currentName).toBe(WeaponName.Pistol);
   });
 });

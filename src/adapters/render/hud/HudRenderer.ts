@@ -32,7 +32,6 @@ import {
 
 export const HudAction = {
   Quit: 'quit',
-  SwitchSides: 'switchSides',
 } as const;
 
 export type HudAction = (typeof HudAction)[keyof typeof HudAction];
@@ -48,8 +47,23 @@ export interface PlayerLabel {
 const OPAQUE = 1;
 const SCORE_TOTAL_POSITION: Point2 = { x: SCREEN_WIDTH_PX / 2, y: 0 };
 const MESSAGE_ORIGIN: Point2 = { x: SCREEN_WIDTH_PX / 2, y: SCREEN_HEIGHT_PX };
-const FIRST_PLAYER = 0;
-const SECOND_PLAYER = 1;
+
+export interface FragPanels {
+  readonly own: number;
+  readonly opponent: number | undefined;
+}
+
+export function fragPanels(hud: HudFrame): FragPanels {
+  const opponents = hud.players.map((player) => player.playerIndex).filter((index) => index !== hud.localPlayerIndex);
+  const fragsOf = (index: number): number => hud.frags[index] ?? 0;
+  const opponent = opponents.reduce<number | undefined>((best, index) => (best === undefined || fragsOf(index) > fragsOf(best) ? index : best), undefined);
+  return { own: hud.localPlayerIndex, opponent };
+}
+
+export function playerDisplayName(hud: HudFrame, playerIndex: number): string {
+  const name = hud.playerNames[playerIndex];
+  return name ? name : t('hud.playerName', { number: playerIndex + 1 });
+}
 
 function pointInRect(point: Point2, rect: Rect): boolean {
   return point.x >= rect.xMin && point.x <= rect.xMax && point.y >= rect.yMin && point.y <= rect.yMax;
@@ -102,10 +116,10 @@ export class HudRenderer {
     this.pauseScreen = upgrades ? this.renderPauseScreen(upgrades) : undefined;
   }
 
-  drawLive(ctx: Context2D, viewSide: number): void {
+  drawLive(ctx: Context2D): void {
     const totals = this.totals;
     if (totals) {
-      if (this.gameMode === GameMode.DeathMatch) this.drawFrags(ctx, totals, viewSide);
+      if (this.gameMode === GameMode.DeathMatch) this.drawFrags(ctx, totals);
       else this.drawScoreTotal(ctx, totals);
     }
     for (const label of this.labels) {
@@ -123,7 +137,6 @@ export class HudRenderer {
 
   hitTest(point: Point2): HudAction | undefined {
     if (this.pauseScreen && this.childButtonContains(HudSymbol.Paused, HudChild.Quit, point)) return HudAction.Quit;
-    if (this.gameMode === GameMode.DeathMatch && this.childButtonContains(HudSymbol.PlayerFrags, HudChild.SwitchSides, point)) return HudAction.SwitchSides;
     return undefined;
   }
 
@@ -147,15 +160,19 @@ export class HudRenderer {
     if (bitmap) blit(ctx, bitmap, SCORE_TOTAL_POSITION, 1, OPAQUE_ALPHA);
   }
 
-  private drawFrags(ctx: Context2D, totals: HudFrame, viewSide: number): void {
-    const first = viewSide === 0 ? FIRST_PLAYER : SECOND_PLAYER;
-    const second = viewSide === 0 ? SECOND_PLAYER : FIRST_PLAYER;
+  private drawFrags(ctx: Context2D, totals: HudFrame): void {
+    const { own, opponent } = fragPanels(totals);
     const panel = (playerIndex: number): Overrides => ({
-      [HudChild.PlayerName]: { text: t('hud.playerName', { number: playerIndex + 1 }) },
-      [HudChild.Frags]: { text: padNumber(totals.deaths[playerIndex] ?? 0, FRAG_DIGITS) },
+      [HudChild.PlayerName]: { text: playerDisplayName(totals, playerIndex) },
+      [HudChild.Frags]: { text: padNumber(totals.frags[playerIndex] ?? 0, FRAG_DIGITS) },
     });
-    const overrides: Overrides = { [HudChild.Player1]: { children: panel(first) }, [HudChild.Player2]: { children: panel(second) } };
-    const key = `frags|${viewSide}|${totals.deaths.join(',')}`;
+    const overrides: Overrides = {
+      [HudChild.Player1]: { children: panel(own) },
+      [HudChild.Player2]: opponent === undefined ? { visible: false } : { children: panel(opponent) },
+      [HudChild.SwitchSides]: { visible: false },
+    };
+    const names = [own, opponent].map((index) => (index === undefined ? '' : playerDisplayName(totals, index))).join(',');
+    const key = `frags|${own}|${opponent ?? ''}|${names}|${totals.frags.join(',')}`;
     const bitmap = this.clip(HudSymbol.PlayerFrags, overrides, key, LIVE_CLIP_INFLATE_PX);
     if (bitmap) blit(ctx, bitmap, { x: 0, y: 0 }, 1, OPAQUE_ALPHA);
   }

@@ -17,12 +17,14 @@ const envSchema = z.object({
   VITE_ASSET_BASE_URL: z.string().min(1).default('assets/'),
   VITE_DEBUG_OVERLAY: booleanString,
   VITE_LOG_LEVEL: z.enum([LogLevel.Debug, LogLevel.Info, LogLevel.Warn, LogLevel.Error]).default(LogLevel.Info),
+  VITE_SERVER_URL: z.url({ protocol: /^wss?$/ }).optional(),
 });
 
 export interface Settings {
   readonly assetBaseUrl: string;
   readonly debugOverlay: boolean;
   readonly logLevel: LogLevel;
+  readonly serverUrl: string | undefined;
 }
 
 export class ConfigError extends Error {}
@@ -37,6 +39,7 @@ export function loadSettings(rawEnv: Record<string, unknown>): Settings {
     assetBaseUrl: env.VITE_ASSET_BASE_URL.endsWith('/') ? env.VITE_ASSET_BASE_URL : `${env.VITE_ASSET_BASE_URL}/`,
     debugOverlay: env.VITE_DEBUG_OVERLAY,
     logLevel: env.VITE_LOG_LEVEL,
+    serverUrl: env.VITE_SERVER_URL,
   });
 }
 

@@ -31,9 +31,6 @@ export const MainMenuChild = {
   Contents: '_Contents',
 } as const;
 
-export const PLAY_LABEL_WORD_INDEX = 1;
-export const PLAY_LABEL_INSTANCE = 'playLabelWord';
-
 export const ROLL_OUT_ALPHA = 0.5;
 export const ROLL_OVER_ALPHA = 1;
 
@@ -77,8 +74,10 @@ export const SelectWorldChild = {
   TwoPlayerCover: 'mc2PlayerCover',
 } as const;
 
-export const PLAYER_CHARACTER_CARDS = ['mcPlayer1_Character', 'mcPlayer2_Character'] as const;
-export const CONTROL_PANELS = ['mcPlayer1', 'mcPlayer2'] as const;
+export const PLAYER_CHARACTER_CARD = 'mcPlayer1_Character';
+export const SECOND_CHARACTER_CARD = 'mcPlayer2_Character';
+export const SECOND_CHARACTER_LABEL_DEPTH = 37;
+export const CONTROL_PANEL = 'mcPlayer1';
 
 export const SELECT_WORLD_EXPANDED: ReadonlySet<string> = new Set([
   SelectWorldChild.SubScreenContainer,
@@ -86,7 +85,8 @@ export const SELECT_WORLD_EXPANDED: ReadonlySet<string> = new Set([
   SelectWorldChild.WindowOptions,
   SelectWorldChild.WindowControls,
   SelectWorldChild.PressKey,
-  ...PLAYER_CHARACTER_CARDS,
+  PLAYER_CHARACTER_CARD,
+  SECOND_CHARACTER_CARD,
 ]);
 
 export interface OptionButtonSpec {

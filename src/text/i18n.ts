@@ -12,3 +12,7 @@ export function t(key: TextKey, params: Params = {}): string {
     return value === undefined ? match : String(value);
   });
 }
+
+export function isTextKey(key: string): key is TextKey {
+  return Object.hasOwn(catalog, key);
+}

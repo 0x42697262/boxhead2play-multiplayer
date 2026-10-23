@@ -1,0 +1,12 @@
+export const RECONNECT_GRACE_MS = 45_000;
+export const MAX_LOBBIES = 32;
+export const MAX_CLIENTS = 256;
+export const MAX_MESSAGE_BYTES = 4096;
+export const MESSAGE_RATE_PER_SECOND = 120;
+export const MESSAGE_BURST = 240;
+export const MAX_CATCH_UP_TICKS = 5;
+export const DEFAULT_PLAYER_NAME = 'Player';
+export const LOBBY_NAME_SUFFIX = "'s game";
+export const MS_PER_SECOND = 1000;
+export const PING_INTERVAL_MS = 20_000;
+export const MATCH_ABANDONED = 'abandoned';

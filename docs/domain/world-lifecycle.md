@@ -48,15 +48,18 @@ frame (`CMain.mFrameCap = 1`), and renders `presentation` and `drawList(camera)`
 
 ## Camera (`camera.ts`)
 
-* Single and coop: players call `world.trackPlayer(this)` each tick while alive. The
-  target is the running average `(previous + p) / 2`. The camera follows the target at
-  0.16 cells per tick, multiplied by `(distance - 0.16) / 5 + 1` when further behind. With
-  no target it stays put.
-* Deathmatch: one 480 x 480 camera per player, each locked to its player.
+* One 640 x 480 camera per player, in player index order (`World.cameraFor(index)`).
+  Players call `world.trackPlayer(this)` each tick while alive.
+* Single and coop: the camera follows its player at 0.16 cells per tick, multiplied by
+  `(distance - 0.16) / 5 + 1` when further behind. With no target (a dead player) it stays
+  put. The original coop camera followed the running average of both players
+  (`(previous + p) / 2`); that is removed with the shared screen.
+* Deathmatch: each camera is locked to its player, also while the player is dead.
 * The view rectangle is centred on the projected target and clamped with `CMath.Range` to
   `[32, roomSize - (view + 32)]`. If the room is smaller than the view, `Range` returns the
   max bound.
-* `drawOrigin = rect + shake`. Score popups use the last camera's origin.
+* `drawOrigin = rect + shake`. Local score popups use the first camera's origin; online,
+  the server recomputes the popup position per player camera.
 
 ## Shake and brightness
 

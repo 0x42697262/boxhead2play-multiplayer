@@ -1,4 +1,5 @@
 import type { Angle } from '../math/Angle.ts';
+import { DIRECTION_COUNT, STRAIGHT_DIRECTION_STEP } from '../math/Direction.ts';
 import type { Position } from '../math/Position.ts';
 import type { Rng } from '../math/Rng.ts';
 import { CollideFlag, CollideMask } from '../map/CollideFlag.ts';
@@ -76,4 +77,23 @@ export function pickSpawnPointClose(points: readonly SpawnPoint[], rng: Rng, fro
 
 export function pickSpawnPointFar(points: readonly SpawnPoint[], rng: Rng, from: Position): SpawnPoint | undefined {
   return pickByDistance(points, rng, from, (d, best) => d >= best, 0);
+}
+
+export function openSpawnNear(origin: SpawnPoint, occupied: ReadonlySet<MapCell>, searchCells: number): SpawnPoint | undefined {
+  const seen = new Set<MapCell>([origin.cell]);
+  const queue: MapCell[] = [origin.cell];
+  for (let index = 0; index < queue.length && index < searchCells; index++) {
+    const cell = queue[index];
+    if (!cell) break;
+    if (!(cell.collide & CollideMask.NonMovablePlayer) && !occupied.has(cell)) {
+      return { position: cell.centre.clone(), cell, angle: origin.angle.clone(), nextCell: cell.validMoveNeighbour() };
+    }
+    for (let direction = 0; direction < DIRECTION_COUNT; direction += STRAIGHT_DIRECTION_STEP) {
+      const next = cell.adjacent(direction);
+      if (seen.has(next) || next.collide & CollideMask.StaticImpassable) continue;
+      seen.add(next);
+      queue.push(next);
+    }
+  }
+  return undefined;
 }

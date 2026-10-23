@@ -9,17 +9,20 @@ import {
   PlayerCharacter,
   type GameOptions,
 } from '../domain/world/SimulationSettings.ts';
+import type { LobbyOptions } from '../net/protocol.ts';
+import { PLAYER_NAME_MAX_LENGTH } from '../net/tuning.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 const LEGACY_VERSION = 0;
+const LOCAL_TWO_PLAYER_VERSION = 1;
 const LEGACY_ENABLED = 1;
 
 const KEY_CODE_MIN = 0;
 const KEY_CODE_MAX = 255;
-const VIEW_SIDES = 2;
+export { PLAYER_NAME_MAX_LENGTH };
 
 const keyCode = z.number().int().min(KEY_CODE_MIN).max(KEY_CODE_MAX);
 const PlayerKeysSchema = z.object({
@@ -49,9 +52,9 @@ export const UserSettingsSchema = z.object({
   damageActive: z.boolean(),
   gameAmount: enumValue(GameAmount),
   levelIndex: z.object({ single: levelIndex, coop: levelIndex, deathMatch: levelIndex }),
-  characters: z.tuple([enumValue(PlayerCharacter), enumValue(PlayerCharacter)]),
-  keys: z.object({ player1: PlayerKeysSchema, player2: PlayerKeysSchema }),
-  viewSideDeathMatch: z.number().int().min(0).max(VIEW_SIDES - 1),
+  character: enumValue(PlayerCharacter),
+  keys: PlayerKeysSchema,
+  playerName: z.string().max(PLAYER_NAME_MAX_LENGTH),
   playCount: z.number().int().nonnegative(),
 });
 
@@ -64,9 +67,8 @@ const ARROW_RIGHT = 39;
 const SLASH = 191;
 const PERIOD = 190;
 const COMMA = 188;
-const ascii = (character: string): number => character.charCodeAt(0);
 
-export const DEFAULT_PLAYER1_KEYS: PlayerKeyCodes = {
+export const DEFAULT_KEYS: PlayerKeyCodes = {
   up: ARROW_UP,
   down: ARROW_DOWN,
   left: ARROW_LEFT,
@@ -74,16 +76,6 @@ export const DEFAULT_PLAYER1_KEYS: PlayerKeyCodes = {
   fire: SLASH,
   nextWeapon: PERIOD,
   prevWeapon: COMMA,
-};
-
-export const DEFAULT_PLAYER2_KEYS: PlayerKeyCodes = {
-  up: ascii('W'),
-  down: ascii('S'),
-  left: ascii('A'),
-  right: ascii('D'),
-  fire: ascii(' '),
-  nextWeapon: ascii('E'),
-  prevWeapon: ascii('Q'),
 };
 
 const DEFAULT_SINGLE_LEVEL = 8;
@@ -100,9 +92,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   damageActive: true,
   gameAmount: GameAmount.Kills10,
   levelIndex: { single: DEFAULT_SINGLE_LEVEL, coop: 0, deathMatch: 0 },
-  characters: [PlayerCharacter.Bambo, PlayerCharacter.Swat],
-  keys: { player1: DEFAULT_PLAYER1_KEYS, player2: DEFAULT_PLAYER2_KEYS },
-  viewSideDeathMatch: 1,
+  character: PlayerCharacter.Bambo,
+  keys: DEFAULT_KEYS,
+  playerName: '',
   playCount: 0,
 };
 
@@ -130,7 +122,7 @@ function legacyKeys(raw: Raw, prefix: string, fallback: PlayerKeyCodes): PlayerK
 export function migrateLegacy(raw: Raw): Raw {
   const d = DEFAULT_SETTINGS;
   return {
-    version: SETTINGS_VERSION,
+    version: LOCAL_TWO_PLAYER_VERSION,
     soundActive: pick(raw, 'mSoundActive', d.soundActive, asBoolean),
     musicActive: pick(raw, 'mMusicActive', d.musicActive, asBoolean),
     detail: pick(raw, 'mDetail', d.detail, asBoolean),
@@ -145,15 +137,34 @@ export function migrateLegacy(raw: Raw): Raw {
       coop: pick(raw, 'mLevelIndex_Coop', d.levelIndex.coop, asNumber),
       deathMatch: pick(raw, 'mLevelIndex_DeathMatch', d.levelIndex.deathMatch, asNumber),
     },
-    characters: [pick(raw, 'mPlayer1_CharacterIndex', d.characters[0], asNumber), pick(raw, 'mPlayer2_CharacterIndex', d.characters[1], asNumber)],
-    keys: { player1: legacyKeys(raw, 'mPlayer1', d.keys.player1), player2: legacyKeys(raw, 'mPlayer2', d.keys.player2) },
-    viewSideDeathMatch: pick(raw, 'mViewSide_DeathMatch', d.viewSideDeathMatch, asNumber),
+    characters: [pick(raw, 'mPlayer1_CharacterIndex', d.character, asNumber)],
+    keys: { player1: legacyKeys(raw, 'mPlayer1', d.keys) },
     playCount: pick(raw, 'mPlayCount', d.playCount, asNumber),
+  };
+}
+
+function asRaw(value: unknown): Raw {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Raw) : {};
+}
+
+const LOCAL_TWO_PLAYER_ONLY_FIELDS: ReadonlySet<string> = new Set(['characters', 'keys', 'viewSideDeathMatch']);
+
+export function migrateLocalTwoPlayer(raw: Raw): Raw {
+  const kept = Object.fromEntries(Object.entries(raw).filter(([field]) => !LOCAL_TWO_PLAYER_ONLY_FIELDS.has(field)));
+  const characters = raw.characters;
+  const first: unknown = Array.isArray(characters) ? characters[0] : undefined;
+  return {
+    ...kept,
+    version: SETTINGS_VERSION,
+    character: first ?? DEFAULT_SETTINGS.character,
+    keys: asRaw(raw.keys).player1 ?? DEFAULT_SETTINGS.keys,
+    playerName: DEFAULT_SETTINGS.playerName,
   };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [LEGACY_VERSION]: migrateLegacy,
+  [LOCAL_TWO_PLAYER_VERSION]: migrateLocalTwoPlayer,
 };
 
 function versionOf(raw: Raw): number {
@@ -212,7 +223,19 @@ export function toGameOptions(settings: UserSettings, gameMode: GameMode): GameO
     collisionsActive: settings.collisionsActive,
     damageActive: settings.damageActive,
     gameAmount: settings.gameAmount,
-    playerCharacters: settings.characters,
+    playerCharacters: [settings.character],
+    detail: settings.detail,
+  };
+}
+
+export function toLobbyOptions(settings: UserSettings): LobbyOptions {
+  return {
+    difficulty: settings.difficulty,
+    gameSpeed: settings.gameSpeed,
+    devilsActive: settings.devilsActive,
+    collisionsActive: settings.collisionsActive,
+    damageActive: settings.damageActive,
+    gameAmount: settings.gameAmount,
     detail: settings.detail,
   };
 }

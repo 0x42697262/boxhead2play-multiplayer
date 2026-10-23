@@ -14,6 +14,6 @@ export function createThingFactory(): ThingFactory {
     droppedPickup: (world, position, lifetimeTicks) => Pickup.dropped(world, position, lifetimeTicks),
     zombie: (world, position) => new Zombie(world, position),
     devil: (world, position) => new Devil(world, position),
-    player: (world, position, playerIndex, angle) => new Player(world, position, playerIndex, angle),
+    player: (world, position, playerIndex, angle, character) => new Player(world, position, playerIndex, angle, character),
   };
 }

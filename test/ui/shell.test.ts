@@ -16,8 +16,8 @@ describe('stage scaling', () => {
 });
 
 describe('XSI prewarm collections', () => {
-  it('queue both player styles, the devil and the zombie like ProcessBGTasks', () => {
-    const collections = prewarmCollections(DEFAULT_GAME_OPTIONS);
+  it('queue every distinct player style, the devil and the zombie like ProcessBGTasks', () => {
+    const collections = prewarmCollections({ ...DEFAULT_GAME_OPTIONS, playerCharacters: [3, 0, 3] });
     expect(collections.map((collection) => collection.style)).toEqual([CharacterStyle.Bambo, CharacterStyle.Swat, CharacterStyle.Devil, CharacterStyle.Zombie]);
     expect(collections[2]?.styleScale).toBe(0.42);
     expect(collections[0]?.setIds).toContain('Player_Handgun_Walk');

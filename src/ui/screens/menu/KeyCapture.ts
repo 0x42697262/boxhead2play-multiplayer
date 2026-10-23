@@ -1,9 +1,8 @@
 import { ESCAPE_KEY_CODE, validKey } from '../../../adapters/input/validKeys.ts';
-import type { KeyField, PlayerSlot } from '../../../services/menuSettings.ts';
+import type { KeyField } from '../../../services/menuSettings.ts';
 import { INVALID_KEY_PHASE_MS } from './tuning.ts';
 
 export interface KeyTarget {
-  readonly slot: PlayerSlot;
   readonly field: KeyField;
 }
 
