@@ -119,6 +119,7 @@ export interface TextRecord {
   readonly xOffset?: number;
   readonly yOffset?: number;
   readonly glyphIndices: readonly number[];
+  readonly glyphAdvances: readonly number[];
 }
 
 export interface TextDefinition {

@@ -288,8 +288,10 @@ function readTextRecord(element: XmlElement): TextRecord {
   const height = flag(element, 'styleFlagsHasFont') ? numberAttribute(element, 'textHeight') : undefined;
   const xOffset = flag(element, 'styleFlagsHasXOffset') ? numberAttribute(element, 'xOffset') : undefined;
   const yOffset = flag(element, 'styleFlagsHasYOffset') ? numberAttribute(element, 'yOffset') : undefined;
+  const glyphs = items(child(element, 'glyphEntries'));
   return {
-    glyphIndices: items(child(element, 'glyphEntries')).map((glyph) => numberAttribute(glyph, 'glyphIndex')),
+    glyphIndices: glyphs.map((glyph) => numberAttribute(glyph, 'glyphIndex')),
+    glyphAdvances: glyphs.map((glyph) => numberAttribute(glyph, 'glyphAdvance')),
     ...(fontId === undefined ? {} : { fontId }),
     ...(height === undefined ? {} : { height }),
     ...(xOffset === undefined ? {} : { xOffset }),

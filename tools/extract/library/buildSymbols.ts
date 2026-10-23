@@ -232,7 +232,7 @@ export function buildSymbols(inputs: LibraryInputs): LibraryOutput {
         const svg = requireSvg(inputs.textSvgs, definition.id, 'text');
         files.push({ path, content: normalizeLibrarySvg(svg, bounds, `text ${key}`) });
         const decoded = decodeStaticText(definition, fontById);
-        const entry: StaticText = { bounds, svg: path, text: decoded.text, fontIds: decoded.fontIds };
+        const entry: StaticText = { bounds, svg: path, text: decoded.text, fontIds: decoded.fontIds, glyphs: decoded.glyphs };
         catalog.texts[key] = entry;
         break;
       }

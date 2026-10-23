@@ -1,8 +1,16 @@
+import { roundToTwips, twipsToPixels } from '../swf/geometry.ts';
 import type { FontDefinition, TextDefinition } from '../swf/types.ts';
+
+export interface DecodedGlyph {
+  readonly char: string;
+  readonly x: number;
+  readonly advance: number;
+}
 
 export interface DecodedText {
   readonly text: string;
   readonly fontIds: number[];
+  readonly glyphs: DecodedGlyph[];
 }
 
 const LINE_BREAK = '\n';
@@ -13,8 +21,11 @@ export function decodeStaticText(
   fontById: (id: number) => FontDefinition | undefined,
 ): DecodedText {
   const fontIds: number[] = [];
+  const glyphs: DecodedGlyph[] = [];
+  const { a: scaleX, tx } = definition.matrix;
   let fontId: number | undefined;
   let lineY: number | undefined;
+  let penX = 0;
   let text = '';
   for (const record of definition.records) {
     if (record.fontId !== undefined) {
@@ -25,11 +36,16 @@ export function decodeStaticText(
       if (lineY !== undefined && record.yOffset !== lineY) text += LINE_BREAK;
       lineY = record.yOffset;
     }
+    if (record.xOffset !== undefined) penX = record.xOffset;
     const codeTable = fontId === undefined ? [] : (fontById(fontId)?.codeTable ?? []);
-    for (const glyph of record.glyphIndices) {
+    record.glyphIndices.forEach((glyph, index) => {
       const code = codeTable[glyph];
-      text += code === undefined ? UNKNOWN_GLYPH : String.fromCodePoint(code);
-    }
+      const char = code === undefined ? UNKNOWN_GLYPH : String.fromCodePoint(code);
+      const advance = record.glyphAdvances[index] ?? 0;
+      text += char;
+      glyphs.push({ char, x: twipsToPixels(roundToTwips(scaleX * penX + tx)), advance: twipsToPixels(roundToTwips(scaleX * advance)) });
+      penX += advance;
+    });
   }
-  return { text, fontIds };
+  return { text, fontIds, glyphs };
 }

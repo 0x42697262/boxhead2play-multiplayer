@@ -101,11 +101,19 @@ export const MorphShapeSchema = z.object({
 });
 export type MorphShape = z.infer<typeof MorphShapeSchema>;
 
+export const GlyphPlacementSchema = z.object({
+  char: z.string(),
+  x: z.number(),
+  advance: z.number(),
+});
+export type GlyphPlacement = z.infer<typeof GlyphPlacementSchema>;
+
 export const StaticTextSchema = z.object({
   bounds: PixelRectSchema,
   svg: relativePath,
   text: z.string(),
   fontIds: z.array(characterId),
+  glyphs: z.array(GlyphPlacementSchema).optional(),
 });
 export type StaticText = z.infer<typeof StaticTextSchema>;
 

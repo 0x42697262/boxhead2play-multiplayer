@@ -114,8 +114,13 @@ every emitted file except the manifest, sorted by path.
   without a ratio uses ratio 0. All 32 morphs in this SWF have one solid fill and
   invisible strokes. The pipeline asserts this and interpolates the path linearly and the
   color per channel with rounding.
-* `texts[id]`: `{ bounds, svg, text, fontIds }`. `text` is the decoded string (glyph index
-  through the font code table, with `\n` when the record's y offset changes).
+* `texts[id]`: `{ bounds, svg, text, fontIds, glyphs? }`. `text` is the decoded string (glyph index
+  through the font code table, with `\n` when the record's y offset changes). `glyphs` lists
+  one `{ char, x, advance }` per glyph in text-local pixels: `x` is the pen position (record
+  `xOffset` plus the advances before it) through the text matrix's x scale and translation,
+  which is the glyph `<use>` translation in the text SVG. The menu uses it to cut one word out
+  of a label (`docs/runtime/screens.md`). The field is optional, so catalogs written before
+  it existed still validate.
 * `editTexts[id]`: `{ bounds, variableName, fontId?, fontSize? (px), color?, align? ('left'|'right'|'center'|'justify'), leftMargin?, rightMargin?, indent?, leading? (px), maxLength?, initialText?, wordWrap, multiline, password, readOnly, autoSize, noSelect, border, wasStatic, html, useOutlines }`.
   `initialText` is raw: when `html` is true it is Flash HTML. The instance name of a
   field comes from the placement (`name` on the display item).
