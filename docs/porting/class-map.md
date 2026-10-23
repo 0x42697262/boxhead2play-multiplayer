@@ -65,3 +65,21 @@
 | `CDrawPrimitive_MovieClip_*` caches held by things | `src/domain/things/clipVisual.ts` (`ClipSymbol`, `clipAnimator`, visual helpers) |
 | `new CThing_*` calls in `CWorld` | `src/domain/things/factory.ts` (`createThingFactory`) |
 | `CThing_Creature.State_GotoPosition`, `State_Wander`, devil `State_TrackTarget`, zombie `mBrain_Count` | Not ported: no caller and no effect |
+| `CMain.Process`, `ProcessFrames`, `SetState` | `src/entry/FrameClock.ts`, `src/entry/GameLoop.ts`, `src/services/ScreenFlow.ts` |
+| `CMain.State_RunWorld` (world tick, draw, completion) | `src/services/GameSession.ts` |
+| `CMain.ProcessBGTasks`, `CDrawPrimitive_XSI_DI.RenderStack_Process` | `XsiFrameCache.prewarm`, `src/adapters/render/xsi/collections.ts` |
+| `CDrawPrimitive.RenderMovieClipAsBitmapObject`, `CDrawPrimitive_MovieClip.RenderMovieClipAsBitmapObject` | `src/adapters/render/clips/bufferLayout.ts` |
+| `CDrawPrimitive_MovieClip_Static/Animation/Directional/OmniDirectional` (buffering, `Render`) | `src/adapters/render/clips/clipPlans.ts`, `ClipBuffers.ts`, `src/adapters/render/world/VisualPainter.ts` |
+| `CDrawPrimitive_Line`, `CDrawPrimitive_Square` | `VisualPainter` overlay drawing |
+| `CDrawPrimitive_XSI_StyleSheet` (`SS_*`) | `src/adapters/render/xsi/styleSheets.ts` |
+| `CDrawPrimitive_XSI_DI.Render`, `GetStyleSheet`, `LoadMaterial` | `src/adapters/render/xsi/framePlanes.ts`, `XsiRasterizer.ts` (`XsiTextures`) |
+| `CDrawPrimitive_XSI_Animation.RenderToBitmap`, `_Render` | `XsiRasterizer.rasterize`, `VisualPainter` |
+| `CWorld.InitDrawPlanes`, `CWorld_Init_Piece.Draw`, `CDrawPrimitive.InvertAlpha` | `src/adapters/render/world/RoomPlanes.ts` |
+| `CWorld.Draw`, `Draw_PlayerPlane`, `RenderMCToDraw`, `Process_Brightness` (filter) | `src/adapters/render/world/WorldRenderer.ts` |
+| `CMap.Draw` (calls `Thing.Draw`) | `VisualPainter.paint` over `World.drawList` |
+| `CMap_Decal` (stamping) | `RoomPlanes.stampDecal` |
+| `World.CHud` (drawing, `Pause`, `UpdatePlayer`, `AddScore`, `AddMessage`) | `src/adapters/render/hud/HudRenderer.ts`, `hudAnimation.ts` |
+| `CSound` | `src/adapters/audio/SoundMixer.ts`, `WebAudioOutput.ts` |
+| `CInput` | `src/adapters/input/KeyboardState.ts`, `TickInputSampler.ts`, `keyCodes.ts` |
+| `CSaveData` | `src/services/SettingsService.ts`, `src/adapters/storage/KeyValueStore.ts` |
+| `Screen.CScreen_*` | Not ported yet. `src/ui/screens/PickerScreen.ts` is a temporary stand-in behind `ScreenFlow` |

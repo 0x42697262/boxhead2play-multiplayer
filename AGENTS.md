@@ -101,3 +101,17 @@ Add one line per behavior change: what to do, and the result you expect.
   red `hud.outOfAmmo.<id>` message and the pistol.
 * Coop death -> respawn after 4 s + 1 s near the other player with 200 life, empty
   weapons and 5 s of blinking. Single death -> `worldCompleted` with `playerDead`.
+* `npm run dev`, pick BOXY single player, Start -> the room, the score total `000000000000`
+  with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
+* Let zombies reach the player -> blood decals appear on the floor but never on walls,
+  and the life bar above the player shrinks.
+* Press P -> "PAUSED!" with the upgrade list (new weapons in green, inactive ones faded);
+  click QUIT? -> back to the picker with "You quit." and the score.
+* Pick deathmatch -> two 480 px views scaled side by side with 80 px bars, "Player 2 00"
+  on the left (view side 1); clicking the arrows at the bottom swaps the views.
+* Switch to another tab while playing -> the game is paused on return.
+* `npx vitest run test/adapters test/services test/entry test/ui` -> asset mapping,
+  render math, XSI plane lists, HUD animation, mixer, input edges, settings migration,
+  session routing and loop accounting pass (asset-based suites skip without
+  `public/assets`).
+

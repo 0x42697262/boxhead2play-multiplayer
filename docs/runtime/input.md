@@ -1,0 +1,40 @@
+# Input
+
+Source: `CInput.as`, `CSaveData.as` (default bindings), `CThing_Creature_Player.as`
+(control lookup). Port: `src/adapters/input/`, listeners in `src/entry/listeners.ts`.
+
+## Bindings
+
+Settings store the original Flash key codes. `keyCodes.ts` maps them to
+`KeyboardEvent.code` (layout independent, so `/` is the physical slash key).
+
+| Player | Up | Down | Left | Right | Fire | Next | Previous |
+|---|---|---|---|---|---|---|---|
+| 1 | ArrowUp (38) | ArrowDown (40) | ArrowLeft (37) | ArrowRight (39) | Slash (191) | Period (190) | Comma (188) |
+| 2 | KeyW | KeyS | KeyA | KeyD | Space | KeyE | KeyQ |
+
+`KeyP` pauses. `Digit0`..`Digit9` are bound to player 1's select controls (the domain
+only reads them when there is one player). In single player, Space is a second fire key
+for player 1 (`AddAdditionKeyCode` when `mTotalPlayerCount == 1`).
+
+## Edge semantics
+
+`CInput` updated every key on key events and at the end of each frame: `mPressed` latched
+on the down transition and stayed set until `IsPressed()` consumed it; `IsReleased()`
+consumed the release. The port:
+
+* `KeyboardState` records the held set plus press and release edges from browser events
+  (auto-repeat is ignored, a window blur releases everything).
+* `TickInputSampler.sample` runs once per logic tick and builds `TickInput`: per control
+  `down` (any bound key held), `pressed` and `released` (edges since the last tick) and
+  `heldTicks` (consecutive ticks held). It then clears the edges. A tap between two ticks
+  arrives as `pressed` and `released` with `down` false. The domain's `LatchedControl`
+  keeps an edge until game code consumes it, which is the `IsPressed` contract.
+* `pausePressed` is the pause key's press edge; the world reads it every tick, also while
+  paused.
+
+The entry listener calls `preventDefault` for bound keys so arrows, Space and `/` do not
+scroll or open quick find, except while a form control (the picker) has focus.
+
+Mouse: clicks on the canvas are mapped to stage coordinates and hit-tested against the
+pause screen's Quit button and the deathmatch switch-sides button.

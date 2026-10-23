@@ -61,3 +61,11 @@ versioned JSON catalogs plus SVG/MP3 files under `public/assets/`. See
 Only user settings persist (the original `SharedObject` "morerooms_default"). They are stored in
 `localStorage` as a versioned JSON blob. Readers migrate older versions on read. See
 `docs/persistence/settings.md`.
+
+## Runtime
+
+The browser side is described in `docs/runtime/`: `rendering.md` (display-list replay,
+buffered clips, XSI characters, world planes, HUD), `audio.md`, `input.md` and `loop.md`.
+The caching strategy is [ADR 0004](adr/0004-canvas-rendering-and-caching.md).
+`src/main.ts` loads the catalogs, images, fonts and sounds with a progress display, builds
+the adapters and services, and starts `ScreenFlow` with the temporary picker screen.
