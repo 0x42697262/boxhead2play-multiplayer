@@ -81,9 +81,11 @@ Fractions on the wire are rounded to three digits. Text travels as text keys fro
 
 ## Input
 
-The client samples its keyboard every tick with the normal `TickInputSampler`, turns the
-player's `PlayerInput` into three bit masks (held, pressed since last tick, released
-since last tick) and sends them only when the held set changes or an edge happened.
+The client samples its keyboard on every animation frame (`OnlineGameScreen.present`,
+usually 60/s) with the normal `TickInputSampler`, turns the player's `PlayerInput` into
+three bit masks (held, pressed since the last sample, released since the last sample)
+and sends them only when the held set changes or an edge happened. Sampling per frame
+instead of per 40 ms tick cuts up to 32 ms of input delay.
 `RemoteControls` on the server accumulates edges between ticks and rebuilds
 `PlayerInput` (with `heldTicks`) once per tick, so a tap between two ticks still arrives
 as press plus release, like the local sampler. A disconnect releases all held controls.
@@ -96,13 +98,21 @@ multiplier, frags, the player's messages, every player's label data) and the eve
 client needs: sounds, decals and score popups (screen position recomputed for that
 player's camera). Shake is part of `camera.drawOrigin`.
 
-`OnlineGameSession` plays frames at the server's tick rate:
+`OnlineGameSession` plays frames at the server's tick rate through an adaptive
+`FrameBuffer` (constants in `src/services/online/tuning.ts`). Every queued frame is
+40 ms of delay between a key press and seeing it, so the buffer stays as short as the
+connection allows:
 
-* It starts after `JITTER_BUFFER_FRAMES` (2) frames are queued and plays one per tick.
-* When more than `MAX_BUFFERED_FRAMES` (6) are queued, it drops the oldest but still
-  stamps their decals, so blood and scorch marks are never lost. Sounds and popups of
-  dropped frames are skipped.
-* When the queue runs dry it waits for the buffer again.
+* The target starts at 1 frame: a frame plays on the first client tick after it arrives.
+* An underrun (no frame when one is due) waits for the target again and raises it by 1,
+  up to 3. After 750 ticks (30 s) without an underrun the target drops by 1.
+* Surplus frames are caught up: with 2 or more frames over the target, or 1 frame over
+  for 13 ticks in a row, the session applies one extra frame per tick without drawing it
+  (its sounds, popups and decals still play). Without this, any stall (a background tab,
+  a slow first render, a GC pause) would keep the extra frames, and their delay, for the
+  rest of the match.
+* Beyond `MAX_BUFFERED_FRAMES` (6) the oldest frames are dropped. Their decals are still
+  stamped, so blood and scorch marks are never lost; their sounds and popups are skipped.
 * Ambience runs locally from the number of zombies in the frame.
 * `OnlineClient` keeps the match's last `upgrades` message and hands it to the session
   when it attaches. A background tab creates the game screen only on its next animation

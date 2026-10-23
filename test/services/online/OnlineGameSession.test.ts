@@ -9,7 +9,7 @@ import { IDLE_MASKS, type ControlMasks } from '../../../src/net/controlMask.ts';
 import { silentLogger } from '../../../src/observability/logger.ts';
 import type { GameSink } from '../../../src/services/online/OnlineClient.ts';
 import { OnlineEnd, OnlineGameSession, visibleZombies, type OnlineSessionResult, type SampledControls } from '../../../src/services/online/OnlineGameSession.ts';
-import { JITTER_BUFFER_FRAMES, MAX_BUFFERED_FRAMES } from '../../../src/services/online/tuning.ts';
+import { MAX_BUFFERED_FRAMES } from '../../../src/services/online/tuning.ts';
 import { frame, START } from './support.ts';
 
 const DECAL = { type: DomainEventType.DecalRequested, decal: DecalKind.BloodSplat, symbol: 's', xPx: 1, yPx: 2, frame: 0, rotationIndex: 0, rotationCount: 1, scaleX: 1, scaleY: 1 } as const;
@@ -59,27 +59,28 @@ function harness() {
 }
 
 describe('OnlineGameSession playback', () => {
-  it('waits for the jitter buffer, then plays one frame per tick as the local player', () => {
+  it('plays a frame on the first tick after it arrives, as the local player', () => {
     const { session, rendered } = harness();
-    session.frame(frame(1));
     session.tick();
     expect(rendered).toHaveLength(0);
-    for (let tick = 2; tick <= JITTER_BUFFER_FRAMES; tick++) session.frame(frame(tick));
+    session.frame(frame(1));
     session.tick();
+    session.frame(frame(2));
     session.tick();
     expect(rendered.map((world) => world.tick)).toEqual([1, 2]);
     expect(rendered[0]).toMatchObject({ localPlayerIndex: 1, gameMode: START.mode, projectionFactor: -0.5, ticksPerSecond: 25 });
     expect(rendered[0]?.hud.playerNames).toEqual({ 1: 'Bob' });
   });
 
-  it('drops stale frames beyond the buffer limit but still stamps their decals', () => {
+  it('drops frames beyond the buffer limit with their decals only, and catches up one more with its sounds', () => {
     const { session, rendered, decals, sounds } = harness();
     const total = MAX_BUFFERED_FRAMES + 3;
     for (let tick = 1; tick <= total; tick++) session.frame(frame(tick, { events: [DECAL, SOUND] }));
     session.tick();
-    expect(rendered.map((world) => world.tick)).toEqual([total - MAX_BUFFERED_FRAMES + 1]);
-    expect(decals).toHaveLength(total - MAX_BUFFERED_FRAMES + 1);
-    expect(sounds).toHaveLength(1);
+    const live = total - MAX_BUFFERED_FRAMES + 2;
+    expect(rendered.map((world) => world.tick)).toEqual([live]);
+    expect(decals).toHaveLength(live);
+    expect(sounds).toHaveLength(2);
   });
 
   it('toggles the upgrade list with the key while input and playback keep running', () => {
@@ -87,20 +88,19 @@ describe('OnlineGameSession playback', () => {
     const upgrades = [{ index: 1, name: 'upgrade.uzi' as never, active: true, newWeapon: true }];
     session.upgrades(upgrades);
     controls.push({ masks: { down: 4, pressed: 4, released: 0 }, upgradeListPressed: true }, { masks: { down: 4, pressed: 0, released: 0 }, upgradeListPressed: false });
-    for (let tick = 1; tick <= 4; tick++) session.frame(frame(tick));
-    session.tick();
-    session.tick();
+    session.pollInput();
+    session.pollInput();
     expect(session.upgradeListShown).toBe(true);
     expect(lists).toEqual([upgrades]);
     expect(sent).toEqual([{ down: 4, pressed: 4, released: 0 }]);
-    expect(rendered).toHaveLength(2);
+    session.frame(frame(1));
     session.tick();
-    expect(rendered).toHaveLength(3);
+    expect(rendered).toHaveLength(1);
     const updated = [{ ...upgrades[0], active: false }] as typeof upgrades;
     session.upgrades(updated);
     expect(lists.at(-1)).toEqual(updated);
     controls.push({ masks: { down: 4, pressed: 0, released: 0 }, upgradeListPressed: true });
-    session.tick();
+    session.pollInput();
     expect(session.upgradeListShown).toBe(false);
     expect(lists.at(-1)).toBeUndefined();
   });
@@ -108,7 +108,7 @@ describe('OnlineGameSession playback', () => {
   it('releases held controls when the page is hidden', () => {
     const { session, sent, controls } = harness();
     controls.push({ masks: { down: 4, pressed: 4, released: 0 }, upgradeListPressed: false });
-    session.tick();
+    session.pollInput();
     session.releaseControls();
     expect(sent).toEqual([{ down: 4, pressed: 4, released: 0 }, { down: 0, pressed: 0, released: 4 }]);
   });
@@ -121,7 +121,7 @@ describe('OnlineGameSession playback', () => {
       { masks: { down: 0, pressed: 0, released: 1 }, upgradeListPressed: false },
       { masks: IDLE_MASKS, upgradeListPressed: false },
     );
-    for (let tick = 0; tick < 4; tick++) session.tick();
+    for (let poll = 0; poll < 4; poll++) session.pollInput();
     expect(sent).toEqual([{ down: 1, pressed: 1, released: 0 }, { down: 0, pressed: 0, released: 1 }]);
   });
 

@@ -82,6 +82,7 @@ export class OnlineGameScreen implements Screen {
   }
 
   present(): void {
+    this.session.pollInput();
     const { stage } = this.deps.kit;
     this.renderer.composite(stage.ctx);
     const ctx = this.deps.shell.ctx;

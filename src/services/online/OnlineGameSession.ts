@@ -10,7 +10,7 @@ import type { Logger } from '../../observability/logger.ts';
 import { LogEvent } from '../../text/logEvents.ts';
 import type { SessionAudio, SessionScene } from '../GameSession.ts';
 import type { GameSink } from './OnlineClient.ts';
-import { JITTER_BUFFER_FRAMES, MAX_BUFFERED_FRAMES } from './tuning.ts';
+import { FrameBuffer, FrameUse } from './FrameBuffer.ts';
 
 export interface SampledControls {
   readonly masks: ControlMasks;
@@ -62,9 +62,8 @@ export function releasedMasks(previous: ControlMasks): ControlMasks {
 
 export class OnlineGameSession implements GameSink {
   readonly matchId: string;
-  private readonly queue: NetFrame[] = [];
+  private readonly buffer = new FrameBuffer<NetFrame>();
   private readonly detach: () => void;
-  private primed = false;
   private upgradesShown = false;
   private finished = false;
   private upgradeList: readonly MultiplierListEntry[] = [];
@@ -82,7 +81,7 @@ export class OnlineGameSession implements GameSink {
   }
 
   get bufferedFrames(): number {
-    return this.queue.length;
+    return this.buffer.length;
   }
 
   get upgradeListShown(): boolean {
@@ -94,7 +93,7 @@ export class OnlineGameSession implements GameSink {
   }
 
   frame(frame: NetFrame): void {
-    if (!this.finished) this.queue.push(frame);
+    if (!this.finished) this.buffer.push(frame);
   }
 
   upgrades(upgrades: readonly MultiplierListEntry[]): void {
@@ -112,8 +111,16 @@ export class OnlineGameSession implements GameSink {
 
   tick(): void {
     if (this.finished) return;
-    this.sendInput();
-    this.playback();
+    for (const { frame, use } of this.buffer.next()) this.apply(frame, use);
+  }
+
+  pollInput(): void {
+    if (this.finished) return;
+    const sampled = this.deps.input.sample();
+    if (sampled.upgradeListPressed) this.toggleUpgradeList();
+    const { masks } = sampled;
+    if (sameMasks(masks, this.sent) && masks.pressed === 0 && masks.released === 0) return;
+    if (this.deps.link.input(masks)) this.sent = { down: masks.down, pressed: 0, released: 0 };
   }
 
   requestQuit(): void {
@@ -131,51 +138,27 @@ export class OnlineGameSession implements GameSink {
     this.detach();
   }
 
-  private sendInput(): void {
-    const sampled = this.deps.input.sample();
-    if (sampled.upgradeListPressed) this.toggleUpgradeList();
-    const { masks } = sampled;
-    if (sameMasks(masks, this.sent) && masks.pressed === 0 && masks.released === 0) return;
-    if (this.deps.link.input(masks)) this.sent = { down: masks.down, pressed: 0, released: 0 };
-  }
-
   private toggleUpgradeList(): void {
     this.upgradesShown = !this.upgradesShown;
     this.deps.scene.showUpgrades(this.upgradesShown ? this.upgradeList : undefined);
   }
 
-  private playback(): void {
-    if (!this.primed) {
-      if (this.queue.length < JITTER_BUFFER_FRAMES) return;
-      this.primed = true;
-    }
-    while (this.queue.length > MAX_BUFFERED_FRAMES) {
-      const stale = this.queue.shift();
-      if (stale) this.apply(stale, false);
-    }
-    const next = this.queue.shift();
-    if (!next) {
-      this.primed = false;
-      return;
-    }
-    this.apply(next, true);
-  }
-
-  private apply(frame: NetFrame, live: boolean): void {
+  private apply(frame: NetFrame, use: FrameUse): void {
+    const audible = use !== FrameUse.Dropped;
     for (const event of frame.events) {
       switch (event.type) {
         case DomainEventType.DecalRequested:
           this.deps.scene.stampDecal(event);
           break;
         case DomainEventType.SoundRequested:
-          if (live) this.deps.audio.play(event.sound);
+          if (audible) this.deps.audio.play(event.sound);
           break;
         case DomainEventType.ScoreAwarded:
-          if (live) this.deps.scene.awardScore(event);
+          if (audible) this.deps.scene.awardScore(event);
           break;
       }
     }
-    if (!live) return;
+    if (use !== FrameUse.Live) return;
     this.stepAmbience(frame);
     this.deps.scene.render(this.worldFrame(frame));
   }
@@ -206,7 +189,7 @@ export class OnlineGameSession implements GameSink {
   private finish(result: OnlineSessionResult): void {
     if (this.finished) return;
     this.finished = true;
-    this.queue.length = 0;
+    this.buffer.clear();
     this.deps.audio.stopAmbience();
     this.deps.logger.info(LogEvent.WorldCompleted, { state: result.state, end: result.end, match: this.matchId, online: true });
     this.deps.onFinished(result);

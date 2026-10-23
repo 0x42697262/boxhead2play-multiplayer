@@ -160,6 +160,10 @@ Add one line per behavior change: what to do, and the result you expect.
   and characters), START GAME -> both tabs play the same world with one shared score; arrows
   move only that tab's player; P in tab 2 shows the upgrade list there while both players keep
   playing; QUIT? -> tab 2 is back in the lobby with "You left the match." and JOIN GAME.
+* Two tabs in a coop game, block one tab for a second (devtools console:
+  `const t = performance.now() + 1000; while (performance.now() < t);`)
+  -> movement in that tab feels as direct again within half a second (the frame buffer
+  catches up to 1 frame instead of keeping 6).
 * `npm run build`, then `BOXHEAD_ASSET_DIR=public/assets PORT=8099 npm start` -> one port serves
   the page (`/` 200, `/../package.json` 404) and `ws://localhost:8099/ws`; a match streams 25
   frames per second of about 4 KB.
