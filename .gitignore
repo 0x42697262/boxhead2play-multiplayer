@@ -9,3 +9,4 @@ scripts/local/
 !.env.example
 !boxhead2play.swf
 *.log
+.cache/

@@ -51,7 +51,7 @@ The general rule is: entry -> service -> pure domain -> adapters. In the game, t
 
 ## Assets
 
-`npm run extract` runs JPEXS FFDec (path from `FFDEC_JAR`) on the SWF and writes
+`npm run extract` runs JPEXS FFDec (pinned, downloaded automatically, or `FFDEC_JAR`) on the SWF and writes
 versioned JSON catalogs plus SVG/MP3 files under `public/assets/`. See
 `docs/assets/pipeline.md`. Runtime loaders validate every catalog with Zod at the boundary
 (`src/adapters/assets/`).

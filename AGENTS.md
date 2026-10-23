@@ -140,3 +140,6 @@ Add one line per behavior change: what to do, and the result you expect.
 * Run `npm run extract` while `npm run dev` keeps running, then reload -> the loading screen
   says the server returned a web page instead of an asset and to restart the dev server; it
   does not freeze at a percentage. After restarting, the main menu appears.
+* Fresh clone, `npm install`, `npm run dev` (Java 8+ on PATH) -> FFDec is downloaded once into
+  `.cache/`, assets are extracted, the main menu loads. A second `npm run dev` prints "Game
+  assets are up to date." and starts immediately.

@@ -12,7 +12,6 @@ export const FFDEC_EXPORT_TYPES = 'shape,morphshape,text,sound,font,script';
 export const FFDEC_EXPORT_FORMATS = 'shape:svg,morphshape:svg,text:svg,font:woff,sound:mp3_wav,script:as';
 
 export const DEFAULT_SWF_PATH = 'boxhead2play.swf';
-export const DEFAULT_FFDEC_JAR = 'scripts/local/ffdec/ffdec.jar';
 export const DEFAULT_ASSET_OUT_DIR = 'public/assets';
 export const WORK_DIR_PREFIX = 'boxhead2play-extract-';
 

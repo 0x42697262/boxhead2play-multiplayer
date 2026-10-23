@@ -4,6 +4,8 @@ import { RoomSchema, SymbolsCatalogSchema } from '../../../src/adapters/assets/s
 import { createFfdec, exportSpritePngs } from '../adapters/ffdec.ts';
 import { makeWorkDir, readText, walkFiles, writeText } from '../adapters/files.ts';
 import { loadExtractConfig } from '../config.ts';
+import { resolveFfdecJar } from '../../setup/environment.ts';
+import { SetupMessage } from '../../setup/messages.ts';
 import { roomFile } from '../rooms/roomIndex.ts';
 import { DEBUG_DEFAULT_ROOMS, DEBUG_DIR_PREFIX, FFDEC_SPRITE_DIRECTORY_PREFIX, OutputPath, SVG_FILE_EXTENSION } from '../tuning.ts';
 import { composeFloorSvg } from './floorComposite.ts';
@@ -14,7 +16,8 @@ const PNG_EXTENSION = '.png';
 const UTF8 = 'utf8';
 
 async function main(): Promise<void> {
-  const config = loadExtractConfig();
+  const loaded = loadExtractConfig();
+  const config = { ...loaded, ffdecJar: await resolveFfdecJar(loaded, process.cwd(), () => console.log(SetupMessage.downloadingFfdec)) };
   const roomIds = process.argv.length > 2 ? process.argv.slice(2) : [...DEBUG_DEFAULT_ROOMS];
   const outDir = await makeWorkDir(DEBUG_DIR_PREFIX);
   const libraryDir = path.join(config.outDir, OutputPath.LibraryDir);

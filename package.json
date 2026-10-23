@@ -7,7 +7,10 @@
     "node": ">=24"
   },
   "scripts": {
+    "setup:assets": "node tools/setup/ensureAssets.ts",
+    "predev": "npm run setup:assets --silent",
     "dev": "vite",
+    "prebuild": "npm run setup:assets --silent",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -22,6 +25,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.5",
     "eslint": "^10.13.0",
+    "fflate": "^0.8.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0",
     "typescript-language-server": "^6.0.2",

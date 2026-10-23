@@ -6,7 +6,9 @@ is [ADR 0002](../adr/0002-asset-pipeline.md).
 
 ## Running it
 
-Requirements: Java 21 or newer on `PATH`, JPEXS FFDec 26.4.0 (`ffdec.jar`), the SWF.
+Requirements: Java 8 or newer on `PATH` (FFDec's classes target Java 8, class file version 52;
+runs are verified on Java 21) and the SWF, which is committed. FFDec itself is provisioned
+automatically, see "Automatic setup" below.
 
 ```sh
 npm run extract                       # regenerate public/assets
@@ -21,12 +23,37 @@ the variable and the path.
 | Variable | Default | Meaning |
 |---|---|---|
 | `SWF_PATH` | `boxhead2play.swf` | The original game. |
-| `FFDEC_JAR` | `scripts/local/ffdec/ffdec.jar` | JPEXS FFDec jar. |
+| `FFDEC_JAR` | unset: download the pinned FFDec into `.cache/ffdec/26.4.0/` | A local JPEXS FFDec jar to use instead. |
 | `ASSET_OUT_DIR` | `public/assets` | Output root. The pipeline deletes and rewrites only its own entries (`manifest.json`, `library/`, `rooms/`, `characters/`, `sounds/`, `fonts/`). |
 
 Relative paths resolve against the current working directory. A full run takes about
 20 seconds. The output is deterministic: two runs produce identical `manifest.json` file
 hashes.
+
+## Automatic setup
+
+`npm run dev` and `npm run build` first run `npm run setup:assets`
+(`tools/setup/ensureAssets.ts`), so a fresh clone needs only `npm install` and `npm run dev`.
+
+1. It compares `public/assets/extract-stamp.json` with the expected stamp: `formatVersion`,
+   the SWF's SHA-256, a SHA-256 over the extractor sources (`tools/extract/**/*.ts` without
+   tests, `debug/` and `testing/`) and the FFDec version. If everything matches and
+   `manifest.json` exists, it prints "Game assets are up to date." and exits (well under a
+   second).
+2. Otherwise it prints the reason (`no-assets`, `no-stamp`, `swf-changed`,
+   `extractor-changed`, `ffdec-changed`) and runs `tools/extract/main.ts`.
+3. The extractor checks `java -version` (Java 8+), then resolves FFDec: `FFDEC_JAR` if
+   set, else `.cache/ffdec/26.4.0/ffdec.jar`. If that is missing it downloads
+   `ffdec_26.4.0.zip` from the JPEXS GitHub release (5 minute timeout), refuses any archive
+   whose SHA-256 is not the pinned
+   `56ce960aeafc7caf034e2052ba49f878a883f7c7ca690da6eeffca9587b5e4b9`, unzips it with
+   `fflate` into a staging directory and renames it into place.
+4. After a successful run the extractor writes the stamp. `npm run extract` always
+   regenerates and also writes the stamp.
+
+Pinned values live in `tools/setup/tuning.ts`; messages in `tools/setup/messages.ts`.
+To upgrade FFDec, change `FFDEC_VERSION` and `FFDEC_ARCHIVE_SHA256` together. The version
+change marks existing assets stale.
 
 ## How it works
 

@@ -5,7 +5,7 @@ describe('parseExtractConfig', () => {
   it('applies defaults relative to the working directory', () => {
     expect(parseExtractConfig({}, '/repo')).toEqual({
       swfPath: '/repo/boxhead2play.swf',
-      ffdecJar: '/repo/scripts/local/ffdec/ffdec.jar',
+      ffdecJar: undefined,
       outDir: '/repo/public/assets',
     });
   });
@@ -15,6 +15,10 @@ describe('parseExtractConfig', () => {
       swfPath: '/data/game.swf',
       outDir: '/repo/out',
     });
+  });
+
+  it('resolves an explicit FFDec jar', () => {
+    expect(parseExtractConfig({ FFDEC_JAR: 'tools/ffdec.jar' }, '/repo').ffdecJar).toBe('/repo/tools/ffdec.jar');
   });
 
   it('rejects blank values', () => {

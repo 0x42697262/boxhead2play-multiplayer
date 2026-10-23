@@ -28,7 +28,7 @@ import {
 } from './adapters/files.ts';
 import { buildXsi } from './characters/buildXsi.ts';
 import { evaluateXsiScript } from './characters/evaluateXsi.ts';
-import type { ExtractConfig } from './config.ts';
+import type { ResolvedExtractConfig } from './config.ts';
 import { buildFonts, exportedFontFiles } from './fonts/buildFonts.ts';
 import { buildSymbols } from './library/buildSymbols.ts';
 import { buildManifest } from './manifest.ts';
@@ -116,7 +116,7 @@ async function readScripts(scriptsDir: string): Promise<{ path: string; source: 
   return Promise.all(files.map(async (file) => ({ path: file, source: await readText(path.join(scriptsDir, file)) })));
 }
 
-async function extract(config: ExtractConfig, workDir: string, logger: Logger): Promise<Extraction> {
+async function extract(config: ResolvedExtractConfig, workDir: string, logger: Logger): Promise<Extraction> {
   const ffdec = createFfdec(config.ffdecJar);
   const work = (relative: string): string => path.join(workDir, relative);
   logger.info(LogEvent.ExtractStep, { step: PipelineStep.SwfToXml, workDir });
@@ -228,7 +228,7 @@ async function writeOutputs(outDir: string, outputs: readonly PendingOutput[]): 
   return [...written].sort();
 }
 
-async function writeManifest(config: ExtractConfig, index: SwfIndex, roomPaths: string[], written: readonly string[]): Promise<Manifest> {
+async function writeManifest(config: ResolvedExtractConfig, index: SwfIndex, roomPaths: string[], written: readonly string[]): Promise<Manifest> {
   const manifest = buildManifest({
     source: { file: path.basename(config.swfPath), ...(await digestFile(config.swfPath)) },
     generator: index.document.generator,
@@ -248,7 +248,7 @@ async function writeManifest(config: ExtractConfig, index: SwfIndex, roomPaths: 
   return checked;
 }
 
-export async function runPipeline(config: ExtractConfig, logger: Logger): Promise<Manifest> {
+export async function runPipeline(config: ResolvedExtractConfig, logger: Logger): Promise<Manifest> {
   const workDir = await makeWorkDir(WORK_DIR_PREFIX);
   try {
     const extraction = await extract(config, workDir, logger);
