@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { parseExtractConfig } from '../extract/config.ts';
 import { OutputPath } from '../extract/tuning.ts';
-import { expectedStamp, readStamp, SetupError } from './environment.ts';
+import { expectedStamp, readStamp, requireJava, SetupError } from './environment.ts';
 import { judgeFreshness } from './freshness.ts';
 import { SetupMessage } from './messages.ts';
 import { EXTRACTOR_ENTRY, FAILURE_EXIT_CODE } from './tuning.ts';
@@ -19,6 +19,7 @@ function ensureAssets(repoRoot: string): void {
     console.log(SetupMessage.upToDate);
     return;
   }
+  requireJava();
   console.log(SetupMessage.extracting(verdict.reason));
   const result = spawnSync(process.execPath, [path.join(repoRoot, EXTRACTOR_ENTRY)], { cwd: repoRoot, stdio: 'inherit', env: process.env });
   if (result.status !== 0) throw new SetupError(SetupMessage.extractFailed(result.status));
