@@ -25,7 +25,6 @@ export const DomainEventType = {
   BrightnessFlashed: 'brightnessFlashed',
   ScoreAwarded: 'scoreAwarded',
   HudMessage: 'hudMessage',
-  PauseChanged: 'pauseChanged',
   WorldCompleted: 'worldCompleted',
 } as const;
 
@@ -99,11 +98,6 @@ export interface HudMessage {
   readonly playerIndex?: number;
 }
 
-export interface PauseChanged {
-  readonly type: typeof DomainEventType.PauseChanged;
-  readonly paused: boolean;
-}
-
 export interface WorldCompleted {
   readonly type: typeof DomainEventType.WorldCompleted;
   readonly state: CompletionState;
@@ -118,7 +112,6 @@ export type DomainEvent =
   | BrightnessFlashed
   | ScoreAwarded
   | HudMessage
-  | PauseChanged
   | WorldCompleted;
 
 export interface EventSink {

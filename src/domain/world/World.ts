@@ -78,7 +78,6 @@ export class World implements WorldContext, UpgradesHost {
   readonly upgrades: Upgrades;
   readonly things: ThingCollection;
   readonly screen = new ScreenEffects();
-  paused = true;
   tick = 0;
   private currentTicksPerSecond: number;
   private completionState: CompletionState | undefined = undefined;
@@ -148,7 +147,6 @@ export class World implements WorldContext, UpgradesHost {
   }
 
   start(): void {
-    this.paused = false;
     this.step();
     this.upgrades.setDifficulty(this.settings.difficulty);
     if (this.settings.gameMode === GameMode.DeathMatch) {
@@ -161,12 +159,7 @@ export class World implements WorldContext, UpgradesHost {
     if (this.completionState) return;
     this.tickInput = input;
     if (input.quitRequested) this.complete(CompletionState.Quit);
-    if (input.pausePressed) {
-      this.paused = !this.paused;
-      this.hud.paused = this.paused;
-      this.events.emit({ type: DomainEventType.PauseChanged, paused: this.paused });
-    }
-    if (!this.paused) this.step();
+    this.step();
     if (this.completionState) this.events.emit({ type: DomainEventType.WorldCompleted, state: this.completionState });
   }
 

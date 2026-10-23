@@ -34,8 +34,8 @@ One full tick runs, which calls every thing's first `process()`. Then
 ## `update(input)` (one logic tick)
 
 1. After completion: nothing.
-2. `quitRequested` completes with `quit`. `pausePressed` toggles pause (`pauseChanged`).
-3. When not paused:
+2. `quitRequested` completes with `quit`.
+3. Every tick (the world has no pause; see `docs/porting/deviations.md`):
    * `things.process()`: flush deferred deletes (dispose, remove), process every thing
      **newest first**, then update the navigation flow field.
    * `upgrades.process()`, `tick++`.

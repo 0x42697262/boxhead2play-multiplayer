@@ -146,19 +146,7 @@ describe('World completion', () => {
   });
 });
 
-describe('World pause and screen effects', () => {
-  it('toggles pause and stops processing while paused', () => {
-    const { world } = makeWorld(basicRoom());
-    world.update({ ...IDLE_TICK_INPUT, pausePressed: true });
-    const tick = world.tick;
-    world.update();
-    expect(world.tick).toBe(tick);
-    expect(world.hud.paused).toBe(true);
-    world.update({ ...IDLE_TICK_INPUT, pausePressed: true });
-    expect(world.tick).toBe(tick + 1);
-    expect(ofType(world.events.drain(), DomainEventType.PauseChanged).map((event) => event.paused)).toEqual([true, false]);
-  });
-
+describe('World screen effects', () => {
   it('halves and flips the shake every tick until it rests', () => {
     const { world } = makeWorld(basicRoom());
     world.shake(0, 30);

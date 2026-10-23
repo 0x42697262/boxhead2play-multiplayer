@@ -28,7 +28,7 @@ describe('legacy key codes', () => {
     expect(bindings.player.left).toEqual(['ArrowLeft']);
     expect(bindings.player.prevWeapon).toEqual(['Comma']);
     expect(bindings.player.select3).toEqual(['Digit3']);
-    expect(bindings.pause).toEqual(['KeyP']);
+    expect(bindings.upgradeList).toEqual(['KeyP']);
     expect(boundCodes(bindings).has('KeyD')).toBe(false);
     expect(boundCodes(bindings).has('Space')).toBe(true);
   });
@@ -44,12 +44,12 @@ describe('tick input sampling (CInput edges)', () => {
     const input = sampler();
     keyboard.keyDown('ArrowLeft');
     keyboard.keyDown('ArrowLeft');
-    const first = input.sample(keyboard, EXTRAS).players[0]?.left;
-    const second = input.sample(keyboard, EXTRAS).players[0]?.left;
+    const first = input.sample(keyboard, EXTRAS).tick.players[0]?.left;
+    const second = input.sample(keyboard, EXTRAS).tick.players[0]?.left;
     expect(first).toEqual({ down: true, pressed: true, released: false, heldTicks: 1 });
     expect(second).toEqual({ down: true, pressed: false, released: false, heldTicks: 2 });
     keyboard.keyUp('ArrowLeft');
-    expect(input.sample(keyboard, EXTRAS).players[0]?.left).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
+    expect(input.sample(keyboard, EXTRAS).tick.players[0]?.left).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
   });
 
   it('keeps a tap between two ticks as a press and a release', () => {
@@ -57,7 +57,7 @@ describe('tick input sampling (CInput edges)', () => {
     const input = sampler();
     keyboard.keyDown('Slash');
     keyboard.keyUp('Slash');
-    expect(input.sample(keyboard, EXTRAS).players[0]?.fire).toEqual({ down: false, pressed: true, released: true, heldTicks: 0 });
+    expect(input.sample(keyboard, EXTRAS).tick.players[0]?.fire).toEqual({ down: false, pressed: true, released: true, heldTicks: 0 });
   });
 
   it('keeps edges until a tick consumes them', () => {
@@ -66,11 +66,11 @@ describe('tick input sampling (CInput edges)', () => {
     keyboard.keyDown('KeyP');
     keyboard.keyUp('KeyP');
     keyboard.keyDown('KeyP');
-    const tick = input.sample(keyboard, { quitRequested: true, ambienceSamplesPlaying: 2 });
-    expect(tick.pausePressed).toBe(true);
-    expect(tick.quitRequested).toBe(true);
-    expect(tick.ambienceSamplesPlaying).toBe(2);
-    expect(input.sample(keyboard, EXTRAS).pausePressed).toBe(false);
+    const sampled = input.sample(keyboard, { quitRequested: true, ambienceSamplesPlaying: 2 });
+    expect(sampled.upgradeListPressed).toBe(true);
+    expect(sampled.tick.quitRequested).toBe(true);
+    expect(sampled.tick.ambienceSamplesPlaying).toBe(2);
+    expect(input.sample(keyboard, EXTRAS).upgradeListPressed).toBe(false);
   });
 
   it('releases every key when the window loses focus', () => {
@@ -79,6 +79,6 @@ describe('tick input sampling (CInput edges)', () => {
     keyboard.keyDown('ArrowUp');
     input.sample(keyboard, EXTRAS);
     keyboard.releaseAll();
-    expect(input.sample(keyboard, EXTRAS).players[0]?.up).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
+    expect(input.sample(keyboard, EXTRAS).tick.players[0]?.up).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
   });
 });

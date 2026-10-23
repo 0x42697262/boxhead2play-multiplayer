@@ -9,7 +9,7 @@ import { alphaOnly } from '../color/colorTransform.ts';
 import { flashTranslate, IDENTITY, type Matrix } from '../geometry/Matrix.ts';
 import { transformRect, type Rect } from '../geometry/Rect.ts';
 import { resetContext, type BufferedBitmap, type Context2D, type Surface } from '../surface.ts';
-import type { Overrides } from '../symbols/SymbolLibrary.ts';
+import { depthKey, type Overrides } from '../symbols/SymbolLibrary.ts';
 import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
 import { HUD_BUFFER_INFLATE_PX, HUD_CACHE_LIMIT } from '../tuning.ts';
 import { blit } from '../world/VisualPainter.ts';
@@ -24,7 +24,8 @@ import {
   LIVE_CLIP_INFLATE_PX,
   MESSAGE_COLORS,
   NEW_WEAPON_UPGRADE_COLOR,
-  PAUSE_ROW_SPACING_PX,
+  PAUSED_TITLE_DEPTH,
+  UPGRADE_ROW_SPACING_PX,
   SCORE_DIGITS,
   UPGRADE_COLOR,
   UPGRADE_COLUMNS,
@@ -75,7 +76,8 @@ export class HudRenderer {
   private readonly messages = new MessageTrack(MESSAGE_ORIGIN);
   private labels: readonly PlayerLabel[] = [];
   private totals: HudFrame | undefined = undefined;
-  private pauseScreen: Surface | undefined = undefined;
+  private upgradeList: Surface | undefined = undefined;
+  private upgradeListKey: string | undefined = undefined;
 
   constructor(
     private readonly renderer: SymbolRenderer,
@@ -112,8 +114,11 @@ export class HudRenderer {
     this.labels = labels;
   }
 
-  showPause(upgrades: readonly MultiplierListEntry[] | undefined): void {
-    this.pauseScreen = upgrades ? this.renderPauseScreen(upgrades) : undefined;
+  showUpgrades(upgrades: readonly MultiplierListEntry[] | undefined): void {
+    const key = upgrades ? JSON.stringify(upgrades) : undefined;
+    if (key === this.upgradeListKey) return;
+    this.upgradeListKey = key;
+    this.upgradeList = upgrades ? this.renderUpgradeList(upgrades) : undefined;
   }
 
   drawLive(ctx: Context2D): void {
@@ -127,16 +132,16 @@ export class HudRenderer {
       const bitmap = this.playerClip(label);
       if (bitmap) blit(ctx, bitmap, label.screen, 1, OPAQUE_ALPHA);
     }
-    if (this.pauseScreen) {
+    if (this.upgradeList) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
-      ctx.drawImage(this.pauseScreen.canvas, 0, 0);
+      ctx.drawImage(this.upgradeList.canvas, 0, 0);
     }
     resetContext(ctx);
   }
 
   hitTest(point: Point2): HudAction | undefined {
-    if (this.pauseScreen && this.childButtonContains(HudSymbol.Paused, HudChild.Quit, point)) return HudAction.Quit;
+    if (this.upgradeList && this.childButtonContains(HudSymbol.UpgradeList, HudChild.Quit, point)) return HudAction.Quit;
     return undefined;
   }
 
@@ -207,17 +212,17 @@ export class HudRenderer {
     return bitmap;
   }
 
-  private renderPauseScreen(upgrades: readonly MultiplierListEntry[]): Surface | undefined {
+  private renderUpgradeList(upgrades: readonly MultiplierListEntry[]): Surface | undefined {
     const library = this.renderer.library;
-    const id = library.characterId(HudSymbol.Paused);
+    const id = library.characterId(HudSymbol.UpgradeList);
     if (id === undefined) return undefined;
     const surface = this.renderer.createSurface(SCREEN_WIDTH_PX, SCREEN_HEIGHT_PX);
-    const hiddenColumns: Overrides = Object.fromEntries(UPGRADE_COLUMNS.map((column) => [column, { visible: false }]));
-    this.renderer.draw(surface.ctx, id, 0, IDENTITY, { overrides: hiddenColumns });
+    const hidden: Overrides = Object.fromEntries([...UPGRADE_COLUMNS, depthKey(PAUSED_TITLE_DEPTH)].map((key) => [key, { visible: false }]));
+    this.renderer.draw(surface.ctx, id, 0, IDENTITY, { overrides: hidden });
     for (const { entry, column, row } of upgradeRows(upgrades)) {
       const template = library.findChild(id, column);
       if (!template) continue;
-      const matrix: Matrix = flashTranslate(template.matrix, 0, row * PAUSE_ROW_SPACING_PX);
+      const matrix: Matrix = flashTranslate(template.matrix, 0, row * UPGRADE_ROW_SPACING_PX);
       const overrides: Overrides = {
         [HudChild.UpgradeText]: { text: t(entry.name), textColor: entry.newWeapon ? NEW_WEAPON_UPGRADE_COLOR : UPGRADE_COLOR },
         [HudChild.UpgradeIndex]: { text: String(entry.index) },

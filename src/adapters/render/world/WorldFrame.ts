@@ -35,7 +35,6 @@ export interface WorldFrame {
   readonly cameras: readonly CameraFrame[];
   readonly brightness: number;
   readonly projectionFactor: number;
-  readonly paused: boolean;
   readonly tick: number;
   readonly ticksPerSecond: number;
   readonly hud: HudFrame;

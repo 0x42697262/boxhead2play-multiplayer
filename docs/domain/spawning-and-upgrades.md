@@ -121,7 +121,7 @@ Frags (`HudState.recordDeath`): a player death credits the victim's `lastAttacke
 when it is another player. Otherwise (suicide by barrel, own grenade, an unknown killer)
 it credits every opponent, which for two players is the original rule (a death counts as
 the other player's kill).
-| any | quit from the pause screen | `quit` |
+| any | QUIT? on the upgrade list | `quit` |
 
 `World.update` emits `WorldCompleted` at the end of the tick in which the state was set,
 and does nothing afterwards (the original `CMain` stopped calling the world).

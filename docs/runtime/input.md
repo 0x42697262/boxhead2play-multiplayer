@@ -12,7 +12,7 @@ Settings store the original Flash key codes. `keyCodes.ts` maps them to
 |---|---|---|---|---|---|---|
 | ArrowUp (38) | ArrowDown (40) | ArrowLeft (37) | ArrowRight (39) | Slash (191) | Period (190) | Comma (188) |
 
-There is one local player (ADR 0005). `KeyP` pauses. `Digit0`..`Digit9` select weapons,
+There is one local player (ADR 0005). `KeyP` shows or hides the upgrade list (the game keeps running). `Digit0`..`Digit9` select weapons,
 and Space is a second fire key (`AddAdditionKeyCode`, which the original added when
 `mTotalPlayerCount == 1`). Both now apply in every mode, because every player has their
 own keyboard. Online, the same `PlayerInput` is sent to the server as bit masks
@@ -31,8 +31,8 @@ consumed the release. The port:
   `heldTicks` (consecutive ticks held). It then clears the edges. A tap between two ticks
   arrives as `pressed` and `released` with `down` false. The domain's `LatchedControl`
   keeps an edge until game code consumes it, which is the `IsPressed` contract.
-* `pausePressed` is the pause key's press edge; the world reads it every tick, also while
-  paused.
+* `sample` returns the `TickInput` and `upgradeListPressed`, the P key's press edge. The
+  session toggles the list; the world never sees the key.
 
 The entry listener calls `preventDefault` for bound keys so arrows, Space and `/` do not
 scroll or open quick find, except while a form control has focus. Key presses (not
@@ -41,5 +41,5 @@ them while it waits for a key, and the listener then calls `preventDefault` too.
 
 Mouse: pointer down, up, move and leave on the canvas are mapped to stage coordinates
 (the canvas captures the pointer on down, so a release outside still arrives). The game
-hit-tests presses against the pause screen's Quit button. Menus track hover and press per target, fire `onPress`/`onRelease` actions and set
+hit-tests presses against the QUIT? button on the upgrade list. Menus track hover and press per target, fire `onPress`/`onRelease` actions and set
 the hand cursor (`docs/runtime/screens.md`).

@@ -17,7 +17,6 @@ Events keep the order in which the original performed the side effects.
 | `brightnessFlashed { brightness }` | `World.flashBrightness` | `mWorld.mBrightness = 1` |
 | `scoreAwarded { points, worldPosition, screenPosition }` | `World.logKill` (high detail only) | `CHud.AddScore` popup |
 | `hudMessage { tone, text, playerIndex? }` | `HudState.addMessage` | `CHud.AddMessage_*` |
-| `pauseChanged { paused }` | `World.update` | `CHud.Pause` |
 | `worldCompleted { state }` | `World.update` | `mCompleteState` read by `CMain.State_RunWorld` |
 
 Notes:

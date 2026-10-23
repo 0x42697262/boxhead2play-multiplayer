@@ -37,7 +37,7 @@ FFDec you already have, set `FFDEC_JAR=/path/to/ffdec.jar`.
 | Fire | `/` or Space |
 | Next / previous weapon | `.` / `,` |
 | Select weapon | 0 – 9 |
-| Pause | P |
+| Show upgrade list | P |
 
 Keys can be rebound in CONTROLS on the level select screen.
 

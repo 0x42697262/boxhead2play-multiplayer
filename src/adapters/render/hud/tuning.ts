@@ -5,7 +5,7 @@ export const HudSymbol = {
   Score: 'Hud.Score',
   ScoreTotal: 'Hud.ScoreTotal',
   Message: 'Hud.Message',
-  Paused: 'HUD.Paused',
+  UpgradeList: 'HUD.Paused',
   PlayerFrags: 'Hud_PlayerFrags',
 } as const;
 
@@ -55,7 +55,8 @@ export const MESSAGE_COLORS: Readonly<Record<MessageTone, number>> = {
 
 export const AMMO_LETTER_SPACING_PX = -2;
 
-export const PAUSE_ROW_SPACING_PX = 17;
+export const UPGRADE_ROW_SPACING_PX = 17;
+export const PAUSED_TITLE_DEPTH = 14;
 export const UPGRADE_COLOR = 0xffffff;
 export const NEW_WEAPON_UPGRADE_COLOR = 0x00ff00;
 export const INACTIVE_UPGRADE_ALPHA = 0.25;

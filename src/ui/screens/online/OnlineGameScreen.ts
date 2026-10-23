@@ -60,9 +60,9 @@ export class OnlineGameScreen implements Screen {
       input: {
         sample: () => {
           const masks = masksOf(sampler.player(keyboard));
-          const pausePressed = sampler.pausePressed(keyboard);
+          const upgradeListPressed = sampler.upgradeListPressed(keyboard);
           keyboard.clearEdges();
-          return { masks, pausePressed };
+          return { masks, upgradeListPressed };
         },
       },
       link: client,
@@ -103,7 +103,7 @@ export class OnlineGameScreen implements Screen {
   }
 
   suspend(): void {
-    this.session.forcePause();
+    this.session.releaseControls();
   }
 
   dispose(): void {

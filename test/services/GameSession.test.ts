@@ -19,7 +19,8 @@ class Recorder {
   readonly sounds: SoundId[] = [];
   readonly decals: DecalRequested[] = [];
   readonly scores: ScoreAwarded[] = [];
-  readonly pauses: (readonly MultiplierListEntry[] | undefined)[] = [];
+  readonly upgradeLists: (readonly MultiplierListEntry[] | undefined)[] = [];
+  readonly upgradeKeyPresses: boolean[] = [];
   readonly frames: WorldFrame[] = [];
   readonly extras: SampleExtras[] = [];
   readonly results: SessionResult[] = [];
@@ -44,13 +45,13 @@ function startSession(mode: GameMode = GameMode.Single): { session: GameSession;
     scene: {
       stampDecal: (event) => record.decals.push(event),
       awardScore: (event) => record.scores.push(event),
-      showPause: (upgrades) => record.pauses.push(upgrades),
+      showUpgrades: (upgrades) => record.upgradeLists.push(upgrades),
       render: (frame) => record.frames.push(frame),
     },
     input: {
       sample: (extras) => {
         record.extras.push(extras);
-        return { ...(record.inputs.shift() ?? IDLE_TICK_INPUT), ...extras };
+        return { tick: { ...(record.inputs.shift() ?? IDLE_TICK_INPUT), ...extras }, upgradeListPressed: record.upgradeKeyPresses.shift() ?? false };
       },
     },
     logger: silentLogger,
@@ -104,31 +105,23 @@ describe('GameSession', () => {
     expect(record.extras.at(-1)).toEqual({ quitRequested: false, ambienceSamplesPlaying: 2 });
   });
 
-  it('shows the pause screen with the upgrade list and stops rendering while paused', () => {
+  it('toggles the upgrade list with the key while the world keeps running', () => {
     const { session, record } = startSession();
-    record.inputs.push({ ...IDLE_TICK_INPUT, pausePressed: true });
-    session.tick();
-    expect(record.pauses).toHaveLength(1);
-    expect(record.pauses[0]?.length).toBeGreaterThan(50);
+    expect(record.upgradeLists.at(-1)).toBeUndefined();
+    const tick = session.world.tick;
     const rendered = record.frames.length;
-    const tick = session.world.tick;
+    record.upgradeKeyPresses.push(true);
     session.tick();
-    expect(record.frames).toHaveLength(rendered);
-    expect(session.world.tick).toBe(tick);
-    record.inputs.push({ ...IDLE_TICK_INPUT, pausePressed: true });
     session.tick();
-    expect(record.pauses.at(-1)).toBeUndefined();
-    expect(record.frames.length).toBe(rendered + 1);
-  });
-
-  it('pauses without simulating when the page is hidden', () => {
-    const { session, record } = startSession();
-    const tick = session.world.tick;
-    session.forcePause();
-    expect(session.world.paused).toBe(true);
-    expect(session.world.tick).toBe(tick);
-    session.forcePause();
-    expect(record.pauses).toHaveLength(1);
+    expect(session.upgradeListShown).toBe(true);
+    expect(record.upgradeLists.at(-1)?.length).toBeGreaterThan(50);
+    expect(session.world.tick).toBe(tick + 2);
+    expect(record.frames).toHaveLength(rendered + 2);
+    record.upgradeKeyPresses.push(true);
+    session.tick();
+    expect(session.upgradeListShown).toBe(false);
+    expect(record.upgradeLists.at(-1)).toBeUndefined();
+    expect(session.world.tick).toBe(tick + 3);
   });
 
   it('completes once on quit and ignores later ticks', () => {

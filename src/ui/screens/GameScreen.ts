@@ -106,9 +106,7 @@ export class GameScreen implements Screen {
     return false;
   }
 
-  suspend(): void {
-    this.session.forcePause();
-  }
+  suspend(): void {}
 
   dispose(): void {
     this.deps.audio.stopAll();

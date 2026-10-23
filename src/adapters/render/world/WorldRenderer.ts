@@ -66,12 +66,11 @@ export class WorldRenderer {
     this.hud.addScore(event);
   }
 
-  showPause(upgrades: readonly MultiplierListEntry[] | undefined): void {
-    this.hud.showPause(upgrades);
+  showUpgrades(upgrades: readonly MultiplierListEntry[] | undefined): void {
+    this.hud.showUpgrades(upgrades);
   }
 
   render(frame: WorldFrame): void {
-    if (frame.paused) return;
     this.hud.updatePlayers(this.renderCamera(frame));
     this.applyBrightness(frame.brightness);
     this.hud.drawBitmapLayer(this.screen.ctx, frame.hud, frame.tick, frame.ticksPerSecond);

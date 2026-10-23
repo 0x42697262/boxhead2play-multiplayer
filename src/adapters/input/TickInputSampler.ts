@@ -16,7 +16,7 @@ export type PlayerBindings = Readonly<Record<PlayerControl, readonly string[]>>;
 
 export interface InputBindings {
   readonly player: PlayerBindings;
-  readonly pause: readonly string[];
+  readonly upgradeList: readonly string[];
 }
 
 export interface SampleExtras {
@@ -24,7 +24,12 @@ export interface SampleExtras {
   readonly ambienceSamplesPlaying: number;
 }
 
-export const PAUSE_KEY = 'P';
+export interface SampledTick {
+  readonly tick: TickInput;
+  readonly upgradeListPressed: boolean;
+}
+
+export const UPGRADE_LIST_KEY = 'P';
 export const EXTRA_FIRE_KEY = ' ';
 export const SELECT_KEYS = '0123456789';
 
@@ -66,12 +71,12 @@ function playerBindings(keys: PlayerKeyCodes, extraFire: readonly number[]): Pla
 export function buildBindings(keys: PlayerKeyCodes): InputBindings {
   return {
     player: playerBindings(keys, [asciiKeyCode(EXTRA_FIRE_KEY)]),
-    pause: codes(asciiKeyCode(PAUSE_KEY)),
+    upgradeList: codes(asciiKeyCode(UPGRADE_LIST_KEY)),
   };
 }
 
 export function boundCodes(bindings: InputBindings): ReadonlySet<string> {
-  const all = new Set(bindings.pause);
+  const all = new Set(bindings.upgradeList);
   for (const list of Object.values(bindings.player)) for (const code of list) all.add(code);
   return all;
 }
@@ -81,11 +86,11 @@ export class TickInputSampler {
 
   constructor(private readonly bindings: InputBindings) {}
 
-  sample(keyboard: KeyboardState, extras: SampleExtras): TickInput {
+  sample(keyboard: KeyboardState, extras: SampleExtras): SampledTick {
     const player = this.player(keyboard);
-    const pausePressed = this.pausePressed(keyboard);
+    const upgradeListPressed = this.upgradeListPressed(keyboard);
     keyboard.clearEdges();
-    return { pausePressed, quitRequested: extras.quitRequested, players: [player], ambienceSamplesPlaying: extras.ambienceSamplesPlaying };
+    return { tick: { quitRequested: extras.quitRequested, players: [player], ambienceSamplesPlaying: extras.ambienceSamplesPlaying }, upgradeListPressed };
   }
 
   player(keyboard: KeyboardState): PlayerInput {
@@ -93,8 +98,8 @@ export class TickInputSampler {
     return Object.fromEntries(entries) as PlayerInput;
   }
 
-  pausePressed(keyboard: KeyboardState): boolean {
-    return this.bindings.pause.some((code) => keyboard.wasPressed(code));
+  upgradeListPressed(keyboard: KeyboardState): boolean {
+    return this.bindings.upgradeList.some((code) => keyboard.wasPressed(code));
   }
 
   private control(keyboard: KeyboardState, codes: readonly string[], key: string): ControlState {

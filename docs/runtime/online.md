@@ -44,7 +44,7 @@ lobby (host) -> START GAME -> online game -> lobby (with the result)
   spawns a new player with `World.joinPlayer` near a living player (or the nearest open
   cell). In coop the new player gets every weapon unlocked so far; in deathmatch it
   starts with empty weapons and the pistol, like a respawn.
-* **Leave.** QUIT? on the pause screen sends `leaveGame` and returns to the lobby. LEAVE
+* **Leave.** QUIT? on the upgrade list (P) sends `leaveGame` and returns to the lobby. LEAVE
   leaves the lobby. The host role moves to the next connected member. An empty lobby
   closes. A match with no players left ends (`abandoned`).
 * **Game over.** `World.completion` (all coop players dead, a deathmatch player reaching
@@ -72,7 +72,7 @@ dropped (client) or answered with `error: badMessage` (server).
 | `lobbies`, `lobby`, `lobbyLeft {reason}` | Lobby list and state |
 | `gameStarted {matchId, mode, roomId, options, playerIndex, ticksPerSecond, projectionFactor}` | Open the online game screen |
 | `frame {tick, brightness, camera, entries, hud, events}` | One world tick for one player |
-| `upgrades` | The multiplier upgrade list (sent when it changes, shown on the pause screen) |
+| `upgrades` | The multiplier upgrade list (sent when it changes, shown with P) |
 | `gameOver {matchId, state, winnerName, score}` | Match result |
 | `error {reason}` | A request failed (`ErrorReason`) |
 
@@ -108,12 +108,11 @@ player's camera). Shake is part of `camera.drawOrigin`.
   when it attaches. A background tab creates the game screen only on its next animation
   frame, so the list sent with `gameStarted` would otherwise be lost.
 
-## Pause
+## Upgrade list
 
-The world never pauses online. P shows the pause screen and the upgrade list locally and
-sends idle input (releasing held keys) until P is pressed again. Decals keep stamping
-while paused, so the floor is current when the player resumes. Hiding the tab pauses the
-same way.
+There is no pause. P shows or hides the upgrade list and QUIT? over the running game; the
+player keeps moving and firing, and a new `upgrades` message refreshes the shown list.
+Hiding the tab sends released controls so the player stops walking.
 
 ## Reconnect
 

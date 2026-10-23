@@ -14,7 +14,7 @@ import { JITTER_BUFFER_FRAMES, MAX_BUFFERED_FRAMES } from './tuning.ts';
 
 export interface SampledControls {
   readonly masks: ControlMasks;
-  readonly pausePressed: boolean;
+  readonly upgradeListPressed: boolean;
 }
 
 export interface OnlineInput {
@@ -65,7 +65,7 @@ export class OnlineGameSession implements GameSink {
   private readonly queue: NetFrame[] = [];
   private readonly detach: () => void;
   private primed = false;
-  private paused = false;
+  private upgradesShown = false;
   private finished = false;
   private upgradeList: readonly MultiplierListEntry[] = [];
   private ambience: AmbienceState = INITIAL_AMBIENCE;
@@ -85,8 +85,8 @@ export class OnlineGameSession implements GameSink {
     return this.queue.length;
   }
 
-  get isPaused(): boolean {
-    return this.paused;
+  get upgradeListShown(): boolean {
+    return this.upgradesShown;
   }
 
   get completed(): boolean {
@@ -99,7 +99,7 @@ export class OnlineGameSession implements GameSink {
 
   upgrades(upgrades: readonly MultiplierListEntry[]): void {
     this.upgradeList = upgrades;
-    if (this.paused) this.deps.scene.showPause(upgrades);
+    if (this.upgradesShown) this.deps.scene.showUpgrades(upgrades);
   }
 
   gameOver(result: GameOver): void {
@@ -122,8 +122,9 @@ export class OnlineGameSession implements GameSink {
     this.finish({ end: OnlineEnd.Quit, state: CompletionState.Quit, gameOver: undefined });
   }
 
-  forcePause(): void {
-    if (!this.paused && !this.finished) this.togglePause();
+  releaseControls(): void {
+    if (this.finished) return;
+    if (this.deps.link.input(releasedMasks(this.sent))) this.sent = IDLE_MASKS;
   }
 
   dispose(): void {
@@ -132,19 +133,15 @@ export class OnlineGameSession implements GameSink {
 
   private sendInput(): void {
     const sampled = this.deps.input.sample();
-    if (sampled.pausePressed) this.togglePause();
-    const masks = this.paused ? IDLE_MASKS : sampled.masks;
+    if (sampled.upgradeListPressed) this.toggleUpgradeList();
+    const { masks } = sampled;
     if (sameMasks(masks, this.sent) && masks.pressed === 0 && masks.released === 0) return;
     if (this.deps.link.input(masks)) this.sent = { down: masks.down, pressed: 0, released: 0 };
   }
 
-  private togglePause(): void {
-    this.paused = !this.paused;
-    if (this.paused) {
-      if (this.deps.link.input(releasedMasks(this.sent))) this.sent = IDLE_MASKS;
-      this.deps.audio.stopAmbience();
-    }
-    this.deps.scene.showPause(this.paused ? this.upgradeList : undefined);
+  private toggleUpgradeList(): void {
+    this.upgradesShown = !this.upgradesShown;
+    this.deps.scene.showUpgrades(this.upgradesShown ? this.upgradeList : undefined);
   }
 
   private playback(): void {
@@ -161,7 +158,7 @@ export class OnlineGameSession implements GameSink {
       this.primed = false;
       return;
     }
-    this.apply(next, !this.paused);
+    this.apply(next, true);
   }
 
   private apply(frame: NetFrame, live: boolean): void {
@@ -200,7 +197,6 @@ export class OnlineGameSession implements GameSink {
       cameras: [{ view: frame.camera, entries: frame.entries }],
       brightness: frame.brightness,
       projectionFactor: start.projectionFactor,
-      paused: false,
       tick: frame.tick,
       ticksPerSecond: start.ticksPerSecond,
       hud: { ...frame.hud, localPlayerIndex: start.playerIndex, playerNames: this.deps.playerNames(), upgrades: [] },

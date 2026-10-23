@@ -27,7 +27,6 @@ function perPlayer(): number[] {
 export class HudState {
   totalScore = 0;
   silentMessages = false;
-  paused = false;
   private readonly deaths = perPlayer();
   private readonly kills = perPlayer();
   private recent: HudMessageEntry[] = [];

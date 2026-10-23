@@ -39,20 +39,19 @@ shell through a callback.
 
 Per tick, `GameSession.tick()`:
 
-1. samples input (with `quitRequested` from the pause screen and the number of ambience
-   voices playing),
+1. samples input (with `quitRequested` from the QUIT? button and the number of ambience
+   voices playing) and toggles the upgrade list on a P press,
 2. calls `world.update(input)`,
 3. drains the events and routes them: sounds and ambience to the mixer, decals into the
-   floor plane, score popups to the HUD, `pauseChanged` to the pause screen,
-   `worldCompleted` to the screen flow,
-4. renders the world frame unless the world is paused (`CWorld.Draw` returned early while
-   paused, so the last frame stays on screen under the pause screen).
+   floor plane, score popups to the HUD, `worldCompleted` to the screen flow,
+4. passes the upgrade list (or none) to the HUD and renders the world frame.
 
 `World.create` already runs the first tick (`InitCleanUp`), so the session routes its
 events and renders once at start.
 
 ## Visibility
 
-A hidden page releases all keys, pauses a running game (`forcePause` toggles the pause
-without simulating) and suspends audio. When the page is visible again the clock resets,
-so no time is caught up, and the player sees the pause screen.
+A hidden page releases all keys and suspends audio. The browser stops animation frames,
+so a single-play world does not advance while hidden; when the page is visible again the
+clock resets and no time is caught up. An online game sends released controls to the
+server (`releaseControls`); the server world keeps running.

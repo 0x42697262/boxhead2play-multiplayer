@@ -30,7 +30,6 @@ export interface ControlState {
 export type PlayerInput = Readonly<Record<PlayerControl, ControlState>>;
 
 export interface TickInput {
-  readonly pausePressed: boolean;
   readonly quitRequested: boolean;
   readonly players: readonly PlayerInput[];
   readonly ambienceSamplesPlaying: number;
@@ -42,4 +41,4 @@ export const IDLE_PLAYER_INPUT: PlayerInput = Object.fromEntries(
   Object.values(PlayerControl).map((control) => [control, IDLE_CONTROL]),
 ) as PlayerInput;
 
-export const IDLE_TICK_INPUT: TickInput = { pausePressed: false, quitRequested: false, players: [], ambienceSamplesPlaying: 0 };
+export const IDLE_TICK_INPUT: TickInput = { quitRequested: false, players: [], ambienceSamplesPlaying: 0 };

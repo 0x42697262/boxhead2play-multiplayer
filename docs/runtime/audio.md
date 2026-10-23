@@ -19,7 +19,7 @@ movie clip, so every registration is one channel with its own volume:
   them.
 * The sfx option (`SoundActive(false)`) stops every voice and ignores new requests. Every
   registration is `sfx`, so the music option has no effect.
-* `CSound.Pause` is never called by the game, so pausing the world does not pause sounds.
+* `CSound.Pause` is never called by the game. The port has no pause either.
   A finished game stops the ambience; leaving the game screen stops everything.
 
 ## WebAudio

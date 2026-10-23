@@ -109,12 +109,14 @@ Add one line per behavior change: what to do, and the result you expect.
   `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
 * Let zombies reach the player -> blood decals appear on the floor but never on walls,
   and the life bar above the player shrinks.
-* Press P -> "PAUSED!" with the upgrade list (new weapons in green, inactive ones faded);
-  click QUIT? -> back to the single select-world screen.
+* Press P -> the upgrade list over the running game, no "PAUSED!" (new weapons in green,
+  inactive ones faded); zombies keep moving and arrows still walk; P again hides it; click
+  QUIT? -> back to the single select-world screen.
 * Two browser tabs on `npm run dev`: DEATH MATCH in both, host a game in one, JOIN in the
   other, START GAME -> each tab shows a full 640 x 480 view of its own player, the frags bar
   with the local name on the left and the opponent on the right, no switch-sides arrows.
-* Switch to another tab while playing -> the game is paused on return.
+* Switch to another tab while playing single -> on return the game continues where it was,
+  with no pause screen and no catch-up burst.
 * `npx vitest run test/adapters test/services test/entry test/ui` -> asset mapping,
   render math, XSI plane lists, HUD animation, mixer, input edges, settings migration,
   session routing and loop accounting pass (asset-based suites skip without
@@ -156,7 +158,7 @@ Add one line per behavior change: what to do, and the result you expect.
   weapons.
 * Two tabs on `npm run dev`, COOPERATIVE, host in tab 1, JOIN in tab 2 (lobby shows both names
   and characters), START GAME -> both tabs play the same world with one shared score; arrows
-  move only that tab's player; P in tab 2 shows the upgrade list there while tab 1 keeps
+  move only that tab's player; P in tab 2 shows the upgrade list there while both players keep
   playing; QUIT? -> tab 2 is back in the lobby with "You left the match." and JOIN GAME.
 * `npm run build`, then `BOXHEAD_ASSET_DIR=public/assets PORT=8099 npm start` -> one port serves
   the page (`/` 200, `/../package.json` 404) and `ws://localhost:8099/ws`; a match streams 25

@@ -14,7 +14,7 @@ Source: `DrawPrimitive/**`, `World/CWorld.as` (`InitDrawPlanes`, `Draw`, `Draw_P
 | `clips/` | `CDrawPrimitive_MovieClip_*` buffering: `bufferLayout`, `clipPlans`, `ClipBuffers`. |
 | `xsi/` | `CDrawPrimitive_XSI_*`: style sheets, plane lists, `XsiRasterizer`, `XsiFrameCache`. |
 | `world/` | `CWorld` planes and per-camera drawing: `RoomPlanes`, `VisualPainter`, `WorldRenderer`. |
-| `hud/` | `CHud` drawing: score popups, messages, player labels, score total, frags, pause screen. |
+| `hud/` | `CHud` drawing: score popups, messages, player labels, score total, frags, upgrade list. |
 
 Everything draws into `OffscreenCanvas` surfaces (`surface.ts`). The visible canvas only
 receives the finished 640 x 480 stage.
@@ -145,10 +145,11 @@ Live layer (the clips that Flash composited above the bitmap): `Hud.ScoreTotal` 
 most frags, hidden when alone; names are the online names or "Player N"; `mcSwitchSides`
 hidden); one `HUD.Player` per player (life frame
 `floor(min(max(1, 101 * ratio + 1), 101))`, ammo text `<short name>:<ammo>`, letter spacing
--2); `HUD.Paused` with the upgrade list (one row more than a third per column, 17 px rows,
+-2); `HUD.Paused` as the upgrade list, drawn over the running game with the "PAUSED!"
+title (depth 14) hidden (one row more than a third per column, 17 px rows,
 green for new weapons, 25 % alpha when inactive). The player labels use the previous
 frame's draw origin, as `UpdatePlayer` ran before `Draw_PlayerPlane`.
-`hitTest` maps clicks on `_Quit` (pause screen).
+`hitTest` maps clicks on `_Quit` while the list is shown.
 
 ## Known visual gaps
 

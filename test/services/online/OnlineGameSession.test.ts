@@ -29,7 +29,7 @@ function harness() {
   const rendered: WorldFrame[] = [];
   const sounds: SoundId[] = [];
   const decals: unknown[] = [];
-  const pauses: (readonly MultiplierListEntry[] | undefined)[] = [];
+  const lists: (readonly MultiplierListEntry[] | undefined)[] = [];
   const sent: ControlMasks[] = [];
   const results: OnlineSessionResult[] = [];
   const controls: SampledControls[] = [];
@@ -38,8 +38,8 @@ function harness() {
   const session = new OnlineGameSession({
     start: START,
     audio: { play: (sound) => sounds.push(sound), stopAmbience: () => undefined, ambiencePlaying: () => 0 },
-    scene: { stampDecal: (decal) => decals.push(decal), awardScore: () => undefined, showPause: (list) => pauses.push(list), render: (world) => rendered.push(world) },
-    input: { sample: () => controls.shift() ?? { masks: IDLE_MASKS, pausePressed: false } },
+    scene: { stampDecal: (decal) => decals.push(decal), awardScore: () => undefined, showUpgrades: (list) => lists.push(list), render: (world) => rendered.push(world) },
+    input: { sample: () => controls.shift() ?? { masks: IDLE_MASKS, upgradeListPressed: false } },
     link: {
       input: (masks) => {
         sent.push(masks);
@@ -55,7 +55,7 @@ function harness() {
     logger: silentLogger,
     onFinished: (result) => results.push(result),
   });
-  return { session, rendered, sounds, decals, pauses, sent, results, controls, leaves: () => leaves, sink: () => sink };
+  return { session, rendered, sounds, decals, lists, sent, results, controls, leaves: () => leaves, sink: () => sink };
 }
 
 describe('OnlineGameSession playback', () => {
@@ -82,29 +82,44 @@ describe('OnlineGameSession playback', () => {
     expect(sounds).toHaveLength(1);
   });
 
-  it('pauses locally: idle input, the pause screen with the upgrade list, decals but no rendering', () => {
-    const { session, rendered, decals, pauses, sent, controls } = harness();
+  it('toggles the upgrade list with the key while input and playback keep running', () => {
+    const { session, rendered, lists, sent, controls } = harness();
     const upgrades = [{ index: 1, name: 'upgrade.uzi' as never, active: true, newWeapon: true }];
     session.upgrades(upgrades);
-    controls.push({ masks: { down: 4, pressed: 4, released: 0 }, pausePressed: false }, { masks: { down: 4, pressed: 0, released: 0 }, pausePressed: true });
-    for (let tick = 1; tick <= 4; tick++) session.frame(frame(tick, { events: [DECAL] }));
+    controls.push({ masks: { down: 4, pressed: 4, released: 0 }, upgradeListPressed: true }, { masks: { down: 4, pressed: 0, released: 0 }, upgradeListPressed: false });
+    for (let tick = 1; tick <= 4; tick++) session.frame(frame(tick));
     session.tick();
     session.tick();
-    expect(session.isPaused).toBe(true);
-    expect(pauses).toEqual([upgrades]);
+    expect(session.upgradeListShown).toBe(true);
+    expect(lists).toEqual([upgrades]);
+    expect(sent).toEqual([{ down: 4, pressed: 4, released: 0 }]);
+    expect(rendered).toHaveLength(2);
+    session.tick();
+    expect(rendered).toHaveLength(3);
+    const updated = [{ ...upgrades[0], active: false }] as typeof upgrades;
+    session.upgrades(updated);
+    expect(lists.at(-1)).toEqual(updated);
+    controls.push({ masks: { down: 4, pressed: 0, released: 0 }, upgradeListPressed: true });
+    session.tick();
+    expect(session.upgradeListShown).toBe(false);
+    expect(lists.at(-1)).toBeUndefined();
+  });
+
+  it('releases held controls when the page is hidden', () => {
+    const { session, sent, controls } = harness();
+    controls.push({ masks: { down: 4, pressed: 4, released: 0 }, upgradeListPressed: false });
+    session.tick();
+    session.releaseControls();
     expect(sent).toEqual([{ down: 4, pressed: 4, released: 0 }, { down: 0, pressed: 0, released: 4 }]);
-    session.tick();
-    expect(rendered).toHaveLength(1);
-    expect(decals).toHaveLength(3);
   });
 
   it('sends input only when the held set changes or an edge happened', () => {
     const { session, sent, controls } = harness();
     controls.push(
-      { masks: { down: 1, pressed: 1, released: 0 }, pausePressed: false },
-      { masks: { down: 1, pressed: 0, released: 0 }, pausePressed: false },
-      { masks: { down: 0, pressed: 0, released: 1 }, pausePressed: false },
-      { masks: IDLE_MASKS, pausePressed: false },
+      { masks: { down: 1, pressed: 1, released: 0 }, upgradeListPressed: false },
+      { masks: { down: 1, pressed: 0, released: 0 }, upgradeListPressed: false },
+      { masks: { down: 0, pressed: 0, released: 1 }, upgradeListPressed: false },
+      { masks: IDLE_MASKS, upgradeListPressed: false },
     );
     for (let tick = 0; tick < 4; tick++) session.tick();
     expect(sent).toEqual([{ down: 1, pressed: 1, released: 0 }, { down: 0, pressed: 0, released: 1 }]);

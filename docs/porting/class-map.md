@@ -78,7 +78,7 @@
 | `CWorld.Draw`, `Draw_PlayerPlane`, `RenderMCToDraw`, `Process_Brightness` (filter) | `src/adapters/render/world/WorldRenderer.ts` |
 | `CMap.Draw` (calls `Thing.Draw`) | `VisualPainter.paint` over `World.drawList` |
 | `CMap_Decal` (stamping) | `RoomPlanes.stampDecal` |
-| `World.CHud` (drawing, `Pause`, `UpdatePlayer`, `AddScore`, `AddMessage`) | `src/adapters/render/hud/HudRenderer.ts`, `hudAnimation.ts` |
+| `World.CHud` (drawing, `Pause` as the upgrade list, `UpdatePlayer`, `AddScore`, `AddMessage`) | `src/adapters/render/hud/HudRenderer.ts`, `hudAnimation.ts` |
 | `CSound` | `src/adapters/audio/SoundMixer.ts`, `WebAudioOutput.ts` |
 | `CInput` | `src/adapters/input/KeyboardState.ts`, `TickInputSampler.ts`, `keyCodes.ts` |
 | `CSaveData` | `src/services/SettingsService.ts`, `src/adapters/storage/KeyValueStore.ts` |

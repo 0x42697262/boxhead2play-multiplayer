@@ -17,7 +17,7 @@
 | Zombie/devil spawn point angle | `undefined` | `Angle(0)` | Never read. |
 | `ThingFlag.Drawn` | Set by `CMap.Draw` | Not set | Never read. Keeps drawing read-only. |
 | `MoveInDirection2` | Direction arithmetic without wrapping | Wraps with `& 7` | The function has no caller. |
-| Quit | Only the pause screen button sets `quit` | `TickInput.quitRequested` at any time | The UI decides when the request can be made. |
+| Quit | Only the pause screen button sets `quit` (the QUIT? button on the upgrade list in the port) | `TickInput.quitRequested` at any time | The UI decides when the request can be made. |
 | Thing ids | Static `CThing.mAllocate_ID`, renewed per world | `ThingIds` per world | Same numbers, no global state. |
 | Creatures without a target | Zombies and devils read `mTarget_Player.mPosition` even when no player exists and aim at cell (0, 0) | They wait a second (`wait`) | The original only reached this after the game had ended. |
 | Key edges | `CInput` latched presses and releases from keyboard events. `Renew()` on a held key let the next key event (usually auto-repeat) latch a new press | `LatchedControl.sync` rebuilds the latches from the per-tick `ControlState`. A key still held after `renew()` latches a new press on the next tick | No keyboard events in the domain. The difference is the auto-repeat delay. |
@@ -47,7 +47,7 @@
 | Weapon number keys and Space fire | Only with one player (`mTotalPlayerCount == 1`) | Always | Every player has a keyboard of their own. |
 | Deathmatch score | A death counts as the other player's kill; first to N wins (`player1Wins` / `player2Wins`) | Frags go to the player who dealt the killing hit (`lastAttackerIndex`), or to every opponent when unknown; `playerWon` with `winnerIndex` | Needed for more than two players; identical for two. |
 | Late joiners | none | A player who joins a running coop world gets the weapons unlocked so far; in deathmatch the inventory is reset like a respawn | Online lobbies. |
-| Online pause | P paused the shared world | Online, P shows the pause screen locally and sends idle input; the server world keeps running | One player must not pause the others. |
+| Pause | P and a hidden page paused the world and showed "PAUSED!" with the upgrade list and QUIT? | No pause in any mode. P toggles the upgrade list and QUIT? over the running game (the "PAUSED!" title, depth 14 of `HUD.Paused`, is hidden); the player keeps control | Owner request: players must not be able to pause, also in single play. |
 | Debrief screens (online) | `State_Debrief_Winner` | The lobby shows the winner or the score | Not ported; same as local. |
 | External links | Instructions, trailer, More Games, Sean Cooper site, four game banners, View Highscores | Removed | The links and the score server are gone. |
 | Menu frame rate | `onEnterFrame` at 50 fps, screen logic at 25/s | Menu screens tick at 50/s, screen logic (transitions) every second tick | Same timing; documented in `docs/runtime/screens.md`. |
