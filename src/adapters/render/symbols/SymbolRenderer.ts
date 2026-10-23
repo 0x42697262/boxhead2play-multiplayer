@@ -7,7 +7,7 @@ import { inflate, transformRect, union, type Rect } from '../geometry/Rect.ts';
 import { readPixels, resetContext, type Context2D, type Surface, type SurfaceFactory } from '../surface.ts';
 import { BYTE_MASK, CHANNEL_MAX, GREEN_SHIFT, RED_SHIFT } from '../tuning.ts';
 import { drawEditText, editTextColor, plainText, type TextStyle } from './editText.ts';
-import { BUTTON_UP, childOverride, type ChildOverride, type Overrides, type SymbolLibrary } from './SymbolLibrary.ts';
+import { BUTTON_UP, childOverride, withReplacements, type ChildOverride, type Overrides, type SymbolLibrary } from './SymbolLibrary.ts';
 
 export interface DrawOptions {
   readonly colorTransform?: ColorTransform;
@@ -37,6 +37,16 @@ function transformColor(color: number, ct: ColorTransform): number {
   return (r << RED_SHIFT) | (g << GREEN_SHIFT) | b;
 }
 
+function clipped(ctx: Context2D, matrix: Matrix, clip: Rect, paint: () => void): void {
+  ctx.save();
+  ctx.setTransform(...matrix);
+  ctx.beginPath();
+  ctx.rect(clip.xMin, clip.yMin, clip.xMax - clip.xMin, clip.yMax - clip.yMin);
+  ctx.clip();
+  paint();
+  ctx.restore();
+}
+
 export class SymbolRenderer {
   constructor(
     readonly library: SymbolLibrary,
@@ -53,7 +63,7 @@ export class SymbolRenderer {
 
   drawItems(ctx: Context2D, items: readonly DisplayItem[], matrix: Matrix, options: DrawOptions = {}): void {
     const state = { ct: options.colorTransform ?? IDENTITY_COLOR, hidden: options.hidden ?? NO_HIDDEN };
-    this.itemList(ctx, items, matrix, state, options.overrides);
+    this.itemList(ctx, withReplacements(items, options.overrides), matrix, state, options.overrides);
     resetContext(ctx);
   }
 
@@ -85,22 +95,20 @@ export class SymbolRenderer {
       case 'editText':
         this.editText(ctx, character.editText, matrix, state.ct, own);
         return;
-      case 'button':
+      case 'button': {
+        const buttonState = own?.buttonState ?? BUTTON_UP;
         for (const record of character.button.records) {
-          if (!record.states.includes(BUTTON_UP)) continue;
+          if (!record.states.includes(buttonState)) continue;
           const ct = record.colorTransform ? concatColor(state.ct, record.colorTransform) : state.ct;
           this.character(ctx, record.characterId, 0, multiply(matrix, record.matrix), { ...state, ct }, undefined, 0, undefined);
         }
         return;
+      }
       case 'sprite':
         if (character.sprite.selfHidden) return;
-        this.items(ctx, characterId, frame, matrix, state, overrides);
+        this.itemList(ctx, this.library.composedItems(characterId, frame, own ?? (overrides ? { children: overrides } : undefined)), matrix, state, overrides);
         return;
     }
-  }
-
-  private items(ctx: Context2D, characterId: number, frame: number, matrix: Matrix, state: DrawState, overrides: Overrides | undefined): void {
-    this.itemList(ctx, this.library.frameItems(characterId, frame), matrix, state, overrides);
   }
 
   private itemList(ctx: Context2D, items: readonly DisplayItem[], matrix: Matrix, state: DrawState, overrides: Overrides | undefined): void {
@@ -121,7 +129,7 @@ export class SymbolRenderer {
 
   private itemBounds(item: DisplayItem, parent: Matrix, overrides: Overrides | undefined): Rect | null {
     const own = childOverride(overrides, item);
-    const local = this.library.localBounds(item.characterId, own?.frame ?? 0, own?.children, item.ratio ?? 0);
+    const local = this.library.instanceBounds(item.characterId, own, item.ratio ?? 0);
     return local ? transformRect(local, multiply(parent, own?.matrix ?? item.matrix)) : null;
   }
 
@@ -133,9 +141,11 @@ export class SymbolRenderer {
     let ct = item.colorTransform ? concatColor(state.ct, item.colorTransform) : state.ct;
     if (own?.alpha !== undefined) ct = concatColor(ct, alphaOnly(own.alpha));
     const childState = { ...state, ct };
-    const paint = (target: Context2D, m: Matrix): void =>
+    const draw = (target: Context2D, m: Matrix): void =>
       this.character(target, item.characterId, own?.frame ?? 0, m, childState, own?.children, item.ratio ?? 0, own);
-    const effects = pixelEffects(item.filters);
+    const clip = own?.clip;
+    const paint = clip === undefined ? draw : (target: Context2D, m: Matrix): void => clipped(target, m, clip, () => draw(target, m));
+    const effects = pixelEffects(own?.filters ?? item.filters);
     if (effects.length === 0) {
       paint(ctx, matrix);
       return;

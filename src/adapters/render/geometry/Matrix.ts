@@ -64,3 +64,10 @@ export function withRotationDegrees(m: Matrix, degrees: number): Matrix {
 export function isTranslationOnly(m: Matrix): boolean {
   return m[0] === 1 && m[1] === 0 && m[2] === 0 && m[3] === 1;
 }
+
+export function invert(m: Matrix): Matrix | undefined {
+  const [a, b, c, d, tx, ty] = m;
+  const determinant = a * d - b * c;
+  if (determinant === 0) return undefined;
+  return [d / determinant, -b / determinant, -c / determinant, a / determinant, (c * ty - d * tx) / determinant, (b * tx - a * ty) / determinant];
+}

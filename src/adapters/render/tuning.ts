@@ -33,3 +33,7 @@ export const MAX_FILTER_STRENGTH = 255;
 export const SURFACE_MIN_SIZE = 1;
 
 export const HUD_CACHE_LIMIT = 256;
+
+export const STAGE_LAYER_PADDING_PX = 16;
+export const STAGE_LAYER_CACHE_LIMIT = 160;
+export const STAGE_BACKGROUND = '#000';
