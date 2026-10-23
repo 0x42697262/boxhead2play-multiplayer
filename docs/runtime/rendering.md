@@ -33,8 +33,12 @@ receives the finished 640 x 480 stage.
   semi-transparent masks (none found in the HUD and room symbols).
 * Color transforms: alpha-only transforms become `globalAlpha`. Any other transform
   renders the leaf into a layer and applies `mult * c + add` per pixel.
-* Filters: glow, drop shadow, blur and color matrix are applied per pixel on a layer
-  padded by the filter extent. Inner glow, inner shadow, bevel, gradient glow, gradient
+* Filters: glow, outer gradient glow, drop shadow, blur and color matrix are applied per
+  pixel on a layer padded by the filter extent. A gradient glow maps the blurred, strength-
+  scaled alpha (0..255) through a 256-entry lookup built from `gradientColors` and
+  `gradientRatio`, then draws the source on top. The only gradient glow in the SWF is the
+  rocket's (`Shot.Rocket` `_Contents`): it merges the three spinning white dots into one
+  yellow-white projectile. Inner glow, inner shadow, on-top gradient glow, bevel, gradient
   bevel and convolution are ignored. Flash's blur kernel is approximated by a box blur of
   radius `floor(blur / 2)` per pass.
 * Edit texts draw with the exported WOFF font (`swf-font-<id>`), alignment from the field,
@@ -140,7 +144,7 @@ the previous frame's draw origin, as `UpdatePlayer` ran before `Draw_PlayerPlane
 
 ## Known visual gaps
 
-* Bevel, gradient glow, gradient bevel, inner glow and inner shadow filters are not drawn
+* Bevel, gradient bevel, inner glow and inner shadow filters are not drawn
   (wall tiles, the floor splats and a few menu texts use them).
 * Blur kernels and text layout are approximations of Flash's.
 * Nested sprites inside buffered clips always show frame 0 (Flash would advance

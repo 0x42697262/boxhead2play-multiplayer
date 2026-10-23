@@ -31,7 +31,8 @@
 | XSI frame rendering | `InitCleanUp` blocks the world start until every character frame is rendered | Lazy rendering per frame plus idle-time prewarming in the same order | Faster start. See ADR 0004. |
 | Missing head textures | `Bond_Head_*`, `GIJOE_Head_*`, `Swat_Head_*` are not exported; the shared material bitmap keeps the last style sheet's head | The master material's linkage (`Head_*_MC`) | Deterministic. That is the bitmap the original most likely showed. |
 | `LoadAnimation` frame reuse | The frame variable is not reset in the frame loop, which would reuse frame 0's bitmap | Frame `i` uses source frame `frameSequence[i]` | The game visibly animates, so the decompiled register reuse is an artifact. |
-| Filters | Flash filters | Glow, drop shadow, blur and color matrix approximated per pixel; bevel, gradient and inner filters skipped | Canvas has no equivalent. See `docs/runtime/rendering.md`. |
+| Filters | Flash filters | Glow, gradient glow (outer), drop shadow, blur and color matrix approximated per pixel; bevel, gradient bevel and inner filters skipped | Canvas has no equivalent. See `docs/runtime/rendering.md`. |
+| Diagonal player speed | `State_PlayerControl` scales `(±1, ±1)` by `mSpeed`, so diagonal walking is √2 (about 1.41×) faster | The input vector is normalized to `speed` (0.16 cells per tick in every direction); sliding along a wall while holding a diagonal is correspondingly slower (0.16 × cos 45°) | Owner-requested bug fix. |
 | Copy positions | `copyPixels` converts the destination point to whole pixels | `floor` | Flash's exact rounding is unverified. |
 | Deathmatch stage | Transparent `bmDraw` over the stage color | Cleared to black | The stage color is not part of the exported data. |
 | Stale stage pixels | `bmDraw` is not cleared in single and coop; areas outside the floor keep old pixels | Cleared to black before the floor copy | Only visible in rooms smaller than the view. |

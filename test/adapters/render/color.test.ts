@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyColorTransform, concatColor, IDENTITY_COLOR, isAlphaOnly, splitAlpha } from '../../../src/adapters/render/color/colorTransform.ts';
 import { effectPadding, pixelEffects } from '../../../src/adapters/render/color/filters.ts';
-import { applyColorMatrix, applyGlow, boxBlur, rgbFromNumber } from '../../../src/adapters/render/color/pixelFilters.ts';
+import { applyColorMatrix, applyGlow, applyGradientGlow, boxBlur, gradientLookup, rgbFromNumber } from '../../../src/adapters/render/color/pixelFilters.ts';
 
 function square(size: number, inner: number): Uint8ClampedArray {
   const pixels = new Uint8ClampedArray(size * size * 4);
@@ -78,5 +78,51 @@ describe('pixel filters', () => {
     ]);
     expect(effects.map((effect) => effect.kind)).toEqual(['glow', 'glow']);
     expect(effectPadding(effects)).toBeGreaterThan(5);
+  });
+});
+
+describe('gradient glow', () => {
+  const rocketGlow = {
+    type: 'gradientGlow',
+    blurX: 16,
+    blurY: 16,
+    strength: 2.3984375,
+    passes: 1,
+    distance: 0,
+    angle: 5.97,
+    compositeSource: true,
+    knockout: false,
+    innerShadow: false,
+    onTop: false,
+    gradientColors: [
+      { r: 255, g: 255, b: 0, a: 0 },
+      { r: 255, g: 255, b: 255, a: 255 },
+    ],
+    gradientRatio: [0, 210],
+  } as const;
+
+  it('interpolates the gradient and holds the last stop', () => {
+    const table = gradientLookup([
+      { ratio: 0, r: 255, g: 255, b: 0, a: 0 },
+      { ratio: 210, r: 255, g: 255, b: 255, a: 255 },
+    ]);
+    expect([...table.slice(0, 4)]).toEqual([255, 255, 0, 0]);
+    expect(table[105 * 4 + 3]).toBeCloseTo(128, -1);
+    expect([...table.slice(255 * 4, 256 * 4)]).toEqual([255, 255, 255, 255]);
+  });
+
+  it('turns the rocket filter into a halo that merges nearby dots', () => {
+    const effects = pixelEffects([rocketGlow]);
+    expect(effects.map((effect) => effect.kind)).toEqual(['gradientGlow']);
+    expect(effectPadding(effects)).toBe(16);
+    const size = 24;
+    const pixels = new Uint8ClampedArray(size * size * 4);
+    for (const [x, y] of [[9, 12], [14, 12]] as const) pixels.set([255, 255, 255, 255], (y * size + x) * 4);
+    const effect = effects[0];
+    if (effect?.kind !== 'gradientGlow') throw new Error('expected a gradient glow');
+    applyGradientGlow(pixels, size, size, effect.options);
+    const between = (12 * size + 11) * 4;
+    expect(pixels[between + 3]).toBeGreaterThan(0);
+    expect(pixels[3]).toBe(0);
   });
 });
