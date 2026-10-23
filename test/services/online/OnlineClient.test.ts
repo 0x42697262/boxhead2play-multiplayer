@@ -104,6 +104,19 @@ describe('OnlineClient messages', () => {
     expect(frames).toEqual([3]);
   });
 
+  it('hands the upgrade list that arrived before the game screen to the session when it attaches', () => {
+    const { online } = welcomed();
+    const upgrade = { index: 3, name: 'upgrade.weaponPistol.fastFire', newWeapon: false, active: true } as const;
+    online.receive(START);
+    online.receive({ type: 'upgrades', upgrades: [upgrade] });
+    const received: unknown[] = [];
+    online.attachGame({ matchId: START.matchId, frame: () => undefined, upgrades: (list) => received.push(list), gameOver: () => undefined, lost: () => undefined });
+    expect(received).toEqual([[upgrade]]);
+    online.receive({ ...START, matchId: 'm2' });
+    online.attachGame({ matchId: 'm2', frame: () => undefined, upgrades: (list) => received.push(list), gameOver: () => undefined, lost: () => undefined });
+    expect(received).toEqual([[upgrade], []]);
+  });
+
   it('tells the running game that the server lost the session', () => {
     const { online } = welcomed();
     let lost = 0;

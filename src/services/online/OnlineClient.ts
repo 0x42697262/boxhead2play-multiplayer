@@ -81,6 +81,7 @@ export class OnlineClient {
   private welcomed = false;
   private queued: ClientMessage[] = [];
   private sink: GameSink | undefined = undefined;
+  private matchUpgrades: readonly MultiplierListEntry[] = [];
   private readonly listeners = new Set<StateListener>();
 
   constructor(private readonly deps: OnlineClientDependencies) {}
@@ -124,6 +125,7 @@ export class OnlineClient {
 
   attachGame(sink: GameSink): () => void {
     this.sink = sink;
+    sink.upgrades(this.matchUpgrades);
     return () => {
       if (this.sink === sink) this.sink = undefined;
     };
@@ -205,12 +207,15 @@ export class OnlineClient {
         this.update({ lobby: undefined, leftReason: message.reason });
         return;
       case ServerMessageType.GameStarted:
-        if (this.sink?.matchId !== message.matchId) this.deps.onGameStarted(message);
+        if (this.sink?.matchId === message.matchId) return;
+        this.matchUpgrades = [];
+        this.deps.onGameStarted(message);
         return;
       case ServerMessageType.Frame:
         this.sink?.frame(message);
         return;
       case ServerMessageType.Upgrades:
+        this.matchUpgrades = message.upgrades;
         this.sink?.upgrades(message.upgrades);
         return;
       case ServerMessageType.GameOver:

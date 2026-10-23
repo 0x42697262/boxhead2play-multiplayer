@@ -104,6 +104,9 @@ player's camera). Shake is part of `camera.drawOrigin`.
   dropped frames are skipped.
 * When the queue runs dry it waits for the buffer again.
 * Ambience runs locally from the number of zombies in the frame.
+* `OnlineClient` keeps the match's last `upgrades` message and hands it to the session
+  when it attaches. A background tab creates the game screen only on its next animation
+  frame, so the list sent with `gameStarted` would otherwise be lost.
 
 ## Pause
 

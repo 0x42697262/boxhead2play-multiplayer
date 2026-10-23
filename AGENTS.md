@@ -161,3 +161,5 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run build`, then `BOXHEAD_ASSET_DIR=public/assets PORT=8099 npm start` -> one port serves
   the page (`/` 200, `/../package.json` 404) and `ws://localhost:8099/ws`; a match streams 25
   frames per second of about 4 KB.
+* Two tabs on `npm run dev`, start a coop game while the guest tab is in the background, switch
+  to it and press P before any upgrade -> the full upgrade list shows (pistol rows faded).
