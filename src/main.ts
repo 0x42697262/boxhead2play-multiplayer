@@ -27,7 +27,7 @@ import { createLogger, type Logger } from './observability/logger.ts';
 import { ScreenFlow, type ScreenFactory } from './services/ScreenFlow.ts';
 import { SettingsService } from './services/SettingsService.ts';
 import { AppError, ErrorCode } from './text/errors.ts';
-import { t } from './text/i18n.ts';
+import { t, type TextKey } from './text/i18n.ts';
 import { LogEvent } from './text/logEvents.ts';
 import { GameScreen } from './ui/screens/GameScreen.ts';
 import { MainMenuScreen } from './ui/screens/menu/MainMenuScreen.ts';
@@ -129,6 +129,17 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   loop.start();
 }
 
+const BOOT_FAILURE_TEXT: Partial<Record<ErrorCode, TextKey>> = {
+  [ErrorCode.AssetMissing]: 'boot.missingAssets',
+  [ErrorCode.AssetServedAsPage]: 'boot.staleAssets',
+  [ErrorCode.AssetTimedOut]: 'boot.assetTimedOut',
+};
+
+function bootFailureText(error: unknown): string {
+  const key = error instanceof AppError ? BOOT_FAILURE_TEXT[error.code] : undefined;
+  return key ? t(key) : t('boot.failed', { reason: error instanceof Error ? error.message : String(error) });
+}
+
 function main(): void {
   const host = document.getElementById(APP_ELEMENT_ID);
   if (!host) return;
@@ -143,8 +154,7 @@ function main(): void {
   logger.info(LogEvent.BootStarted);
   boot(shell, logger).catch((error: unknown) => {
     logger.error(LogEvent.BootFailed, { error: String(error) });
-    const missing = error instanceof AppError && error.code === ErrorCode.AssetMissing;
-    shell.showStatus(missing ? t('boot.missingAssets') : t('boot.failed', { reason: error instanceof Error ? error.message : String(error) }));
+    shell.showError(bootFailureText(error));
   });
 }
 

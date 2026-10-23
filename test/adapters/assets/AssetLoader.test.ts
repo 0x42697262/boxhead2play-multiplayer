@@ -77,3 +77,19 @@ describe('asset loader', () => {
     expect(paths.length).toBeGreaterThan(600);
   });
 });
+
+describe('mapLimited after a failure', () => {
+  it('starts no further items once one task has failed', async () => {
+    const started: number[] = [];
+    const items = Array.from({ length: 20 }, (_, index) => index);
+    const run = mapLimited(items, 2, async (item) => {
+      started.push(item);
+      await Promise.resolve();
+      if (item === 1) throw new AppError(ErrorCode.AssetServedAsPage, String(item));
+      return item;
+    });
+    await expect(run).rejects.toBeInstanceOf(AppError);
+    expect(started.length).toBeLessThan(items.length);
+    expect(Math.max(...started)).toBeLessThanOrEqual(2);
+  });
+});

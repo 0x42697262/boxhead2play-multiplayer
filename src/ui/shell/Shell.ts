@@ -56,7 +56,15 @@ export class Shell {
     this.canvas.classList.toggle(ShellClass.Pixelated, pixelated);
   }
 
+  private failed = false;
+
+  showError(text: string): void {
+    this.showStatus(text);
+    this.failed = true;
+  }
+
   showStatus(text: string): void {
+    if (this.failed) return;
     const status = this.overlay.ownerDocument.createElement('p');
     status.className = ShellClass.Status;
     status.textContent = text;

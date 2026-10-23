@@ -78,6 +78,10 @@ application of the team architecture rules.
   in the SWF.
 * librsvg (`rsvg-convert`) renders a nested SVG `<image>` wrongly under a skewing
   transform. Inline the SVG markup for debug composites.
+* A running Vite dev server (v8.3) does not serve files that `npm run extract` creates in
+  `public/assets/` after it started. It answers them with `index.html` (`text/html`, status
+  200). Restart `npm run dev` after re-extracting. Verified 2026-10-23 with
+  `morphs/569_0.svg`.
 
 ## Verification checklist
 
@@ -133,3 +137,6 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
   (wraparound, PLAY word cut, roll-over filters, valid keys, key capture, pointer, transition),
   option mapping, screen flow and hit testing pass.
+* Run `npm run extract` while `npm run dev` keeps running, then reload -> the loading screen
+  says the server returned a web page instead of an asset and to restart the dev server; it
+  does not freeze at a percentage. After restarting, the main menu appears.

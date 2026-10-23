@@ -19,3 +19,7 @@ export interface LoadProgress {
 export type ProgressListener = (progress: LoadProgress) => void;
 
 export const FONT_FAMILY_PREFIX = 'swf-font-';
+
+export const ASSET_REQUEST_TIMEOUT_MS = 15_000;
+export const ASSET_DECODE_TIMEOUT_MS = 15_000;
+export const HTML_CONTENT_TYPE = 'text/html';

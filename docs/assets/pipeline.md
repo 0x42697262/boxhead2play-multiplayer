@@ -314,3 +314,19 @@ correctly.
 * Nested sprite bounds assume frame 0 of the nested sprite.
 * Rounding of transformed bounds to twips uses round-to-nearest. Flash's exact fixed-point
   rounding is unverified and can change a room size by 0.05 px.
+
+## Runtime loading failures
+
+The browser loader (`src/adapters/assets/http.ts`) treats three failures as fatal and shows
+a specific message on the loading screen:
+
+| Error code | Cause | Message key |
+|---|---|---|
+| `ASSET_MISSING` | Network error or HTTP error status | `boot.missingAssets` |
+| `ASSET_SERVED_AS_PAGE` | The server answered with `text/html`. Vite does this for files added to `public/assets/` after the dev server started (its HTML fallback). | `boot.staleAssets` |
+| `ASSET_TIMED_OUT` | A request or SVG decode took longer than `ASSET_REQUEST_TIMEOUT_MS` / `ASSET_DECODE_TIMEOUT_MS` (15 s each) | `boot.assetTimedOut` |
+
+Downloads run 8 at a time (`mapLimited`). After the first failure no further downloads
+start, and the shell's error state is sticky (`Shell.showError`), so progress reports from
+downloads still in flight cannot overwrite the message. Before this, a failure left the
+screen frozen on the last percentage (observed as "Loading graphics… 16%").

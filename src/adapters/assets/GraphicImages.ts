@@ -1,7 +1,8 @@
 import { AppError, ErrorCode } from '../../text/errors.ts';
 import { mapLimited } from './AssetLoader.ts';
 import type { SymbolsCatalog } from './schemas.ts';
-import { LoadPhase, PARALLEL_DOWNLOADS, type ProgressListener } from './tuning.ts';
+import { fetchAsset, withTimeout } from './http.ts';
+import { ASSET_DECODE_TIMEOUT_MS, LoadPhase, PARALLEL_DOWNLOADS, type ProgressListener } from './tuning.ts';
 import { catalogEntryUrl } from './urls.ts';
 
 export type ImageDecoder = (url: string) => Promise<CanvasImageSource>;
@@ -22,16 +23,16 @@ export function stretchToViewport(svg: string): string {
 export const decodeBrowserImage: ImageDecoder = async (url) => {
   let objectUrl: string | undefined;
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const response = await fetchAsset(url);
     objectUrl = URL.createObjectURL(new Blob([stretchToViewport(await response.text())], { type: SVG_MIME }));
     const image = new Image();
     image.decoding = 'async';
     image.src = objectUrl;
-    await image.decode();
+    await withTimeout(image.decode(), ASSET_DECODE_TIMEOUT_MS, () => new AppError(ErrorCode.AssetTimedOut, url));
     return image;
   } catch (error) {
-    throw new AppError(ErrorCode.AssetMissing, `${url}: ${String(error)}`);
+    if (error instanceof AppError) throw error;
+    throw new AppError(ErrorCode.AssetInvalid, `${url}: ${String(error)}`);
   } finally {
     if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl);
   }

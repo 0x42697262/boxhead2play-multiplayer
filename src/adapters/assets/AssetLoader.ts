@@ -18,6 +18,7 @@ import {
   type SymbolsCatalog,
   type XsiCatalog,
 } from './schemas.ts';
+import { fetchAsset } from './http.ts';
 import { LoadPhase, PARALLEL_DOWNLOADS, type ProgressListener } from './tuning.ts';
 import { catalogEntryUrl, joinUrl } from './urls.ts';
 
@@ -44,23 +45,12 @@ export interface GameCatalogs {
 
 export const browserFetcher: Fetcher = {
   async json(url) {
-    return (await fetchOk(url)).json();
+    return (await fetchAsset(url)).json();
   },
   async bytes(url) {
-    return (await fetchOk(url)).arrayBuffer();
+    return (await fetchAsset(url)).arrayBuffer();
   },
 };
-
-async function fetchOk(url: string): Promise<Response> {
-  let response: Response;
-  try {
-    response = await fetch(url);
-  } catch (error) {
-    throw new AppError(ErrorCode.AssetMissing, `${url}: ${String(error)}`);
-  }
-  if (!response.ok) throw new AppError(ErrorCode.AssetMissing, `${url}: HTTP ${response.status}`);
-  return response;
-}
 
 export async function fetchValidated<T>(fetcher: Fetcher, url: string, schema: z.ZodType<T>): Promise<T> {
   const raw = await fetcher.json(url);
@@ -72,10 +62,16 @@ export async function fetchValidated<T>(fetcher: Fetcher, url: string, schema: z
 export async function mapLimited<T, R>(items: readonly T[], limit: number, task: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array<R>(items.length);
   let next = 0;
+  let failed = false;
   const worker = async (): Promise<void> => {
-    while (next < items.length) {
+    while (!failed && next < items.length) {
       const index = next++;
-      results[index] = await task(items[index] as T, index);
+      try {
+        results[index] = await task(items[index] as T, index);
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));

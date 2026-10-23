@@ -2,6 +2,8 @@ export const ErrorCode = {
   ConfigInvalid: 'CONFIG_INVALID',
   AssetMissing: 'ASSET_MISSING',
   AssetInvalid: 'ASSET_INVALID',
+  AssetServedAsPage: 'ASSET_SERVED_AS_PAGE',
+  AssetTimedOut: 'ASSET_TIMED_OUT',
   RoomUnknown: 'ROOM_UNKNOWN',
   CanvasUnavailable: 'CANVAS_UNAVAILABLE',
 } as const;

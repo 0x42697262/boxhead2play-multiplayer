@@ -4,6 +4,8 @@
   "boot.loading": "Loading…",
   "boot.failed": "The game could not start: {reason}",
   "boot.missingAssets": "Game assets are missing. Run \"npm run extract\" with the original SWF first.",
+  "boot.staleAssets": "The server returned a web page instead of a game asset. If you ran \"npm run extract\" while \"npm run dev\" was running, restart the dev server and reload.",
+  "boot.assetTimedOut": "A game asset took too long to load. Check the server and reload.",
   "upgrade.weaponPistol.fastFire": "Pistol+: Fast Fire",
   "upgrade.newWeapon.uzi": "New Weapon: UZI (Key 2)",
   "upgrade.weaponPistol.doubleDamage": "Pistol+: Double Damage",
