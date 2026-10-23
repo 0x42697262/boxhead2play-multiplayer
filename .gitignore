@@ -7,4 +7,5 @@ scripts/local/
 .env
 .env.*
 !.env.example
+!boxhead2play.swf
 *.log
