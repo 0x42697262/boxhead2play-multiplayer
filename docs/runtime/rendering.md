@@ -27,7 +27,13 @@ receives the finished 640 x 480 stage.
   state right after `attachMovie`) unless an override sets the frame.
 * Overrides (`ChildOverride`) replace a named child's frame, matrix, visibility, alpha,
   text, text color or letter spacing. They model `_Contents.gotoAndStop`, `_rotation`,
-  `_Top.transform.matrix`, `tf.text` and duplicated clips.
+  `_Top.transform.matrix`, `tf.text` and duplicated clips. Menus also use `characterId`
+  (`attachMovie` at an occupied depth), `attach` (`attachMovie` at a new depth, merged
+  by depth), `filters` (`mc.filters = [...]`), `buttonState` (`over`/`down` records) and
+  `clip` (a local clip rectangle, used to cut the PLAY word out of a label).
+* `LayeredStage` (`menu/`) caches each top-level layer of a screen as a stage-space
+  bitmap keyed by its overrides and recomposes only when a key changes
+  (`docs/runtime/screens.md`).
 * `clipDepth` masks: the masked items render into a layer, the mask into a second layer,
   then `destination-in`. Mask alpha is not ignored as Flash does, which only matters for
   semi-transparent masks (none found in the HUD and room symbols).
@@ -44,7 +50,7 @@ receives the finished 640 x 480 stage.
 * Edit texts draw with the exported WOFF font (`swf-font-<id>`), alignment from the field,
   baseline at `yMin + 2 + fontBoundingBoxAscent`. HTML initial text is stripped to plain
   text.
-* Buttons draw their `up` records.
+* Buttons draw their `up` records, or the records of the override's `buttonState`.
 
 ### SVG images and `preserveAspectRatio`
 

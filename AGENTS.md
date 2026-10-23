@@ -101,13 +101,13 @@ Add one line per behavior change: what to do, and the result you expect.
   red `hud.outOfAmmo.<id>` message and the pistol.
 * Coop death -> respawn after 4 s + 1 s near the other player with 200 life, empty
   weapons and 5 s of blinking. Single death -> `worldCompleted` with `playerDead`.
-* `npm run dev`, pick BOXY single player, Start -> the room, the score total `000000000000`
-  with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
+* `npm run dev`, PLAY, go to level 1/18 BOXY, click the preview -> the room, the score total
+  `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
 * Let zombies reach the player -> blood decals appear on the floor but never on walls,
   and the life bar above the player shrinks.
 * Press P -> "PAUSED!" with the upgrade list (new weapons in green, inactive ones faded);
-  click QUIT? -> back to the picker with "You quit." and the score.
-* Pick deathmatch -> two 480 px views scaled side by side with 80 px bars, "Player 2 00"
+  click QUIT? -> back to the single select-world screen.
+* DEATH MATCH, click a level -> two 480 px views scaled side by side with 80 px bars, "Player 2 00"
   on the left (view side 1); clicking the arrows at the bottom swaps the views.
 * Switch to another tab while playing -> the game is paused on return.
 * `npx vitest run test/adapters test/services test/entry test/ui` -> asset mapping,
@@ -118,3 +118,18 @@ Add one line per behavior change: what to do, and the result you expect.
   three separate white dots.
 * Hold two arrow keys (for example Down + Right) -> player 1 walks diagonally at the same speed
   as straight (0.16 cells per tick).
+* `npm run dev` -> after loading, a fade from black to the main menu: background, BOXHEAD 2PLAY
+  title, "PLAY" (the PLAY of the original SINGLE PLAY art) and "DEATH MATCH" below it at 50 %.
+  Hover one -> full alpha with a jittering drop shadow and a hand cursor.
+* PLAY -> select world with "Back to menu", OBJECTIVE KILL ZOMBIES, one character card and the
+  level preview (no More Games, banners, Sean Cooper text or View Highscores); DEATH MATCH ->
+  OBJECTIVE KILL EACH OTHER with cards 1 and 2. Back to menu -> the main menu.
+* Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),
+  kept after a reload; the game uses the chosen characters. Every level starts (no exclusive lock).
+* OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET
+  -> Beginner, Normal, on, on, on, first to 10. CONTROLS -> the key names (player 2 covered in
+  single); click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->
+  `'K'` stored; Escape cancels; RESET restores the defaults.
+* `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
+  (wraparound, PLAY word cut, roll-over filters, valid keys, key capture, pointer, transition),
+  option mapping, screen flow and hit testing pass.

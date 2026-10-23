@@ -27,12 +27,13 @@ itself uses 25 while it loads).
 
 ## Screens
 
-`ScreenFlow` owns the active `Screen` (`tick`, `present`, `idle`, `pointer`, `suspend`,
-`dispose`). Transitions requested during a tick are applied after it, which bumps
-`version` and resets the clock. The temporary shell has two screens: the picker
-(`src/ui/screens/PickerScreen.ts`) and the game (`GameScreen.ts`). A later port of the
-Flash screens (intro, main menu, select world, debrief) implements more `Screen`s and
-extends `ScreenFactory`; `GameSession` and the loop do not change.
+`ScreenFlow` owns the active `Screen` (`tick`, `present`, `idle`, `pointer`, `key`,
+`cursor`, `suspend`, `dispose`). Transitions requested during a tick are applied after it,
+which bumps `version` and resets the clock. The screens are the main menu, select world
+(`src/ui/screens/menu/`, ticking at 50/s) and the game (`GameScreen.ts`); see
+`docs/runtime/screens.md`. A new screen receives the last pointer position as a move so
+its hover state and cursor are right at once. `ScreenFlow` reports cursor changes to the
+shell through a callback.
 
 ## Game session
 

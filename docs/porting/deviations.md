@@ -37,8 +37,17 @@
 | Deathmatch stage | Transparent `bmDraw` over the stage color | Cleared to black | The stage color is not part of the exported data. |
 | Stale stage pixels | `bmDraw` is not cleared in single and coop; areas outside the floor keep old pixels | Cleared to black before the floor copy | Only visible in rooms smaller than the view. |
 | HUD message fade | `getTimer()` age of each message | Age from ticks (`(tick - messageTick) / ticksPerSecond`) | Determinism, and it matches the domain's 3 s tick lifetime. |
-| Exclusive rooms | Locked unless `_global.mHostedOnCMG` | The temporary picker marks them but lets them start | Placeholder until the select screen is ported. |
-| Debrief screens | `State_Debrief`, `State_Debrief_Winner` | The picker shows the result and score | Placeholder until the screens are ported. |
+| Exclusive rooms | `mcExclusive` shown and the level locked unless `_global.mHostedOnCMG` | `mcExclusive` always hidden, every level playable | Frame 1 sets `mHostedOnCMG` once the date is more than 180 days after 2007-04-23, so the original unlocks everything today. See `docs/runtime/screens.md`. |
+| Debrief screens | `State_Debrief`, `State_Debrief_Winner` | Every completion returns to select world in the mode played (`mReturn_SelectWorld`); the result is logged (`screen.game_finished`) | Not ported yet. |
+| Intro and loading screens | `Screen_Intro` (logos), `Screen_LoadingWorld` | Boot opens the main menu; `GameScreen` starts the world directly | Not ported yet. |
+| Main menu buttons | SINGLE PLAY, COOPERATIVE, DEATH MATCH, INSTRUCTIONS | PLAY (the word "PLAY" cut from the SINGLE PLAY text, in its slot, mode Single) and DEATH MATCH moved into the COOPERATIVE slot | Owner request: co-op will become LAN play. Local co-op stays in the domain, unused by the menu. |
+| External links | Instructions, trailer, More Games, Sean Cooper site, four game banners, View Highscores | Removed | The links and the score server are gone. |
+| Menu frame rate | `onEnterFrame` at 50 fps, screen logic at 25/s | Menu screens tick at 50/s, screen logic (transitions) every second tick | Same timing; documented in `docs/runtime/screens.md`. |
+| Stored menu indexes | `mcGotoFrame` wraps the shown frame, `LoadLevel` uses the unwrapped stored index | Both use the wrapped index | An out-of-range saved index would have loaded a missing room. |
+| Key prompt alpha | After an invalid key, a valid key closes the prompt and `mcPressAKey` can keep a partial alpha for the next prompt | Each prompt starts fully visible | Bug fix. |
+| Modal windows | Blocking by `mcLock.onPress` and `mc2PlayerCover.onPress` | Same blockers, hit-tested on their bounds | Flash tests clip shapes; both blockers are full rectangles. |
+| Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
+| Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |
 
 ## Processing order (AS2 `for..in`)

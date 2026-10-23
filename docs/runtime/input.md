@@ -34,7 +34,12 @@ consumed the release. The port:
   paused.
 
 The entry listener calls `preventDefault` for bound keys so arrows, Space and `/` do not
-scroll or open quick find, except while a form control (the picker) has focus.
+scroll or open quick find, except while a form control has focus. Key presses (not
+auto-repeats) also go to the active screen (`Screen.key`); the controls window consumes
+them while it waits for a key, and the listener then calls `preventDefault` too.
 
-Mouse: clicks on the canvas are mapped to stage coordinates and hit-tested against the
-pause screen's Quit button and the deathmatch switch-sides button.
+Mouse: pointer down, up, move and leave on the canvas are mapped to stage coordinates
+(the canvas captures the pointer on down, so a release outside still arrives). The game
+hit-tests presses against the pause screen's Quit button and the deathmatch switch-sides
+button. Menus track hover and press per target, fire `onPress`/`onRelease` actions and set
+the hand cursor (`docs/runtime/screens.md`).
