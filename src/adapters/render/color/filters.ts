@@ -1,9 +1,20 @@
 import type { Filter } from '../../assets/schemas.ts';
 import { CHANNEL_MAX } from '../tuning.ts';
-import { applyBlur, applyColorMatrix, applyGlow, boxRadius, type GlowOptions } from './pixelFilters.ts';
+import {
+  applyBlur,
+  applyColorMatrix,
+  applyGlow,
+  applyGradientGlow,
+  boxRadius,
+  gradientLookup,
+  type GlowOptions,
+  type GradientGlowOptions,
+  type GradientStop,
+} from './pixelFilters.ts';
 
 export type PixelEffect =
   | { readonly kind: 'glow'; readonly options: GlowOptions }
+  | { readonly kind: 'gradientGlow'; readonly options: GradientGlowOptions }
   | { readonly kind: 'blur'; readonly blurX: number; readonly blurY: number; readonly passes: number }
   | { readonly kind: 'colorMatrix'; readonly matrix: readonly number[] };
 
@@ -56,10 +67,46 @@ function glowEffect(filter: Filter, colorKey: string, offsetX: number, offsetY: 
   };
 }
 
+function gradientStops(filter: Filter): GradientStop[] {
+  const record = filter as Record<string, unknown>;
+  const colors = Array.isArray(record.gradientColors) ? record.gradientColors : [];
+  const ratios = Array.isArray(record.gradientRatio) ? record.gradientRatio : [];
+  return colors.flatMap((value: unknown, index) => {
+    const ratio = ratios[index] as unknown;
+    if (!value || typeof value !== 'object' || typeof ratio !== 'number') return [];
+    const color = value as Partial<FilterColor>;
+    return [{ ratio, r: color.r ?? 0, g: color.g ?? 0, b: color.b ?? 0, a: color.a ?? CHANNEL_MAX }];
+  });
+}
+
+function gradientGlowEffect(filter: Filter): PixelEffect | undefined {
+  if (booleanField(filter, 'innerShadow', false) || booleanField(filter, 'onTop', false)) return undefined;
+  const stops = gradientStops(filter);
+  if (stops.length === 0) return undefined;
+  const distance = numberField(filter, 'distance', 0);
+  const angle = numberField(filter, 'angle', 0);
+  return {
+    kind: 'gradientGlow',
+    options: {
+      gradient: gradientLookup(stops),
+      blurX: numberField(filter, 'blurX', 0),
+      blurY: numberField(filter, 'blurY', 0),
+      strength: numberField(filter, 'strength', 1),
+      passes: numberField(filter, 'passes', DEFAULT_PASSES),
+      offsetX: Math.cos(angle) * distance,
+      offsetY: Math.sin(angle) * distance,
+      knockout: booleanField(filter, 'knockout', false),
+      hideObject: !booleanField(filter, 'compositeSource', true),
+    },
+  };
+}
+
 export function toPixelEffect(filter: Filter): PixelEffect | undefined {
   switch (filter.type) {
     case 'glow':
       return glowEffect(filter, 'glowColor', 0, 0);
+    case 'gradientGlow':
+      return gradientGlowEffect(filter);
     case 'dropShadow': {
       const distance = numberField(filter, 'distance', 0);
       const angle = numberField(filter, 'angle', 0);
@@ -87,7 +134,7 @@ export function pixelEffects(filters: readonly Filter[] | undefined): PixelEffec
 export function effectPadding(effects: readonly PixelEffect[]): number {
   let padding = 0;
   for (const effect of effects) {
-    if (effect.kind === 'glow') {
+    if (effect.kind === 'glow' || effect.kind === 'gradientGlow') {
       const { options } = effect;
       const spread = (boxRadius(options.blurX) + boxRadius(options.blurY)) * options.passes;
       padding += spread + Math.ceil(Math.hypot(options.offsetX ?? 0, options.offsetY ?? 0));
@@ -101,6 +148,7 @@ export function effectPadding(effects: readonly PixelEffect[]): number {
 export function applyEffects(pixels: Uint8ClampedArray, width: number, height: number, effects: readonly PixelEffect[]): void {
   for (const effect of effects) {
     if (effect.kind === 'glow') applyGlow(pixels, width, height, effect.options);
+    else if (effect.kind === 'gradientGlow') applyGradientGlow(pixels, width, height, effect.options);
     else if (effect.kind === 'blur') applyBlur(pixels, width, height, effect.blurX, effect.blurY, effect.passes);
     else applyColorMatrix(pixels, effect.matrix);
   }

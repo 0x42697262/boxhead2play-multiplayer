@@ -139,7 +139,7 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     const { controls } = this;
     const dx = controls.left.isDown() ? -1 : controls.right.isDown() ? 1 : 0;
     const dy = controls.up.isDown() ? -1 : controls.down.isDown() ? 1 : 0;
-    this.delta = new Position(dx, dy, 0).scale(this.speed);
+    this.delta = new Position(dx, dy, 0).normalize2D(this.speed);
     if (!this.delta.isZero()) this.angle.delta = this.delta;
     this.keepDistance();
     const moved = this.moveAndReport(this.world.map.collide.playerCollide(this));

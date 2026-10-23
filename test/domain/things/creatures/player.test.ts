@@ -37,6 +37,15 @@ describe('Player control', () => {
     expect(player.angle.radians).toBeCloseTo((3 * Math.PI) / 4);
   });
 
+  it('walks diagonally at the same 0.16 cells per tick as straight', () => {
+    const world = makeRealWorld(arena());
+    const player = playerOf(world);
+    const start = player.position.clone();
+    run(world, 5, tickInput(held(PlayerControl.Down, PlayerControl.Right)));
+    expect(player.position.distance2D(start)).toBeCloseTo(5 * 0.16);
+    expect(player.position.x - start.x).toBeCloseTo(player.position.y - start.y);
+  });
+
   it('stops at static walls using 85% of its radius', () => {
     const world = makeRealWorld(room(14, 10, [solid(7, 0, 1, 10), cellObject(InitKind.Player1, 3, 3, 1)]));
     const player = playerOf(world);

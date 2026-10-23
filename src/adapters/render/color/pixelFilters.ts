@@ -19,6 +19,28 @@ export interface GlowOptions {
   readonly hideObject?: boolean;
 }
 
+export interface GradientStop {
+  readonly ratio: number;
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+  readonly a: number;
+}
+
+export interface GradientGlowOptions {
+  readonly gradient: Uint8ClampedArray;
+  readonly blurX: number;
+  readonly blurY: number;
+  readonly strength: number;
+  readonly passes: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly knockout: boolean;
+  readonly hideObject: boolean;
+}
+
+export const GRADIENT_STEPS = CHANNEL_MAX + 1;
+
 const COLOR_MATRIX_ROW = 5;
 const COLOR_MATRIX_OFFSET = 4;
 const COLOR_MATRIX_CHANNELS = 4;
@@ -99,6 +121,55 @@ export function applyGlow(pixels: Uint8ClampedArray, width: number, height: numb
     pixels[base] = ((pixels[base] as number) * ownAlpha + r * glowWeight) / outAlpha;
     pixels[base + 1] = ((pixels[base + 1] as number) * ownAlpha + g * glowWeight) / outAlpha;
     pixels[base + 2] = ((pixels[base + 2] as number) * ownAlpha + b * glowWeight) / outAlpha;
+    pixels[base + 3] = outAlpha * CHANNEL_MAX;
+  }
+}
+
+function stopChannel(stop: GradientStop, channel: number): number {
+  return [stop.r, stop.g, stop.b, stop.a][channel] ?? 0;
+}
+
+export function gradientLookup(stops: readonly GradientStop[]): Uint8ClampedArray {
+  const table = new Uint8ClampedArray(GRADIENT_STEPS * RGBA_STRIDE);
+  const sorted = [...stops].sort((left, right) => left.ratio - right.ratio);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  if (!first || !last) return table;
+  for (let step = 0; step < GRADIENT_STEPS; step++) {
+    const upperIndex = sorted.findIndex((stop) => stop.ratio >= step);
+    const upper = upperIndex < 0 ? last : (sorted[upperIndex] as GradientStop);
+    const lower = upperIndex <= 0 ? upper : (sorted[upperIndex - 1] as GradientStop);
+    const span = upper.ratio - lower.ratio;
+    const mix = span > 0 ? (step - lower.ratio) / span : 0;
+    for (let channel = 0; channel < RGBA_STRIDE; channel++) {
+      const from = stopChannel(lower, channel);
+      table[step * RGBA_STRIDE + channel] = from + (stopChannel(upper, channel) - from) * mix;
+    }
+  }
+  return table;
+}
+
+export function applyGradientGlow(pixels: Uint8ClampedArray, width: number, height: number, options: GradientGlowOptions): void {
+  const blurred = boxBlur(alphaChannel(pixels), width, height, options.blurX, options.blurY, options.passes);
+  const glow = shifted(blurred, width, height, Math.round(options.offsetX), Math.round(options.offsetY));
+  const strength = Math.min(options.strength, MAX_FILTER_STRENGTH);
+  const keepSource = !options.hideObject && !options.knockout;
+  for (let index = 0; index < glow.length; index++) {
+    const base = index * RGBA_STRIDE;
+    const step = Math.round(Math.min(1, (glow[index] as number) * strength) * CHANNEL_MAX) * RGBA_STRIDE;
+    const sourceAlpha = (pixels[base + 3] as number) / CHANNEL_MAX;
+    let glowAlpha = (options.gradient[step + 3] as number) / CHANNEL_MAX;
+    if (options.knockout) glowAlpha *= 1 - sourceAlpha;
+    const ownAlpha = keepSource ? sourceAlpha : 0;
+    const outAlpha = ownAlpha + glowAlpha * (1 - ownAlpha);
+    if (outAlpha <= 0) {
+      pixels[base + 3] = 0;
+      continue;
+    }
+    const glowWeight = glowAlpha * (1 - ownAlpha);
+    for (let channel = 0; channel < 3; channel++) {
+      pixels[base + channel] = ((pixels[base + channel] as number) * ownAlpha + (options.gradient[step + channel] as number) * glowWeight) / outAlpha;
+    }
     pixels[base + 3] = outAlpha * CHANNEL_MAX;
   }
 }
