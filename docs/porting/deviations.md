@@ -48,7 +48,8 @@
 | Deathmatch score | A death counts as the other player's kill; first to N wins (`player1Wins` / `player2Wins`) | Frags go to the player who dealt the killing hit (`lastAttackerIndex`), or to every opponent when unknown; `playerWon` with `winnerIndex` | Needed for more than two players; identical for two. |
 | Late joiners | none | A player who joins a running coop world gets the weapons unlocked so far; in deathmatch the inventory is reset like a respawn | Online lobbies. |
 | Pause | P and a hidden page paused the world and showed "PAUSED!" with the upgrade list and QUIT? | No pause in any mode. P toggles the upgrade list and QUIT? over the running game (the "PAUSED!" title, depth 14 of `HUD.Paused`, is hidden); the player keeps control | Owner request: players must not be able to pause, also in single play. |
-| Debrief screens (online) | `State_Debrief_Winner` | The lobby shows the winner or the score | Not ported; same as local. |
+| Debrief screens (online) | `State_Debrief_Winner` | The lobby room shows the winner or the score | Not ported; same as local. |
+| Online menus | none | The main menu's button slots become HOST, JOIN and NAME; the CONTROLS window becomes the join list (rows `<GAME> n/max:` and `JOIN`); the select-world screen of the mode is the lobby room, where clicking the level starts the match | Owner request: online screens in the game's own style. |
 | External links | Instructions, trailer, More Games, Sean Cooper site, four game banners, View Highscores | Removed | The links and the score server are gone. |
 | Menu frame rate | `onEnterFrame` at 50 fps, screen logic at 25/s | Menu screens tick at 50/s, screen logic (transitions) every second tick | Same timing; documented in `docs/runtime/screens.md`. |
 | Stored menu indexes | `mcGotoFrame` wraps the shown frame, `LoadLevel` uses the unwrapped stored index | Both use the wrapped index | An out-of-range saved index would have loaded a missing room. |

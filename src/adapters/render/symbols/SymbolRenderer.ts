@@ -228,6 +228,7 @@ export class SymbolRenderer {
   private editText(ctx: Context2D, editText: EditText, matrix: Matrix, ct: ColorTransform, own: ChildOverride | undefined): void {
     const color = transformColor(own?.textColor ?? editTextColor(editText), ct);
     const run = { text: own?.text ?? plainText(editText), color, ...(own?.letterSpacing === undefined ? {} : { letterSpacing: own.letterSpacing }) };
-    drawEditText(ctx, editText, matrix, run, clampAlpha(ct.aMult), this.textStyle);
+    const box = own?.textBounds ? { ...editText, bounds: own.textBounds } : editText;
+    drawEditText(ctx, box, matrix, run, clampAlpha(ct.aMult), this.textStyle);
   }
 }

@@ -11,9 +11,9 @@ Source: `Screen/CScreen.as`, `CScreen_Main.as`, `CScreen_SelectWorld.as`,
 
 ```
 boot -> main menu -> SINGLE PLAY -> select world (single) -> game -> select world (single)
-                  -> COOPERATIVE / DEATH MATCH -> lobby (mode)
-lobby -> host / change level -> select world (mode) -> level clicked -> lobby
-lobby -> start -> online game -> lobby (same mode)
+                  -> COOPERATIVE / DEATH MATCH -> online menu (mode)
+online menu -> HOST / JOIN -> lobby room (select world of the mode) -> level clicked -> online game
+online game -> lobby room (same mode)
 ```
 
 | Original state | Port |
@@ -24,12 +24,12 @@ lobby -> start -> online game -> lobby (same mode)
 | `State_LoadWorld`, `State_LoadingWorld` (`Screen_LoadingWorld`) | Not ported. `GameScreen` starts the world directly. |
 | `State_RunWorld` | `GameScreen` / `GameSession` (single), `OnlineGameScreen` / `OnlineGameSession` (coop, deathmatch) |
 | `State_Debrief`, `State_Debrief_Winner` | Not ported. A single game returns to select world (`mReturn_SelectWorld`); an online game returns to the lobby, which shows the result. |
-| none | `LobbyScreen` (online lobby browser and waiting room) |
+| none | `OnlineMenuScreen` (HOST, JOIN with the join window, NAME) |
 
 `ScreenFlow` keeps the mode to return to (`mReturn_SelectWorld`). A room that cannot be
 created also returns there, like the original `error` completion. `CScreen.GoBack`
-(`_Icon_Back.onPress`) requests the main menu in single and the lobby in coop and
-deathmatch.
+(`_Icon_Back.onPress`) requests the main menu in single and the online menu (after leaving
+the game) in the lobby room.
 
 ## Main menu (`Screen_Main`)
 
@@ -44,8 +44,8 @@ Removed: `mcInstructions` (external URL), button 203 (a "view the trailer" YouTu
 `_IconMoreGames`, `_STC` ("A SEAN COOPER GAME" link), the four game banners (depths 60,
 66, 70, 75, all external links) and `_Size`.
 
-COOPERATIVE and DEATH MATCH are online modes (ADR 0005): they open the lobby instead of
-select world.
+COOPERATIVE and DEATH MATCH are online modes (ADR 0005): they open the online menu instead
+of select world.
 
 ### Hover (`Register_Button`)
 
@@ -56,7 +56,7 @@ select world.
   The random draws keep the original order (distance, angle, blur x, blur y) and use an
   injected `Rng` (`rollOver.ts`).
 * As in Flash, the effect starts on the first frame after the roll-over (`onEnterFrame`).
-* Release plays `Click` and opens select world in `Single`, or the lobby in `Coop` or
+* Release plays `Click` and opens select world in `Single`, or the online menu in `Coop` or
   `DeathMatch`.
 * The renderer approximates a blur below 2 px as no blur (box radius `floor(blur / 2)`),
   so only the jittering drop shadow is visible.
@@ -85,7 +85,7 @@ Removed: `_IconMoreGames`, `_STC`, the four banners (depths 50, 56, 60, 65) and
 
 | Element | Behavior |
 |---|---|
-| `_Icon_Back` | On press: `Click`, back to the main menu (single) or the lobby (coop, deathmatch). |
+| `_Icon_Back` | On press: `Click`, back to the main menu (single) or out of the game to the online menu (lobby room). |
 | `mcPlayer1_Character.bLeft/bRight` | `mcGotoFrame(mcCharacter, -1/+1)` with wraparound over the 4 frames, `Click2`, stored in `settings.character`. `mcPlayer2_Character` and its "2" label (depth 37, addressed as `#37`) are hidden in every mode. |
 | `mcLevel_Selection.bLeft/bRight` | Wraparound over the 18 `LevelIcons_Single` frames, `Click2`, stored per mode in `settings.levelIndex`. The counter ("9/18") and the name are static texts on each frame. |
 | `_mcLevelIcons._Button` | `Click`, starts the room whose `iconFrame` is the shown frame (`ROOM_Single_<index + 1>`) in single, or hosts (or reconfigures) an online game with it. |
@@ -157,8 +157,10 @@ at `1 - k / 10` and the new screen at `k / 10` alpha over black; the screen igno
 pointer until the fade is done, as an invisible Flash clip does. The original's default
 `DropShadowFilter` on the incoming 640 x 480 bitmap falls entirely outside the stage and
 is not drawn. `GameScreen` starts without a transition because `Screen_LoadingWorld`
-is not ported. `LobbyScreen` draws the main menu background and puts its HTML panel in
-the shell overlay (`Shell.showPanel`).
+is not ported. Online screens add text with attached edit-text items
+(`src/ui/screens/online/stageText.ts`): an existing edit text (HUD message 35, upgrade row
+24, frags name 58, winner name 536) scaled to the wanted size, with the `textBounds`
+override widening its box so long text is not clipped by the layer bitmap.
 
 ## Rendering
 

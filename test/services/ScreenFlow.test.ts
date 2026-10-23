@@ -60,7 +60,8 @@ function harness(failGame = false) {
       if (failGame) throw new Error('unknown room');
       return add(new FakeScreen(`game:${selection.mode}:${selection.roomId}`, controls));
     },
-    lobby: (controls, entry) => add(new FakeScreen(`lobby:${entry.mode}:${entry.host?.roomId ?? ''}:${entry.result?.end ?? ''}`, controls)),
+    onlineMenu: (controls, entry) => add(new FakeScreen(`onlineMenu:${entry.mode}:${entry.result?.end ?? ''}`, controls)),
+    lobbyRoom: (controls, entry) => add(new FakeScreen(`lobbyRoom:${entry.mode}:${entry.result?.end ?? ''}`, controls)),
     onlineGame: (controls, start) => {
       if (failGame) throw new Error('unknown room');
       return add(new FakeScreen(`online:${start.mode}:${start.playerIndex}`, controls));
@@ -85,30 +86,30 @@ const START: GameStarted = {
 };
 
 describe('ScreenFlow online routing', () => {
-  it('goes from the lobby through select world (hosting) and the online game back to the lobby with the result', () => {
+  it('goes from the online menu into the lobby room, the online game and back to the room or the menu with the result', () => {
     const { flow, names } = harness();
     flow.start();
     flow.openLobby(GameMode.Coop);
     flow.tick();
-    flow.selectWorld(GameMode.Coop);
-    flow.tick();
-    flow.hostLobby({ mode: GameMode.Coop, roomId: 'ROOM_Single_0002' });
+    flow.enterLobby(GameMode.Coop);
     flow.tick();
     flow.startOnlineGame(START);
     flow.tick();
-    flow.finishOnlineGame({ end: OnlineEnd.Finished, state: CompletionState.PlayerDead, gameOver: undefined });
+    flow.finishOnlineGame({ end: OnlineEnd.Finished, state: CompletionState.PlayerDead, gameOver: undefined }, true);
     flow.tick();
-    expect(names()).toEqual(['mainMenu', 'lobby:coop::', 'selectWorld:coop', 'lobby:coop:ROOM_Single_0002:', 'online:coop:1', 'lobby:coop::finished']);
+    flow.startOnlineGame(START);
+    flow.tick();
+    flow.finishOnlineGame({ end: OnlineEnd.Lost, state: CompletionState.Error, gameOver: undefined }, false);
+    flow.tick();
+    expect(names()).toEqual(['mainMenu', 'onlineMenu:coop:', 'lobbyRoom:coop:', 'online:coop:1', 'lobbyRoom:coop:finished', 'online:coop:1', 'onlineMenu:coop:lost']);
   });
 
-  it('ignores hosting a single player selection and falls back to the lobby when the online game cannot start', () => {
+  it('falls back to the online menu when the online game cannot start', () => {
     const { flow, names } = harness(true);
     flow.start();
-    flow.hostLobby({ mode: GameMode.Single, roomId: 'ROOM_Single_0001' });
-    flow.tick();
     flow.startOnlineGame(START);
     flow.tick();
-    expect(names()).toEqual(['mainMenu', 'lobby:coop::']);
+    expect(names()).toEqual(['mainMenu', 'onlineMenu:coop:']);
   });
 });
 

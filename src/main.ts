@@ -35,7 +35,8 @@ import { GameScreen } from './ui/screens/GameScreen.ts';
 import { MainMenuScreen } from './ui/screens/menu/MainMenuScreen.ts';
 import type { MenuKit } from './ui/screens/menu/MenuCore.ts';
 import { SelectWorldScreen } from './ui/screens/menu/SelectWorldScreen.ts';
-import { LobbyScreen } from './ui/screens/online/LobbyScreen.ts';
+import { LobbyRoom } from './ui/screens/online/LobbyRoom.ts';
+import { OnlineMenuScreen } from './ui/screens/online/OnlineMenuScreen.ts';
 import { OnlineGameScreen } from './ui/screens/online/OnlineGameScreen.ts';
 import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX } from './ui/shell/Shell.ts';
 
@@ -117,8 +118,18 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         controls,
         selection,
       }),
-    lobby: (controls, entry) =>
-      new LobbyScreen({ kit: menuKit, document, client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, entry }),
+    onlineMenu: (controls, entry) =>
+      new OnlineMenuScreen({ kit: menuKit, rng: menuRng, client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, entry }),
+    lobbyRoom: (controls, entry) =>
+      new SelectWorldScreen({
+        kit: menuKit,
+        settings: userSettings,
+        rooms: catalogs.roomIndex,
+        controls,
+        logger,
+        mode: entry.mode,
+        room: new LobbyRoom({ client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result }),
+      }),
     onlineGame: (controls, start) =>
       new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start }),
   };

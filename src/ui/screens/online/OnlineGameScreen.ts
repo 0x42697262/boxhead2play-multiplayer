@@ -68,7 +68,7 @@ export class OnlineGameScreen implements Screen {
       link: client,
       playerNames: () => playerNames(client),
       logger: deps.logger,
-      onFinished: (result) => deps.controls.finishOnlineGame(result),
+      onFinished: (result) => deps.controls.finishOnlineGame(result, client.lobby !== undefined),
     });
     deps.shell.hideOverlay();
   }

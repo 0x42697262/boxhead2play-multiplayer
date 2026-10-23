@@ -112,8 +112,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * Press P -> the upgrade list over the running game, no "PAUSED!" (new weapons in green,
   inactive ones faded); zombies keep moving and arrows still walk; P again hides it; click
   QUIT? -> back to the single select-world screen.
-* Two browser tabs on `npm run dev`: DEATH MATCH in both, host a game in one, JOIN in the
-  other, START GAME -> each tab shows a full 640 x 480 view of its own player, the frags bar
+* Two browser tabs on `npm run dev`: DEATH MATCH in both, HOST in one, JOIN and the row's JOIN in
+  the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player, the frags bar
   with the local name on the left and the opponent on the right, no switch-sides arrows.
 * Switch to another tab while playing single -> on return the game continues where it was,
   with no pause screen and no catch-up burst.
@@ -132,8 +132,12 @@ Add one line per behavior change: what to do, and the result you expect.
   a jittering drop shadow and a hand cursor.
 * SINGLE PLAY -> select world with "Back to menu", OBJECTIVE KILL ZOMBIES, one character card and
   the level preview (no More Games, banners, Sean Cooper text or View Highscores). COOPERATIVE
-  or DEATH MATCH -> the online lobby ("Connected", "No games yet. Host one!"); HOST GAME ->
-  select world with one character card and no "2" label. Back to menu -> the main menu.
+  or DEATH MATCH -> HOST, JOIN and NAME: PLAYER in the main menu style with "Back to menu" and
+  "COOPERATIVE ONLINE · Open games: 0"; HOST -> OBJECTIVE with one character card, no "2" label,
+  "PLAYERS: 1. PLAYER · BAMBO (you, host)" and "CLICK TO START GAME". Back to menu -> the online
+  menu, then the main menu.
+* Online menu, click NAME, type "Ann", Enter -> "NAME: ANN", kept after a reload. JOIN -> the
+  controls window titled "SELECT A GAME TO JOIN!" with rows like "ANN'S GAME 1/4:" and JOIN.
 * Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),
   kept after a reload; the game uses the chosen characters. Every level starts (no exclusive lock).
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET
@@ -158,10 +162,11 @@ Add one line per behavior change: what to do, and the result you expect.
   different cells, every player gets a 640 px camera, late join takes the lowest free index,
   a deathmatch kill is credited to the shooter, and a coop late joiner gets the unlocked
   weapons.
-* Two tabs on `npm run dev`, COOPERATIVE, host in tab 1, JOIN in tab 2 (lobby shows both names
-  and characters), START GAME -> both tabs play the same world with one shared score; arrows
+* Two tabs on `npm run dev`, COOPERATIVE, HOST in tab 1, JOIN in tab 2 (the room lists both names
+  and characters, tab 2 says "WAITING FOR ... TO START"), click the level in tab 1 -> both tabs play the same world with one shared score; arrows
   move only that tab's player; P in tab 2 shows the upgrade list there while both players keep
-  playing; QUIT? -> tab 2 is back in the lobby with "You left the match." and JOIN GAME.
+  playing; QUIT? -> tab 2 is back in the room with "You left the match." and "CLICK TO JOIN GAME";
+  clicking the level joins the running match again.
 * Two tabs in a coop game, block one tab for a second (devtools console:
   `const t = performance.now() + 1000; while (performance.now() < t);`)
   -> movement in that tab feels as direct again within half a second (the frame buffer

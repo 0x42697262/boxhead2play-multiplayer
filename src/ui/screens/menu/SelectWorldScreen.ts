@@ -3,7 +3,7 @@ import { keyCodeForCode, validKey } from '../../../adapters/input/validKeys.ts';
 import type { StageScene } from '../../../adapters/render/menu/LayeredStage.ts';
 import { depthKey, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import { SoundId } from '../../../domain/sounds.ts';
-import { GameMode } from '../../../domain/world/GameMode.ts';
+import type { GameMode } from '../../../domain/world/GameMode.ts';
 import { PlayerCharacter } from '../../../domain/world/SimulationSettings.ts';
 import type { Logger } from '../../../observability/logger.ts';
 import {
@@ -19,6 +19,10 @@ import type { Cursor, FlowControls, PointerInput, Screen } from '../../../servic
 import { levelIndexFor, withLevelIndex, type SettingsService } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
 import { LogEvent } from '../../../text/logEvents.ts';
+import { roomIdForLevel, type RoomPanel } from '../online/lobbyModel.ts';
+import type { SelectWorldRoom } from '../online/LobbyRoom.ts';
+import { placedText, staticTextFrame, textOverride, type PlacedText, type StaticTextFrame } from '../online/stageText.ts';
+import { MENU_TEXT_COLOR, ROOM_MEMBERS, ROOM_NOTICE, ROOM_OPTIONS, ROOM_PROMPT_ATTACHED_DEPTH, ROOM_PROMPT_DEPTH, ROW_LABEL_COLOR, RoomChild, TextStyles } from '../online/tuning.ts';
 import { cycleFrame } from './frameCycle.ts';
 import { KeyCapture, KeyPressOutcome, type KeyTarget } from './KeyCapture.ts';
 import { itemMatrix } from './MainMenuScreen.ts';
@@ -80,6 +84,7 @@ export interface SelectWorldDependencies {
   readonly controls: FlowControls;
   readonly logger: Logger;
   readonly mode: GameMode;
+  readonly room?: SelectWorldRoom;
 }
 
 export interface SelectWorldLayout {
@@ -89,6 +94,8 @@ export interface SelectWorldLayout {
   readonly levelCount: number;
   readonly characterCount: number;
   readonly pressAKeyFrames: number;
+  readonly prompt: StaticTextFrame | undefined;
+  readonly levelCenterX: number;
 }
 
 const NEXT = 1;
@@ -145,6 +152,8 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
     levelCount: levelIconsId === undefined ? SINGLE_FRAME : (library.sprite(levelIconsId)?.frameCount ?? SINGLE_FRAME),
     characterCount: frameCount(library, character),
     pressAKeyFrames: frameCount(library, pressAKey),
+    prompt: staticTextFrame(library, selectionItems.find((item) => item.depth === ROOM_PROMPT_DEPTH)),
+    levelCenterX: selection?.matrix[4] ?? 0,
   };
 }
 
@@ -177,7 +186,13 @@ export class SelectWorldScreen implements Screen {
   }
 
   get levelIndex(): number {
-    return cycleFrame(levelIndexFor(this.deps.settings.settings, this.deps.mode), 0, this.layout.levelCount);
+    const panel = this.deps.room?.panel();
+    const shared = panel && !panel.host ? panel.levelIndex : undefined;
+    return cycleFrame(shared ?? levelIndexFor(this.deps.settings.settings, this.deps.mode), 0, this.layout.levelCount);
+  }
+
+  get roomPanel(): RoomPanel | undefined {
+    return this.deps.room?.panel();
   }
 
   get characterFrame(): number {
@@ -219,7 +234,9 @@ export class SelectWorldScreen implements Screen {
 
   suspend(): void {}
 
-  dispose(): void {}
+  dispose(): void {
+    this.deps.room?.dispose();
+  }
 
   perform(action: SelectAction): void {
     const { audio } = this.deps.kit;
@@ -227,8 +244,8 @@ export class SelectWorldScreen implements Screen {
     switch (action.kind) {
       case SelectAction.Back:
         audio.play(SoundId.Click);
-        if (this.deps.mode === GameMode.Single) this.deps.controls.showMainMenu();
-        else this.deps.controls.openLobby(this.deps.mode);
+        if (this.deps.room) this.deps.room.back();
+        else this.deps.controls.showMainMenu();
         return;
       case SelectAction.Play:
         this.play();
@@ -246,6 +263,7 @@ export class SelectWorldScreen implements Screen {
         return;
       case SelectAction.ResetOptions:
         settings.update(resetOptions);
+        this.configChanged();
         return;
       case SelectAction.OpenControls:
         this.controlsOpen = true;
@@ -258,16 +276,20 @@ export class SelectWorldScreen implements Screen {
         return;
       case SelectAction.Option:
         settings.update((current) => withOption(current, action.field, action.value));
+        this.configChanged();
         return;
       case SelectAction.Character: {
         const next = cycleFrame(this.characterFrame, action.delta, this.layout.characterCount);
         const character = Object.values(PlayerCharacter).find((value) => value === next);
-        if (character !== undefined) settings.update((current) => withCharacter(current, character));
+        if (character === undefined) return;
+        settings.update((current) => withCharacter(current, character));
+        this.deps.room?.characterChanged(character);
         return;
       }
       case SelectAction.Level: {
         const next = cycleFrame(this.levelIndex, action.delta, this.layout.levelCount);
         settings.update((current) => withLevelIndex(current, this.deps.mode, next));
+        this.configChanged();
         return;
       }
       case SelectAction.ChangeKey:
@@ -286,13 +308,17 @@ export class SelectWorldScreen implements Screen {
       release([...OWN_CARD, Child.Left], { kind: SelectAction.Character, delta: PREVIOUS }),
       release([...OWN_CARD, Child.Right], { kind: SelectAction.Character, delta: NEXT }),
     ];
+    const panel = this.roomPanel;
+    const configurable = !this.deps.room || panel?.host === true;
+    const playable = !this.deps.room || panel?.canPlay === true;
     return [
-      release(buttonPath(Child.GameOptions), { kind: SelectAction.OpenOptions }),
+      ...(configurable ? [release(buttonPath(Child.GameOptions), { kind: SelectAction.OpenOptions })] : []),
       release(buttonPath(Child.GameControls), { kind: SelectAction.OpenControls }),
       { path: [Child.Back], trigger: Trigger.Press, action: { kind: SelectAction.Back } },
-      release([...LEVEL, Child.Left], { kind: SelectAction.Level, delta: PREVIOUS }),
-      release([...LEVEL, Child.Right], { kind: SelectAction.Level, delta: NEXT }),
-      release([...LEVEL_ICONS, Child.Button], { kind: SelectAction.Play }),
+      ...(configurable
+        ? [release([...LEVEL, Child.Left], { kind: SelectAction.Level, delta: PREVIOUS }), release([...LEVEL, Child.Right], { kind: SelectAction.Level, delta: NEXT })]
+        : []),
+      ...(playable ? [release([...LEVEL_ICONS, Child.Button], { kind: SelectAction.Play })] : []),
       ...cards,
     ];
   }
@@ -306,16 +332,58 @@ export class SelectWorldScreen implements Screen {
     }
     this.sceneOptions(tree);
     this.sceneControls(tree);
-    return { items: this.layout.items, overrides: tree.overrides, expand: SELECT_WORLD_EXPANDED };
+    const roomItems = this.sceneRoom(tree);
+    return { items: roomItems.length > 0 ? [...this.layout.items, ...roomItems] : this.layout.items, overrides: tree.overrides, expand: SELECT_WORLD_EXPANDED };
   }
 
   private play(): void {
-    const index = this.levelIndex;
-    const room = this.deps.rooms.rooms.find((entry) => entry.iconFrame === index);
-    if (!room) return;
-    const selection = { mode: this.deps.mode, roomId: room.id };
-    if (this.deps.mode === GameMode.Single) this.deps.controls.startGame(selection);
-    else this.deps.controls.hostLobby(selection);
+    if (this.deps.room) {
+      this.deps.room.play();
+      return;
+    }
+    const roomId = roomIdForLevel(this.deps.rooms, this.levelIndex);
+    if (roomId !== undefined) this.deps.controls.startGame({ mode: this.deps.mode, roomId });
+  }
+
+  private configChanged(): void {
+    const roomId = roomIdForLevel(this.deps.rooms, this.levelIndex);
+    if (roomId !== undefined) this.deps.room?.configChanged(roomId);
+  }
+
+  private sceneRoom(tree: OverrideTree): DisplayItem[] {
+    const panel = this.roomPanel;
+    if (!panel) return [];
+    const library = this.deps.kit.renderer.library;
+    if (!panel.host) {
+      tree.set([Child.GameOptions], { visible: false });
+      tree.set([...LEVEL, Child.Left], { visible: false });
+      tree.set([...LEVEL, Child.Right], { visible: false });
+    }
+    const { prompt } = this.layout;
+    const promptItem = prompt
+      ? placedText(library, { name: RoomChild.Prompt, depth: ROOM_PROMPT_ATTACHED_DEPTH, style: TextStyles.Prompt, anchorX: prompt.centerX, top: prompt.top })
+      : undefined;
+    if (promptItem) {
+      tree.set([...LEVEL, depthKey(ROOM_PROMPT_DEPTH)], { visible: false });
+      tree.set(LEVEL, { attach: [...(tree.at(LEVEL).attach ?? []), promptItem.item] });
+      tree.set([...LEVEL, RoomChild.Prompt], textOverride(promptItem, panel.prompt, MENU_TEXT_COLOR));
+    }
+    const items: DisplayItem[] = [];
+    const add = (placed: PlacedText | undefined, text: string, color: number): void => {
+      if (!placed?.item.name) return;
+      items.push(placed.item);
+      tree.set([placed.item.name], textOverride(placed, text, color));
+    };
+    panel.members.forEach((line, index) => {
+      const style = index === 0 ? TextStyles.ListHeading : TextStyles.ListItem;
+      const top = ROOM_MEMBERS.top + index * ROOM_MEMBERS.lineHeight;
+      const name = `${RoomChild.Members}${index}`;
+      add(placedText(library, { name, depth: ROOM_MEMBERS.depth + index, style, anchorX: ROOM_MEMBERS.left, top, width: ROOM_MEMBERS.width }), line, MENU_TEXT_COLOR);
+    });
+    const { levelCenterX } = this.layout;
+    add(placedText(library, { name: RoomChild.Options, ...ROOM_OPTIONS, style: TextStyles.Small, anchorX: levelCenterX }), panel.options, ROW_LABEL_COLOR);
+    if (panel.notice) add(placedText(library, { name: RoomChild.Notice, ...ROOM_NOTICE, style: TextStyles.Prompt }), panel.notice, MENU_TEXT_COLOR);
+    return items;
   }
 
   private optionsTargets(): MenuTarget<SelectAction>[] {

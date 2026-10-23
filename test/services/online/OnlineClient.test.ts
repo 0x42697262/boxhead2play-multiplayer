@@ -78,6 +78,29 @@ describe('OnlineClient messages', () => {
     expect(online.state).toMatchObject({ error: undefined, leftReason: undefined });
   });
 
+  it('joins a running match right after joining its lobby, but only when asked', () => {
+    const { online, transport } = welcomed();
+    const running = lobby({ state: 'playing', members: [{ id: 'c2', name: 'Ann', character: 3, host: true, connected: true, playerIndex: 0 }, { id: 'c1', name: 'Bob', character: 0, host: false, connected: true, playerIndex: null }] });
+    online.joinLobby('l1', 0, true);
+    online.receive({ type: 'lobby', lobby: running });
+    online.receive({ type: 'lobby', lobby: running });
+    expect(transport.sent.filter((message) => message.type === 'startGame')).toHaveLength(1);
+    online.joinLobby('l1', 0);
+    online.receive({ type: 'lobby', lobby: running });
+    expect(transport.sent.filter((message) => message.type === 'startGame')).toHaveLength(1);
+  });
+
+  it('shows no leave notice when the player left on purpose', () => {
+    const { online } = welcomed();
+    online.receive({ type: 'lobby', lobby: lobby() });
+    online.leaveLobby();
+    online.receive({ type: 'lobbyLeft', reason: 'left' });
+    expect(online.state.leftReason).toBeUndefined();
+    online.receive({ type: 'lobby', lobby: lobby() });
+    online.receive({ type: 'lobbyLeft', reason: 'left' });
+    expect(online.state.leftReason).toBe('left');
+  });
+
   it('starts a game once per match and routes frames and game over to the attached session', () => {
     const { online, starts } = welcomed();
     online.receive(START);

@@ -94,7 +94,8 @@ describe('ScreenFlow and GameLoop', () => {
         return screen;
       },
       selectWorld: () => new CountingScreen('selectWorld', 50),
-      lobby: () => new CountingScreen('lobby', 50),
+      onlineMenu: () => new CountingScreen('onlineMenu', 50),
+      lobbyRoom: () => new CountingScreen('lobbyRoom', 50),
       onlineGame: () => new CountingScreen('onlineGame', 25),
       game: () => {
         const screen = new CountingScreen('game', 50);

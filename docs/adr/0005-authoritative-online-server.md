@@ -40,7 +40,8 @@ Option 3.
   (`World.joinPlayer`) and leave (`World.leavePlayer`), and credits deathmatch frags to
   the last attacking player.
 * The browser keeps single play fully local (`GameScreen`, `GameSession`). Coop and
-  deathmatch go through `LobbyScreen` and `OnlineGameScreen` (`OnlineClient`,
+  deathmatch go through `OnlineMenuScreen`, the select-world screen as lobby room and
+  `OnlineGameScreen` (`OnlineClient`,
   `OnlineGameSession`), which play server frames through a small jitter buffer.
 * Everything about local two players is removed: the second key set, the second
   character slot, split screen, the switch-sides button and the coop leash.

@@ -4,7 +4,8 @@ import { CompletionState } from '../../../src/domain/world/CompletionState.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { OnlineStatus, type OnlineState } from '../../../src/services/online/OnlineClient.ts';
 import { OnlineEnd } from '../../../src/services/online/OnlineGameSession.ts';
-import { LobbyCommand, lobbyViewModel, optionsSummary } from '../../../src/ui/screens/online/lobbyModel.ts';
+import { joinList, menuStatus, optionsSummary, roomIdForLevel, roomPanel } from '../../../src/ui/screens/online/lobbyModel.ts';
+import { editName, NameEntryOutcome } from '../../../src/ui/screens/online/nameEntry.ts';
 import { lobby, OPTIONS } from '../../services/online/support.ts';
 
 const ROOMS: RoomIndex = {
@@ -14,49 +15,82 @@ const ROOMS: RoomIndex = {
 
 const ONLINE: OnlineState = { status: OnlineStatus.Online, clientId: 'c2', lobbies: [], lobby: undefined, error: undefined, leftReason: undefined, result: undefined };
 
-describe('lobby view model', () => {
-  it('lists games of the mode with the level name and offers hosting', () => {
+const SLOTS = 14;
+
+describe('online menu and join list', () => {
+  it('lists the games of the mode as "<NAME> n/max:" rows with JOIN, FULL or JOINING', () => {
     const state: OnlineState = {
       ...ONLINE,
       lobbies: [
         { id: 'l1', name: "Ann's game", mode: GameMode.Coop, roomId: 'ROOM_Single_0001', state: 'waiting', players: 2, maxPlayers: 4 },
         { id: 'l2', name: 'Full', mode: GameMode.Coop, roomId: 'ROOM_Single_0001', state: 'playing', players: 4, maxPlayers: 4 },
         { id: 'l3', name: 'Other mode', mode: GameMode.DeathMatch, roomId: 'ROOM_Single_0001', state: 'waiting', players: 1, maxPlayers: 4 },
+        { id: 'l4', name: 'Running', mode: GameMode.Coop, roomId: 'ROOM_Single_0001', state: 'playing', players: 1, maxPlayers: 4 },
       ],
     };
-    const model = lobbyViewModel({ mode: GameMode.Coop, state, rooms: ROOMS, character: 3, result: undefined });
-    expect(model.title).toBe('COOPERATIVE ONLINE');
-    expect(model.browser?.rows).toEqual([
-      { id: 'l1', text: "Ann's game · BOXY · 2/4 · waiting", joinable: true },
-      { id: 'l2', text: 'Full · BOXY · 4/4 · playing', joinable: false },
+    const list = joinList(GameMode.Coop, state, undefined, SLOTS);
+    expect(list.rows).toEqual([
+      { lobbyId: 'l1', label: "ANN'S GAME 2/4:", action: 'JOIN', joinable: true, running: false },
+      { lobbyId: 'l2', label: 'FULL 4/4:', action: 'FULL', joinable: false, running: true },
+      { lobbyId: 'l4', label: 'RUNNING 1/4:', action: 'JOIN', joinable: true, running: true },
     ]);
-    expect(model.commands).toEqual([LobbyCommand.Host, LobbyCommand.Back]);
+    const joining = joinList(GameMode.Coop, state, 'l1', SLOTS);
+    expect(joining.rows.map((row) => [row.action, row.joinable])).toEqual([
+      ['JOINING…', false],
+      ['FULL', false],
+      ['JOIN', false],
+    ]);
+    expect(joinList(GameMode.Coop, state, undefined, 1).rows).toHaveLength(1);
+    expect(menuStatus(GameMode.Coop, state, undefined)).toBe('COOPERATIVE ONLINE · Open games: 3');
   });
 
-  it('shows the waiting room with member tags; only the host may start or change the level', () => {
-    const guest = lobbyViewModel({ mode: GameMode.Coop, state: { ...ONLINE, lobby: lobby() }, rooms: ROOMS, character: 0, result: undefined });
-    expect(guest.room?.members.map((member) => member.text)).toEqual(['Ann · BAMBO · host', 'Bob · SWAT · you']);
-    expect(guest.room?.level).toBe('Level: BOXY');
-    expect(guest.room?.waitingText).toBe('Waiting for the host to start…');
-    expect(guest.commands).toEqual([LobbyCommand.Leave]);
-    const host = lobbyViewModel({ mode: GameMode.Coop, state: { ...ONLINE, clientId: 'c1', lobby: lobby() }, rooms: ROOMS, character: 3, result: undefined });
-    expect(host.commands).toEqual([LobbyCommand.Start, LobbyCommand.ChangeLevel, LobbyCommand.Leave]);
+  it('explains an empty list, the connection state and errors', () => {
+    expect(joinList(GameMode.Coop, ONLINE, undefined, SLOTS).info).toBe('No games yet. Close this window and HOST one.');
+    const connecting = { ...ONLINE, status: OnlineStatus.Connecting };
+    expect(joinList(GameMode.Coop, connecting, undefined, SLOTS).info).toBe('Connecting to the game server…');
+    expect(menuStatus(GameMode.Coop, connecting, undefined)).toBe('Connecting to the game server…');
+    expect(joinList(GameMode.Coop, { ...ONLINE, error: 'lobbyFull' }, undefined, SLOTS).info).toBe('That game is full.');
+  });
+
+  it('edits the name with typed characters, backspace, a length limit, Enter and Escape', () => {
+    let step = editName('', 'KeyA', 'A', 3);
+    step = editName(step.draft, 'KeyN', 'n', 3);
+    step = editName(step.draft, 'KeyN', 'n', 3);
+    expect(editName(step.draft, 'KeyX', 'x', 3)).toEqual({ draft: 'Ann', outcome: NameEntryOutcome.Editing });
+    expect(editName('Ann', 'Backspace', undefined, 3).draft).toBe('An');
+    expect(editName('Ann', 'ShiftLeft', undefined, 3).draft).toBe('Ann');
+    expect(editName(' Ann ', 'Enter', undefined, 16)).toEqual({ draft: 'Ann', outcome: NameEntryOutcome.Confirmed });
+    expect(editName('Ann', 'Escape', undefined, 16).outcome).toBe(NameEntryOutcome.Cancelled);
+  });
+});
+
+describe('lobby room on the select-world screen', () => {
+  it('shows the host the start prompt and the guest the waiting prompt, with the player list', () => {
+    const host = roomPanel(lobby(), { ...ONLINE, clientId: 'c1' }, ROOMS, undefined);
+    expect(host).toMatchObject({ host: true, levelIndex: 0, prompt: 'CLICK TO START GAME', canPlay: true });
+    expect(host.members).toEqual(['PLAYERS:', '1. ANN · BAMBO (you, host)', '2. BOB · SWAT']);
+    const guest = roomPanel(lobby(), ONLINE, ROOMS, undefined);
+    expect(guest).toMatchObject({ host: false, prompt: 'WAITING FOR ANN TO START', canPlay: false });
+    expect(guest.options).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on');
   });
 
   it('offers joining a running match to a member outside it', () => {
     const running = lobby({ state: 'playing', members: [{ id: 'c1', name: 'Ann', character: 3, host: true, connected: false, playerIndex: 0 }, { id: 'c2', name: 'Bob', character: 0, host: false, connected: true, playerIndex: null }] });
-    const model = lobbyViewModel({ mode: GameMode.Coop, state: { ...ONLINE, lobby: running }, rooms: ROOMS, character: 0, result: undefined });
-    expect(model.commands).toEqual([LobbyCommand.JoinGame, LobbyCommand.Leave]);
-    expect(model.room?.members[0]).toEqual({ text: 'Ann · BAMBO · host · in game · offline', offline: true });
+    const outside = roomPanel(running, ONLINE, ROOMS, undefined);
+    expect(outside).toMatchObject({ prompt: 'CLICK TO JOIN GAME', canPlay: true });
+    expect(outside.members[1]).toBe('1. ANN · BAMBO (host, in game, offline)');
+    const inside = roomPanel(running, { ...ONLINE, clientId: 'c1' }, ROOMS, undefined);
+    expect(inside).toMatchObject({ prompt: 'GAME RUNNING', canPlay: false });
   });
 
   it('explains errors and results', () => {
-    const error = lobbyViewModel({ mode: GameMode.Coop, state: { ...ONLINE, error: 'lobbyFull' }, rooms: ROOMS, character: 0, result: undefined });
-    expect(error.notice).toBe('That game is full.');
+    expect(roomPanel(lobby(), { ...ONLINE, error: 'notHost' }, ROOMS, undefined).notice).toBe('Only the host can do that.');
     const won = { end: OnlineEnd.Finished, state: CompletionState.PlayerWon, gameOver: { type: 'gameOver', matchId: 'm', state: CompletionState.PlayerWon, winnerName: 'Bob', score: 0 } } as const;
-    expect(lobbyViewModel({ mode: GameMode.DeathMatch, state: ONLINE, rooms: ROOMS, character: 0, result: won }).notice).toBe('Bob wins!');
+    expect(roomPanel(lobby(), ONLINE, ROOMS, won).notice).toBe('Bob wins!');
     const dead = { end: OnlineEnd.Finished, state: CompletionState.PlayerDead, gameOver: { type: 'gameOver', matchId: 'm', state: CompletionState.PlayerDead, winnerName: null, score: 1234 } } as const;
-    expect(lobbyViewModel({ mode: GameMode.Coop, state: ONLINE, rooms: ROOMS, character: 0, result: dead }).notice).toBe('Game over! Score 1234');
+    expect(menuStatus(GameMode.Coop, ONLINE, dead)).toBe('Game over! Score 1234');
+    expect(roomIdForLevel(ROOMS, 0)).toBe('ROOM_Single_0001');
+    expect(roomIdForLevel(ROOMS, 5)).toBeUndefined();
   });
 
   it('summarizes options per mode', () => {

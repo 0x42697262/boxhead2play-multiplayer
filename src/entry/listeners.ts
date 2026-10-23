@@ -22,6 +22,13 @@ export interface ListenerHandlers {
 
 const FORM_TAGS: ReadonlySet<string> = new Set(['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON']);
 
+const SINGLE_CHARACTER = 1;
+
+function typedCharacter(event: KeyboardEvent): string | undefined {
+  if (event.ctrlKey || event.metaKey || event.altKey) return undefined;
+  return event.key.length === SINGLE_CHARACTER ? event.key : undefined;
+}
+
 function typingInForm(event: KeyboardEvent): boolean {
   const target = event.target;
   return target instanceof HTMLElement && FORM_TAGS.has(target.tagName);
@@ -39,7 +46,7 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
     gesture();
     if (typingInForm(event)) return;
     if (handlers.isGameKey(event.code)) event.preventDefault();
-    if (!event.repeat && handlers.flow.key(event.code)) event.preventDefault();
+    if (!event.repeat && handlers.flow.key(event.code, typedCharacter(event))) event.preventDefault();
     handlers.keyboard.keyDown(event.code);
   });
   window.addEventListener('keyup', (event) => {

@@ -5,7 +5,7 @@ simulation follows the original ActionScript; the art, rooms, characters, sounds
 are extracted from the original SWF and rendered with canvas.
 
 SINGLE PLAY runs in the browser. COOPERATIVE and DEATH MATCH are online: up to 4 players
-create or join a game in a lobby, and a Node server runs the match. There is no local
+HOST or JOIN a game, and a Node server runs the match. There is no local
 two-player mode.
 
 ## Quick start
@@ -20,7 +20,7 @@ npm run dev
 
 Open the URL Vite prints (usually http://localhost:5173). The dev server also runs the
 game server, so COOPERATIVE and DEATH MATCH work right away: open the page in a second
-tab (or on another machine with `npm run dev -- --host`), host a game in one tab and join
+tab (or on another machine with `npm run dev -- --host`), click HOST in one tab and JOIN
 it in the other.
 
 The first `npm run dev` extracts the game assets from `boxhead2play.swf` into

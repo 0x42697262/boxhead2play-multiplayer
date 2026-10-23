@@ -11,7 +11,6 @@ export const ShellClass = {
   Overlay: 'shell-overlay',
   Status: 'shell-status',
   Pixelated: 'shell-pixelated',
-  Panel: 'shell-panel',
 } as const;
 
 export interface StageScale {
@@ -69,21 +68,12 @@ export class Shell {
     const status = this.overlay.ownerDocument.createElement('p');
     status.className = ShellClass.Status;
     status.textContent = text;
-    this.overlay.classList.remove(ShellClass.Panel);
     this.overlay.replaceChildren(status);
-    this.overlay.hidden = false;
-  }
-
-  showPanel(panel: HTMLElement): void {
-    if (this.failed) return;
-    this.overlay.replaceChildren(panel);
-    this.overlay.classList.add(ShellClass.Panel);
     this.overlay.hidden = false;
   }
 
   hideOverlay(): void {
     this.overlay.replaceChildren();
-    this.overlay.classList.remove(ShellClass.Panel);
     this.overlay.hidden = true;
   }
 

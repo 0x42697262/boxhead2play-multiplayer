@@ -39,7 +39,7 @@ export interface Screen {
   present(): void;
   idle(hasTime: () => boolean): void;
   pointer(input: PointerInput): void;
-  key(code: string): boolean;
+  key(code: string, typed?: string): boolean;
   suspend(): void;
   dispose(): void;
 }
@@ -51,7 +51,6 @@ export interface GameSelection {
 
 export interface LobbyEntry {
   readonly mode: OnlineMode;
-  readonly host: GameSelection | undefined;
   readonly result: OnlineSessionResult | undefined;
 }
 
@@ -60,17 +59,18 @@ export interface FlowControls {
   selectWorld(mode: GameMode): void;
   startGame(selection: GameSelection): void;
   finishGame(result: SessionResult): void;
-  openLobby(mode: OnlineMode): void;
-  hostLobby(selection: GameSelection): void;
+  openLobby(mode: OnlineMode, result?: OnlineSessionResult): void;
+  enterLobby(mode: OnlineMode, result?: OnlineSessionResult): void;
   startOnlineGame(start: GameStarted): void;
-  finishOnlineGame(result: OnlineSessionResult): void;
+  finishOnlineGame(result: OnlineSessionResult, inLobby: boolean): void;
 }
 
 export interface ScreenFactory {
   mainMenu(controls: FlowControls): Screen;
   selectWorld(controls: FlowControls, mode: GameMode): Screen;
   game(controls: FlowControls, selection: GameSelection): Screen;
-  lobby(controls: FlowControls, entry: LobbyEntry): Screen;
+  onlineMenu(controls: FlowControls, entry: LobbyEntry): Screen;
+  lobbyRoom(controls: FlowControls, entry: LobbyEntry): Screen;
   onlineGame(controls: FlowControls, start: GameStarted): Screen;
 }
 
@@ -78,7 +78,8 @@ export const ScreenKind = {
   MainMenu: 'mainMenu',
   SelectWorld: 'selectWorld',
   Game: 'game',
-  Lobby: 'lobby',
+  OnlineMenu: 'onlineMenu',
+  LobbyRoom: 'lobbyRoom',
   OnlineGame: 'onlineGame',
 } as const;
 
@@ -88,7 +89,8 @@ export type Transition =
   | { readonly kind: typeof ScreenKind.MainMenu }
   | { readonly kind: typeof ScreenKind.SelectWorld; readonly mode: GameMode }
   | { readonly kind: typeof ScreenKind.Game; readonly selection: GameSelection }
-  | { readonly kind: typeof ScreenKind.Lobby; readonly entry: LobbyEntry }
+  | { readonly kind: typeof ScreenKind.OnlineMenu; readonly entry: LobbyEntry }
+  | { readonly kind: typeof ScreenKind.LobbyRoom; readonly entry: LobbyEntry }
   | { readonly kind: typeof ScreenKind.OnlineGame; readonly start: GameStarted };
 
 export const DEFAULT_RETURN_MODE: GameMode = GameMode.Single;
@@ -145,24 +147,23 @@ export class ScreenFlow implements FlowControls {
     this.pending = { kind: ScreenKind.SelectWorld, mode: this.returnMode };
   }
 
-  openLobby(mode: OnlineMode): void {
-    this.pending = { kind: ScreenKind.Lobby, entry: { mode, host: undefined, result: undefined } };
+  openLobby(mode: OnlineMode, result?: OnlineSessionResult): void {
+    this.pending = { kind: ScreenKind.OnlineMenu, entry: { mode, result } };
   }
 
-  hostLobby(selection: GameSelection): void {
-    if (selection.mode === GameMode.Single) return;
-    this.pending = { kind: ScreenKind.Lobby, entry: { mode: selection.mode, host: selection, result: undefined } };
+  enterLobby(mode: OnlineMode, result?: OnlineSessionResult): void {
+    this.pending = { kind: ScreenKind.LobbyRoom, entry: { mode, result } };
   }
 
   startOnlineGame(start: GameStarted): void {
     this.pending = { kind: ScreenKind.OnlineGame, start };
   }
 
-  finishOnlineGame(result: OnlineSessionResult): void {
+  finishOnlineGame(result: OnlineSessionResult, inLobby: boolean): void {
     const mode = this.returnMode === GameMode.Single ? undefined : this.returnMode;
     this.logger.info(LogEvent.GameFinished, { state: result.state, end: result.end, mode: this.returnMode });
-    if (mode) this.pending = { kind: ScreenKind.Lobby, entry: { mode, host: undefined, result } };
-    else this.pending = { kind: ScreenKind.MainMenu };
+    if (!mode) this.pending = { kind: ScreenKind.MainMenu };
+    else this.pending = { kind: inLobby ? ScreenKind.LobbyRoom : ScreenKind.OnlineMenu, entry: { mode, result } };
   }
 
   tick(): void {
@@ -186,8 +187,8 @@ export class ScreenFlow implements FlowControls {
     this.syncCursor();
   }
 
-  key(code: string): boolean {
-    return this.current?.key(code) ?? false;
+  key(code: string, typed?: string): boolean {
+    return this.current?.key(code, typed) ?? false;
   }
 
   suspend(): void {
@@ -215,9 +216,13 @@ export class ScreenFlow implements FlowControls {
           this.show(this.factory.selectWorld(this, transition.selection.mode));
         }
         return;
-      case ScreenKind.Lobby:
+      case ScreenKind.OnlineMenu:
         this.returnMode = transition.entry.mode;
-        this.show(this.factory.lobby(this, transition.entry));
+        this.show(this.factory.onlineMenu(this, transition.entry));
+        return;
+      case ScreenKind.LobbyRoom:
+        this.returnMode = transition.entry.mode;
+        this.show(this.factory.lobbyRoom(this, transition.entry));
         return;
       case ScreenKind.OnlineGame:
         this.returnMode = transition.start.mode;
@@ -225,7 +230,7 @@ export class ScreenFlow implements FlowControls {
           this.show(this.factory.onlineGame(this, transition.start));
         } catch (error) {
           this.logger.error(LogEvent.WorldFailed, { room: transition.start.roomId, error: String(error) });
-          this.show(this.factory.lobby(this, { mode: transition.start.mode, host: undefined, result: undefined }));
+          this.show(this.factory.onlineMenu(this, { mode: transition.start.mode, result: undefined }));
         }
     }
   }

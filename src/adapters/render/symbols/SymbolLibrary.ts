@@ -25,6 +25,7 @@ export interface ChildOverride {
   readonly filters?: readonly Filter[];
   readonly buttonState?: ButtonState;
   readonly clip?: Rect;
+  readonly textBounds?: Rect;
 }
 
 export type Overrides = Readonly<Record<string, ChildOverride>>;
@@ -172,7 +173,7 @@ export class SymbolLibrary {
       case 'morph':
         return this.morphGraphic(character.ratios, ratio)?.bounds ?? null;
       case 'editText':
-        return character.editText.bounds;
+        return own?.textBounds ?? character.editText.bounds;
       case 'button':
         return own?.buttonState === undefined || own.buttonState === BUTTON_UP ? character.button.bounds : this.buttonStateBounds(character.button, own.buttonState);
       case 'sprite':

@@ -4,13 +4,14 @@ import type { PlayerCharacter } from '../../domain/world/SimulationSettings.ts';
 import type { ControlMasks } from '../../net/controlMask.ts';
 import {
   ClientMessageType,
+  LobbyState,
   PROTOCOL_VERSION,
   ServerMessageType,
   type ClientMessage,
   type ErrorReason,
   type GameOver,
   type GameStarted,
-  type LeaveReason,
+  LeaveReason,
   type LobbyDto,
   type LobbyOptions,
   type LobbySummaryDto,
@@ -82,6 +83,8 @@ export class OnlineClient {
   private queued: ClientMessage[] = [];
   private sink: GameSink | undefined = undefined;
   private matchUpgrades: readonly MultiplierListEntry[] = [];
+  private enterMatchOf: string | undefined = undefined;
+  private leaving = false;
   private readonly listeners = new Set<StateListener>();
 
   constructor(private readonly deps: OnlineClientDependencies) {}
@@ -144,11 +147,13 @@ export class OnlineClient {
     this.send({ type: ClientMessageType.CreateLobby, mode, roomId, options, character });
   }
 
-  joinLobby(lobbyId: string, character: PlayerCharacter): void {
+  joinLobby(lobbyId: string, character: PlayerCharacter, enterMatch = false): void {
+    this.enterMatchOf = enterMatch ? lobbyId : undefined;
     this.send({ type: ClientMessageType.JoinLobby, lobbyId, character });
   }
 
   leaveLobby(): void {
+    this.leaving = true;
     this.send({ type: ClientMessageType.LeaveLobby });
   }
 
@@ -201,10 +206,13 @@ export class OnlineClient {
         this.update({ lobbies: message.lobbies });
         return;
       case ServerMessageType.Lobby:
-        this.update({ lobby: message.lobby, leftReason: undefined });
+        this.update({ lobby: message.lobby, leftReason: undefined, error: undefined });
+        this.enterJoinedMatch(message.lobby);
         return;
       case ServerMessageType.LobbyLeft:
-        this.update({ lobby: undefined, leftReason: message.reason });
+        this.enterMatchOf = undefined;
+        this.update({ lobby: undefined, leftReason: this.leaving && message.reason === LeaveReason.Left ? undefined : message.reason });
+        this.leaving = false;
         return;
       case ServerMessageType.GameStarted:
         if (this.sink?.matchId === message.matchId) return;
@@ -223,10 +231,18 @@ export class OnlineClient {
         if (this.sink?.matchId === message.matchId) this.sink.gameOver(message);
         return;
       case ServerMessageType.Error:
+        this.enterMatchOf = undefined;
         this.deps.logger.warn(LogEvent.OnlineError, { reason: message.reason });
         this.update({ error: message.reason });
         return;
     }
+  }
+
+  private enterJoinedMatch(lobby: LobbyDto): void {
+    if (this.enterMatchOf !== lobby.id) return;
+    this.enterMatchOf = undefined;
+    const self = lobby.members.find((member) => member.id === this.current.clientId);
+    if (lobby.state === LobbyState.Playing && self?.playerIndex === null) this.play();
   }
 
   private welcome(clientId: string, sessionId: string, resumed: boolean): void {
