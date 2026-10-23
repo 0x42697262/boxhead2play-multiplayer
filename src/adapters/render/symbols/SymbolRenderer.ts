@@ -51,6 +51,12 @@ export class SymbolRenderer {
     resetContext(ctx);
   }
 
+  drawItems(ctx: Context2D, items: readonly DisplayItem[], matrix: Matrix, options: DrawOptions = {}): void {
+    const state = { ct: options.colorTransform ?? IDENTITY_COLOR, hidden: options.hidden ?? NO_HIDDEN };
+    this.itemList(ctx, items, matrix, state, options.overrides);
+    resetContext(ctx);
+  }
+
   createSurface(width: number, height: number): Surface {
     return this.surfaces.create(width, height);
   }
@@ -94,7 +100,10 @@ export class SymbolRenderer {
   }
 
   private items(ctx: Context2D, characterId: number, frame: number, matrix: Matrix, state: DrawState, overrides: Overrides | undefined): void {
-    const items = this.library.frameItems(characterId, frame);
+    this.itemList(ctx, this.library.frameItems(characterId, frame), matrix, state, overrides);
+  }
+
+  private itemList(ctx: Context2D, items: readonly DisplayItem[], matrix: Matrix, state: DrawState, overrides: Overrides | undefined): void {
     let index = 0;
     while (index < items.length) {
       const item = items[index] as DisplayItem;
