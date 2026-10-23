@@ -10,16 +10,31 @@ export interface GraphicSource {
   image(svgPath: string): CanvasImageSource | undefined;
 }
 
+const SVG_ROOT = /<svg\b([^>]*)>/;
+const ASPECT_ATTRIBUTE = /\spreserveAspectRatio="[^"]*"/;
+const SVG_MIME = 'image/svg+xml';
+const STRETCH = ' preserveAspectRatio="none"';
+
+export function stretchToViewport(svg: string): string {
+  return svg.replace(SVG_ROOT, (_match, attributes: string) => `<svg${attributes.replace(ASPECT_ATTRIBUTE, '')}${STRETCH}>`);
+}
+
 export const decodeBrowserImage: ImageDecoder = async (url) => {
-  const image = new Image();
-  image.decoding = 'async';
-  image.src = url;
+  let objectUrl: string | undefined;
   try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    objectUrl = URL.createObjectURL(new Blob([stretchToViewport(await response.text())], { type: SVG_MIME }));
+    const image = new Image();
+    image.decoding = 'async';
+    image.src = objectUrl;
     await image.decode();
+    return image;
   } catch (error) {
     throw new AppError(ErrorCode.AssetMissing, `${url}: ${String(error)}`);
+  } finally {
+    if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl);
   }
-  return image;
 };
 
 export function graphicPaths(symbols: SymbolsCatalog): string[] {

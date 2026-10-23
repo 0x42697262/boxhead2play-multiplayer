@@ -1,4 +1,5 @@
 import type { DecalRequested, Point2, ScoreAwarded } from '../../../domain/events.ts';
+import type { MultiplierListEntry } from '../../../domain/upgrades/Upgrades.ts';
 import { GameMode } from '../../../domain/world/GameMode.ts';
 import { SCREEN_HEIGHT_PX, SCREEN_WIDTH_PX, SPLIT_SCREEN_SIZE_PX } from '../../../domain/world/tuning.ts';
 import { t } from '../../../text/i18n.ts';
@@ -66,6 +67,10 @@ export class WorldRenderer {
 
   awardScore(event: ScoreAwarded): void {
     this.hud.addScore(event);
+  }
+
+  showPause(upgrades: readonly MultiplierListEntry[] | undefined): void {
+    this.hud.showPause(upgrades);
   }
 
   render(frame: WorldFrame): void {

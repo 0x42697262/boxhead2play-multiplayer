@@ -1,0 +1,83 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+}
+
+#app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.shell {
+  position: relative;
+  width: 640px;
+  height: 480px;
+}
+
+.shell-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  image-rendering: auto;
+}
+
+.shell-canvas.shell-pixelated {
+  image-rendering: pixelated;
+}
+
+.shell-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background: rgb(0 0 0 / 80%);
+}
+
+.shell-overlay[hidden] {
+  display: none;
+}
+
+.shell-status {
+  font-size: 1.2rem;
+}
+
+.picker {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  align-items: center;
+  padding: 1rem;
+  max-width: 90%;
+}
+
+.picker h1,
+.picker p,
+.picker button {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.picker h1 {
+  font-size: 1.4rem;
+}
+
+.picker p {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.picker button {
+  justify-self: start;
+  padding: 0.3rem 1.2rem;
+  font-size: 1rem;
+}

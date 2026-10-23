@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fetchValidated, loadCatalogs, mapLimited, type Fetcher } from '../../../src/adapters/assets/AssetLoader.ts';
-import { graphicPaths } from '../../../src/adapters/assets/GraphicImages.ts';
+import { graphicPaths, stretchToViewport } from '../../../src/adapters/assets/GraphicImages.ts';
 import { ManifestSchema } from '../../../src/adapters/assets/schemas.ts';
 import { LoadPhase, type LoadProgress } from '../../../src/adapters/assets/tuning.ts';
 import { catalogEntryUrl, directoryOf, joinUrl } from '../../../src/adapters/assets/urls.ts';
@@ -29,6 +29,13 @@ describe('asset urls', () => {
     expect(directoryOf('manifest.json')).toBe('');
     expect(joinUrl('assets', 'x.json')).toBe('assets/x.json');
     expect(catalogEntryUrl('assets/', 'library/symbols.json', 'shapes/1.svg')).toBe('assets/library/shapes/1.svg');
+  });
+});
+
+describe('SVG loading', () => {
+  it('stretches the image to the drawn rectangle instead of letterboxing it', () => {
+    expect(stretchToViewport('<?xml?><svg width="2" viewBox="0 0 2 1"><g/></svg>')).toBe('<?xml?><svg width="2" viewBox="0 0 2 1" preserveAspectRatio="none"><g/></svg>');
+    expect(stretchToViewport('<svg preserveAspectRatio="xMidYMid" x="1">')).toBe('<svg x="1" preserveAspectRatio="none">');
   });
 });
 

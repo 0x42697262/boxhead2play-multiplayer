@@ -39,3 +39,7 @@ export function loadSettings(rawEnv: Record<string, unknown>): Settings {
     logLevel: env.VITE_LOG_LEVEL,
   });
 }
+
+export function readBrowserEnv(): Record<string, unknown> {
+  return { ...import.meta.env };
+}
