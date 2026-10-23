@@ -16,7 +16,7 @@ import type { Rng } from '../../domain/math/Rng.ts';
 import type { ThingFactory } from '../../domain/things/ThingFactory.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { GameSession } from '../../services/GameSession.ts';
-import type { FlowControls, GameSelection, Screen, StagePoint } from '../../services/ScreenFlow.ts';
+import { Cursor, PointerPhase, type FlowControls, type GameSelection, type PointerInput, type Screen } from '../../services/ScreenFlow.ts';
 import { toGameOptions, type SettingsService } from '../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../text/errors.ts';
 import type { Shell } from '../shell/Shell.ts';
@@ -48,6 +48,7 @@ export interface GameScreenDependencies {
 
 export class GameScreen implements Screen {
   readonly name = 'game';
+  readonly cursor = Cursor.Default;
   private readonly renderer: WorldRenderer;
   private readonly session: GameSession;
 
@@ -101,12 +102,17 @@ export class GameScreen implements Screen {
     this.deps.kit.characters.prewarm(hasTime);
   }
 
-  pointer(point: StagePoint): void {
-    const action = this.renderer.hud.hitTest(point);
+  pointer(input: PointerInput): void {
+    if (input.phase !== PointerPhase.Down) return;
+    const action = this.renderer.hud.hitTest(input.point);
     if (action === HudAction.Quit) this.session.requestQuit();
     if (action === HudAction.SwitchSides) {
       this.deps.settings.update((settings) => ({ ...settings, viewSideDeathMatch: (settings.viewSideDeathMatch + 1) % VIEW_SIDES }));
     }
+  }
+
+  key(): boolean {
+    return false;
   }
 
   suspend(): void {

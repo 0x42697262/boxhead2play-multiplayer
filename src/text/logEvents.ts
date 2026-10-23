@@ -8,6 +8,8 @@ export const LogEvent = {
   SaveDataRejected: 'save.rejected',
   SaveDataWriteFailed: 'save.write_failed',
   ScreenChanged: 'screen.changed',
+  GameFinished: 'screen.game_finished',
+  KeyRebound: 'settings.key_rebound',
   WorldStarted: 'world.started',
   WorldCompleted: 'world.completed',
   WorldFailed: 'world.failed',

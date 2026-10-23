@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FrameClock } from '../../src/entry/FrameClock.ts';
 import { GameLoop, type LoopClock } from '../../src/entry/GameLoop.ts';
 import { silentLogger } from '../../src/observability/logger.ts';
-import { ScreenFlow, type Screen, type ScreenFactory } from '../../src/services/ScreenFlow.ts';
+import { Cursor, ScreenFlow, type Screen, type ScreenFactory } from '../../src/services/ScreenFlow.ts';
 
 describe('FrameClock (CMain.ProcessFrames)', () => {
   it('waits a whole interval before the first tick', () => {
@@ -33,6 +33,7 @@ describe('FrameClock (CMain.ProcessFrames)', () => {
 });
 
 class CountingScreen implements Screen {
+  readonly cursor = Cursor.Default;
   ticks = 0;
   presents = 0;
   idles = 0;
@@ -60,6 +61,10 @@ class CountingScreen implements Screen {
 
   pointer(): void {}
 
+  key(): boolean {
+    return false;
+  }
+
   suspend(): void {
     this.suspended++;
   }
@@ -83,11 +88,12 @@ describe('ScreenFlow and GameLoop', () => {
   it('ticks the active screen at its rate, presents every frame and swaps screens between ticks', () => {
     const screens: CountingScreen[] = [];
     const factory: ScreenFactory = {
-      picker: (controls) => {
-        const screen = new CountingScreen('picker', 25, () => controls.startGame({ mode: 'single', roomId: 'R' }));
+      mainMenu: (controls) => {
+        const screen = new CountingScreen('mainMenu', 25, () => controls.startGame({ mode: 'single', roomId: 'R' }));
         screens.push(screen);
         return screen;
       },
+      selectWorld: () => new CountingScreen('selectWorld', 50),
       game: () => {
         const screen = new CountingScreen('game', 50);
         screens.push(screen);
@@ -115,23 +121,5 @@ describe('ScreenFlow and GameLoop', () => {
     expect(screens[1]?.idles).toBeGreaterThan(0);
     flow.suspend();
     expect(screens[1]?.suspended).toBe(1);
-  });
-
-  it('falls back to the picker when a game cannot be created', () => {
-    const names: string[] = [];
-    const factory: ScreenFactory = {
-      picker: () => {
-        names.push('picker');
-        return new CountingScreen('picker', 25);
-      },
-      game: () => {
-        throw new Error('unknown room');
-      },
-    };
-    const flow = new ScreenFlow(factory, silentLogger);
-    flow.start();
-    flow.startGame({ mode: 'single', roomId: 'nope' });
-    flow.present();
-    expect(names).toEqual(['picker', 'picker']);
   });
 });

@@ -9,6 +9,7 @@ import { WebAudioOutput } from './adapters/audio/WebAudioOutput.ts';
 import { KeyboardState } from './adapters/input/KeyboardState.ts';
 import { boundCodes, buildBindings } from './adapters/input/TickInputSampler.ts';
 import { ClipBuffers } from './adapters/render/clips/ClipBuffers.ts';
+import { LayeredStage } from './adapters/render/menu/LayeredStage.ts';
 import { offscreenSurfaces } from './adapters/render/surface.ts';
 import { SymbolLibrary } from './adapters/render/symbols/SymbolLibrary.ts';
 import { SymbolRenderer } from './adapters/render/symbols/SymbolRenderer.ts';
@@ -29,7 +30,9 @@ import { AppError, ErrorCode } from './text/errors.ts';
 import { t } from './text/i18n.ts';
 import { LogEvent } from './text/logEvents.ts';
 import { GameScreen } from './ui/screens/GameScreen.ts';
-import { PickerScreen } from './ui/screens/PickerScreen.ts';
+import { MainMenuScreen } from './ui/screens/menu/MainMenuScreen.ts';
+import type { MenuKit } from './ui/screens/menu/MenuCore.ts';
+import { SelectWorldScreen } from './ui/screens/menu/SelectWorldScreen.ts';
 import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX } from './ui/shell/Shell.ts';
 
 const APP_ELEMENT_ID = 'app';
@@ -74,9 +77,12 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   const animations = toAnimationCatalog(catalogs.animMeta, catalogs.symbols);
   const factory = createThingFactory();
   const keyboard = new KeyboardState();
+  const menuKit: MenuKit = { shell, renderer, audio, stage: new LayeredStage(renderer, STAGE_WIDTH_PX, STAGE_HEIGHT_PX) };
+  const menuRng = new SeededRng(randomSeed());
 
   const screens: ScreenFactory = {
-    picker: (controls, lastResult) => new PickerScreen({ shell, settings: userSettings, rooms: catalogs.roomIndex, controls, lastResult }),
+    mainMenu: (controls) => new MainMenuScreen({ kit: menuKit, rng: menuRng, controls }),
+    selectWorld: (controls, mode) => new SelectWorldScreen({ kit: menuKit, settings: userSettings, rooms: catalogs.roomIndex, controls, logger, mode }),
     game: (controls, selection) =>
       new GameScreen({
         shell,
@@ -93,7 +99,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         selection,
       }),
   };
-  const flow = new ScreenFlow(screens, logger);
+  const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor));
   const loop = new GameLoop(flow);
   const gameKeys = (): ReadonlySet<string> => {
     const { player1, player2 } = userSettings.settings.keys;

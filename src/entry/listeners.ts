@@ -1,5 +1,5 @@
 import type { KeyboardState } from '../adapters/input/KeyboardState.ts';
-import type { ScreenFlow } from '../services/ScreenFlow.ts';
+import { PointerPhase, type ScreenFlow } from '../services/ScreenFlow.ts';
 import type { GameLoop } from './GameLoop.ts';
 
 export interface ListenerTargets {
@@ -39,6 +39,7 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
     gesture();
     if (typingInForm(event)) return;
     if (handlers.isGameKey(event.code)) event.preventDefault();
+    if (!event.repeat && handlers.flow.key(event.code)) event.preventDefault();
     handlers.keyboard.keyDown(event.code);
   });
   window.addEventListener('keyup', (event) => {
@@ -48,13 +49,23 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
   window.addEventListener('blur', () => handlers.keyboard.releaseAll());
   window.addEventListener('pointerdown', gesture);
   window.addEventListener('resize', handlers.onResize);
-  canvas.addEventListener('pointerdown', (event) => {
+  const pointer = (phase: PointerPhase) => (event: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
     handlers.flow.pointer({
-      x: ((event.clientX - rect.left) / rect.width) * targets.stageWidth,
-      y: ((event.clientY - rect.top) / rect.height) * targets.stageHeight,
+      phase,
+      point: {
+        x: ((event.clientX - rect.left) / rect.width) * targets.stageWidth,
+        y: ((event.clientY - rect.top) / rect.height) * targets.stageHeight,
+      },
     });
+  };
+  canvas.addEventListener('pointerdown', (event) => {
+    canvas.setPointerCapture(event.pointerId);
+    pointer(PointerPhase.Down)(event);
   });
+  canvas.addEventListener('pointerup', pointer(PointerPhase.Up));
+  canvas.addEventListener('pointermove', pointer(PointerPhase.Move));
+  canvas.addEventListener('pointerleave', pointer(PointerPhase.Leave));
   document.addEventListener('visibilitychange', () => {
     const visible = document.visibilityState === 'visible';
     if (!visible) {

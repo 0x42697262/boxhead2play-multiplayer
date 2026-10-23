@@ -50,34 +50,3 @@ body {
 .shell-status {
   font-size: 1.2rem;
 }
-
-.picker {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.4rem 1rem;
-  align-items: center;
-  padding: 1rem;
-  max-width: 90%;
-}
-
-.picker h1,
-.picker p,
-.picker button {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
-.picker h1 {
-  font-size: 1.4rem;
-}
-
-.picker p {
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
-.picker button {
-  justify-self: start;
-  padding: 0.3rem 1.2rem;
-  font-size: 1rem;
-}

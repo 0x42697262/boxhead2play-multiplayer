@@ -64,18 +64,12 @@ export class Shell {
     this.overlay.hidden = false;
   }
 
-  showContent(content: HTMLElement): void {
-    this.overlay.replaceChildren(content);
-    this.overlay.hidden = false;
-  }
-
   hideOverlay(): void {
     this.overlay.replaceChildren();
     this.overlay.hidden = true;
   }
 
-  clearStage(): void {
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.ctx.clearRect(0, 0, STAGE_WIDTH_PX, STAGE_HEIGHT_PX);
+  setCursor(cursor: string): void {
+    this.canvas.style.cursor = cursor;
   }
 }

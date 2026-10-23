@@ -1,5 +1,4 @@
-import type { GameMode } from '../domain/world/GameMode.ts';
-import { BASE_TICKS_PER_SECOND } from '../domain/world/tuning.ts';
+import { GameMode } from '../domain/world/GameMode.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import type { SessionResult } from './GameSession.ts';
@@ -9,13 +8,36 @@ export interface StagePoint {
   readonly y: number;
 }
 
+export const PointerPhase = {
+  Down: 'down',
+  Up: 'up',
+  Move: 'move',
+  Leave: 'leave',
+} as const;
+
+export type PointerPhase = (typeof PointerPhase)[keyof typeof PointerPhase];
+
+export interface PointerInput {
+  readonly phase: PointerPhase;
+  readonly point: StagePoint;
+}
+
+export const Cursor = {
+  Default: 'default',
+  Hand: 'pointer',
+} as const;
+
+export type Cursor = (typeof Cursor)[keyof typeof Cursor];
+
 export interface Screen {
   readonly name: string;
   readonly ticksPerSecond: number;
+  readonly cursor: Cursor;
   tick(): void;
   present(): void;
   idle(hasTime: () => boolean): void;
-  pointer(point: StagePoint): void;
+  pointer(input: PointerInput): void;
+  key(code: string): boolean;
   suspend(): void;
   dispose(): void;
 }
@@ -26,27 +48,46 @@ export interface GameSelection {
 }
 
 export interface FlowControls {
+  showMainMenu(): void;
+  selectWorld(mode: GameMode): void;
   startGame(selection: GameSelection): void;
   finishGame(result: SessionResult): void;
 }
 
 export interface ScreenFactory {
-  picker(controls: FlowControls, lastResult: SessionResult | undefined): Screen;
+  mainMenu(controls: FlowControls): Screen;
+  selectWorld(controls: FlowControls, mode: GameMode): Screen;
   game(controls: FlowControls, selection: GameSelection): Screen;
 }
 
-export const MENU_TICKS_PER_SECOND = BASE_TICKS_PER_SECOND;
+export const ScreenKind = {
+  MainMenu: 'mainMenu',
+  SelectWorld: 'selectWorld',
+  Game: 'game',
+} as const;
 
-type Transition = { readonly kind: 'game'; readonly selection: GameSelection } | { readonly kind: 'picker'; readonly result: SessionResult | undefined };
+export type ScreenKind = (typeof ScreenKind)[keyof typeof ScreenKind];
+
+export type Transition =
+  | { readonly kind: typeof ScreenKind.MainMenu }
+  | { readonly kind: typeof ScreenKind.SelectWorld; readonly mode: GameMode }
+  | { readonly kind: typeof ScreenKind.Game; readonly selection: GameSelection };
+
+export const DEFAULT_RETURN_MODE: GameMode = GameMode.Single;
+const IDLE_TICKS_PER_SECOND = 1;
 
 export class ScreenFlow implements FlowControls {
   private current: Screen | undefined = undefined;
   private pending: Transition | undefined = undefined;
   private changes = 0;
+  private returnMode: GameMode = DEFAULT_RETURN_MODE;
+  private lastPointer: StagePoint | undefined = undefined;
+  private shownCursor: Cursor = Cursor.Default;
 
   constructor(
     private readonly factory: ScreenFactory,
     private readonly logger: Logger,
+    private readonly onCursor: (cursor: Cursor) => void = () => undefined,
   ) {}
 
   get screen(): Screen | undefined {
@@ -58,19 +99,32 @@ export class ScreenFlow implements FlowControls {
   }
 
   get ticksPerSecond(): number {
-    return this.current?.ticksPerSecond ?? MENU_TICKS_PER_SECOND;
+    return this.current?.ticksPerSecond ?? IDLE_TICKS_PER_SECOND;
+  }
+
+  get selectWorldMode(): GameMode {
+    return this.returnMode;
   }
 
   start(): void {
-    this.show(this.factory.picker(this, undefined));
+    this.show(this.factory.mainMenu(this));
+  }
+
+  showMainMenu(): void {
+    this.pending = { kind: ScreenKind.MainMenu };
+  }
+
+  selectWorld(mode: GameMode): void {
+    this.pending = { kind: ScreenKind.SelectWorld, mode };
   }
 
   startGame(selection: GameSelection): void {
-    this.pending = { kind: 'game', selection };
+    this.pending = { kind: ScreenKind.Game, selection };
   }
 
   finishGame(result: SessionResult): void {
-    this.pending = { kind: 'picker', result };
+    this.logger.info(LogEvent.GameFinished, { state: result.state, score: result.score, mode: this.returnMode });
+    this.pending = { kind: ScreenKind.SelectWorld, mode: this.returnMode };
   }
 
   tick(): void {
@@ -81,14 +135,21 @@ export class ScreenFlow implements FlowControls {
   present(): void {
     this.applyPending();
     this.current?.present();
+    this.syncCursor();
   }
 
   idle(hasTime: () => boolean): void {
     this.current?.idle(hasTime);
   }
 
-  pointer(point: StagePoint): void {
-    this.current?.pointer(point);
+  pointer(input: PointerInput): void {
+    this.lastPointer = input.phase === PointerPhase.Leave ? undefined : input.point;
+    this.current?.pointer(input);
+    this.syncCursor();
+  }
+
+  key(code: string): boolean {
+    return this.current?.key(code) ?? false;
   }
 
   suspend(): void {
@@ -99,15 +160,22 @@ export class ScreenFlow implements FlowControls {
     const transition = this.pending;
     if (!transition) return;
     this.pending = undefined;
-    if (transition.kind === 'picker') {
-      this.show(this.factory.picker(this, transition.result));
-      return;
-    }
-    try {
-      this.show(this.factory.game(this, transition.selection));
-    } catch (error) {
-      this.logger.error(LogEvent.WorldFailed, { room: transition.selection.roomId, error: String(error) });
-      this.show(this.factory.picker(this, undefined));
+    switch (transition.kind) {
+      case ScreenKind.MainMenu:
+        this.show(this.factory.mainMenu(this));
+        return;
+      case ScreenKind.SelectWorld:
+        this.returnMode = transition.mode;
+        this.show(this.factory.selectWorld(this, transition.mode));
+        return;
+      case ScreenKind.Game:
+        this.returnMode = transition.selection.mode;
+        try {
+          this.show(this.factory.game(this, transition.selection));
+        } catch (error) {
+          this.logger.error(LogEvent.WorldFailed, { room: transition.selection.roomId, error: String(error) });
+          this.show(this.factory.selectWorld(this, transition.selection.mode));
+        }
     }
   }
 
@@ -116,5 +184,14 @@ export class ScreenFlow implements FlowControls {
     this.current = screen;
     this.changes++;
     this.logger.info(LogEvent.ScreenChanged, { screen: screen.name });
+    if (this.lastPointer) screen.pointer({ phase: PointerPhase.Move, point: this.lastPointer });
+    this.syncCursor();
+  }
+
+  private syncCursor(): void {
+    const cursor = this.current?.cursor ?? Cursor.Default;
+    if (cursor === this.shownCursor) return;
+    this.shownCursor = cursor;
+    this.onCursor(cursor);
   }
 }
