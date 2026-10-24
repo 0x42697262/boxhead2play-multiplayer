@@ -111,7 +111,8 @@ Add one line per behavior change: what to do, and the result you expect.
   death for him and no kill for anybody.
 * A NixOS host with `services.boxhead2play.environmentFile` holding `BOXHEAD_MONITOR_TOKEN` ->
   `npm run monitor -- --url https://<domain> --token <token>` shows the server; the token is not
-  in `/nix/store`.
+  in `/nix/store`. `environmentFile = ./secrets.env;` (a path literal, not a string) -> the
+  evaluation fails with "absolute path not in the Nix store".
 * `docker build -t boxhead2play .`, `docker run --memory 512m -e PORT=10000 -p 10000:10000
   boxhead2play` -> `server.started` with 18 rooms on port 10000; the page loads and a two-tab coop
   game runs. Render: New > Blueprint with `render.yaml` -> the same at `https://<service>.onrender.com`.

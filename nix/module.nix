@@ -68,12 +68,18 @@ in
     };
 
     environmentFile = mkOption {
-      type = types.nullOr types.path;
+      type = types.nullOr (
+        types.pathWith {
+          inStore = false;
+          absolute = true;
+        }
+      );
       default = null;
       example = "/etc/boxhead2play/secrets.env";
       description = ''
         File with KEY=value lines loaded into the service environment, kept out of the
-        Nix store. Put BOXHEAD_MONITOR_TOKEN (at least 16 characters) here to serve
+        Nix store. Give it as a string; a path literal or a store path is rejected,
+        because it would copy the secret into the world-readable store. Put BOXHEAD_MONITOR_TOKEN (at least 16 characters) here to serve
         /__monitor for `npm run monitor -- --token`.
       '';
     };

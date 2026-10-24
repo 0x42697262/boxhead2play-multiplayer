@@ -80,7 +80,7 @@ Paste the printed hash into `nix/package.nix`.
 | `logLevel` | `info` | `LOG_LEVEL`: `debug`, `info`, `warn` or `error`. |
 | `openFirewall` | `false` | Opens 80 and 443 with Caddy, otherwise `port`. |
 | `extraEnvironment` | `{}` | Extra environment variables. They end up in the world-readable Nix store, so no secrets. |
-| `environmentFile` | `null` | Path on the host (not in the store) with `KEY=value` lines, for example `BOXHEAD_MONITOR_TOKEN`. systemd reads it as root before starting the service. A missing file is skipped, so the game still starts, only without the monitor. |
+| `environmentFile` | `null` | Absolute path on the host, given as a string, with `KEY=value` lines, for example `BOXHEAD_MONITOR_TOKEN`. systemd reads it as root before starting the service. A missing file is skipped, so the game still starts, only without the monitor. The type is `pathWith { inStore = false; absolute = true; }`: a path literal (`/etc/x` without quotes, `./secrets.env`) or a store path fails the evaluation, because interpolating a path literal copies the file into the world-readable Nix store. |
 | `caddy.enable` | `false` | Caddy reverse proxy with automatic HTTPS. Caddy proxies WebSocket upgrades on its own. |
 | `caddy.domain` | `""` | Required with Caddy. |
 | `caddy.extraConfig` | `""` | Appended inside the Caddy site block. |
