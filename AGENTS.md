@@ -424,3 +424,7 @@ Add one line per behavior change: what to do, and the result you expect.
   table and baselines on both sides; seeded random sequences with resets decode exactly like
   JSON. Online, play two matches in a row in one tab -> the second starts and runs normally
   (protocol version 8).
+* `npm run monitor -- --url <server> --token <token> --log` -> the view as before; on `q` it
+  prints "Samples logged to /tmp/boxhead2play-monitor/monitor-<time>.jsonl", one JSON line per
+  sample with `cpuPercent`, `clientRates` and the raw snapshot. `--log logs/x` writes there.
+  Without `--log` no file is written.

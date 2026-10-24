@@ -1,5 +1,7 @@
+import { tmpdir } from 'node:os';
 import type { MonitorSnapshot } from '../../src/server/monitorProtocol.ts';
 import { MONITOR_FORMAT_VERSION, MONITOR_PATH, MONITOR_TOKEN_SCHEME } from '../../src/server/monitorProtocol.ts';
+import { DEFAULT_LOG_DIR_NAME, errorEntry, logDirectory, SampleLog, sampleEntry } from './sampleLog.ts';
 import { httpErrorText, isNewerSample, renderView } from './view.ts';
 
 const DEFAULT_URL = 'http://localhost:5173';
@@ -15,17 +17,20 @@ const LEAVE_SCREEN = '\u001b[?25h\u001b[?1049l';
 const HOME = '\u001b[H';
 const CLEAR_LINE_END = '\u001b[K';
 const CLEAR_SCREEN_END = '\u001b[J';
-const USAGE = `Usage: npm run monitor -- [--url ${DEFAULT_URL}] [--token TOKEN] [--interval ${DEFAULT_INTERVAL_MS}] [--once]
+const USAGE = `Usage: npm run monitor -- [--url ${DEFAULT_URL}] [--token TOKEN] [--interval ${DEFAULT_INTERVAL_MS}] [--once] [--log [DIR]]
   --url       game server address (env BOXHEAD_MONITOR_URL); the dev server answers loopback requests
   --token     BOXHEAD_MONITOR_TOKEN of a production server (env BOXHEAD_MONITOR_TOKEN)
   --interval  milliseconds between samples
-  --once      print two samples one interval apart and exit`;
+  --once      print two samples one interval apart and exit
+  --log       also append every sample as one JSON line to DIR/monitor-<start time>.jsonl
+              (default DIR: <system temp>/${DEFAULT_LOG_DIR_NAME})`;
 
 interface Options {
   readonly url: string;
   readonly token: string | undefined;
   readonly intervalMs: number;
   readonly once: boolean;
+  readonly log: SampleLog | undefined;
 }
 
 function argument(args: readonly string[], name: string): string | undefined {
@@ -35,11 +40,13 @@ function argument(args: readonly string[], name: string): string | undefined {
 
 function parseOptions(args: readonly string[]): Options {
   const interval = Number(argument(args, '--interval') ?? DEFAULT_INTERVAL_MS);
+  const logDir = logDirectory(args, tmpdir());
   return {
     url: (argument(args, '--url') ?? process.env.BOXHEAD_MONITOR_URL ?? DEFAULT_URL).replace(/\/+$/, ''),
     token: argument(args, '--token') ?? process.env.BOXHEAD_MONITOR_TOKEN,
     intervalMs: Number.isFinite(interval) ? Math.max(MIN_INTERVAL_MS, interval) : DEFAULT_INTERVAL_MS,
     once: args.includes('--once'),
+    log: logDir === undefined ? undefined : SampleLog.open(logDir, new Date()),
   };
 }
 
@@ -59,10 +66,16 @@ function errorText(error: unknown): string {
 
 async function runOnce(options: Options): Promise<void> {
   const previous = await sample(options);
+  options.log?.write(sampleEntry(options.url, new Date(), undefined, previous));
   await new Promise((resolve) => setTimeout(resolve, options.intervalMs));
   const current = await sample(options);
+  options.log?.write(sampleEntry(options.url, new Date(), previous, current));
   const lines = renderView({ url: options.url, previous, current, error: undefined, width: process.stdout.columns ?? FALLBACK_COLUMNS, height: Number.MAX_SAFE_INTEGER });
   process.stdout.write(`${lines.join('\n')}\n`);
+}
+
+function reportLogFile(options: Options): void {
+  if (options.log) process.stderr.write(`Samples logged to ${options.log.file}\n`);
 }
 
 function runLive(options: Options): void {
@@ -81,10 +94,12 @@ function runLive(options: Options): void {
       if (!current || isNewerSample(current, next)) {
         previous = current;
         current = next;
+        options.log?.write(sampleEntry(options.url, new Date(), previous, current));
       }
       error = undefined;
     } catch (failure) {
       error = `No sample: ${errorText(failure)}`;
+      options.log?.write(errorEntry(options.url, new Date(), error));
     }
     draw();
     timer = setTimeout(() => void poll(), Math.max(0, options.intervalMs - (performance.now() - startedMs)));
@@ -92,6 +107,7 @@ function runLive(options: Options): void {
   const quit = (): void => {
     clearTimeout(timer);
     process.stdout.write(LEAVE_SCREEN);
+    reportLogFile(options);
     process.exit(0);
   };
   process.stdout.write(ENTER_SCREEN);
@@ -115,10 +131,13 @@ if (args.includes('--help')) {
 } else {
   const options = parseOptions(args);
   if (options.once || !process.stdout.isTTY) {
-    runOnce(options).catch((failure: unknown) => {
-      process.stderr.write(`No sample from ${options.url}: ${errorText(failure)}\n`);
-      process.exitCode = 1;
-    });
+    runOnce(options)
+      .catch((failure: unknown) => {
+        process.stderr.write(`No sample from ${options.url}: ${errorText(failure)}\n`);
+        options.log?.write(errorEntry(options.url, new Date(), `No sample: ${errorText(failure)}`));
+        process.exitCode = 1;
+      })
+      .finally(() => reportLogFile(options));
   } else {
     runLive(options);
   }

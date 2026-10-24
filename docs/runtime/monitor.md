@@ -22,6 +22,28 @@ Pointing the tool at a server nobody plays on shows 0 lobbies and 0 players.
 
 `q` or Ctrl+C quits. `BOXHEAD_MONITOR_URL` and `BOXHEAD_MONITOR_TOKEN` replace the flags.
 
+## Logging samples
+
+`--log` also appends every sample to a JSON Lines file, so a session can be read later (by a
+person or a coding agent) without watching the screen:
+
+```
+npm run monitor -- --url https://game.example --token "$BOXHEAD_MONITOR_TOKEN" --log
+npm run monitor -- --log logs/monitor            # a chosen directory
+```
+
+Without a directory the file goes to `<system temp>/boxhead2play-monitor/` (`os.tmpdir()`,
+usually `/tmp`). The file is `monitor-<start time>.jsonl`; the tool prints its path when it
+exits. Each line is one of:
+
+* a sample: `receivedAt`, `url`, `cpuPercent` and `clientRates` (computed from the previous
+  sample; `null` and `[]` for the first one) and the raw `snapshot` the server returned
+  (`src/server/monitorProtocol.ts`), including `eventLoopDelayMs` and every lobby's `tickMs`;
+* an error: `receivedAt`, `url`, `error` (for example a timeout).
+
+Logging is off unless `--log` is given. At one sample per second a busy server writes a few
+KB per line, so delete old files now and then. The token is never written to the file.
+
 ## What it shows
 
 | Row | Source | Meaning |
