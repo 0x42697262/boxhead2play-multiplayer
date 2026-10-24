@@ -3,7 +3,7 @@ import { mapLimited } from './AssetLoader.ts';
 import type { SymbolsCatalog } from './schemas.ts';
 import { fetchAsset, withTimeout } from './http.ts';
 import { ASSET_DECODE_TIMEOUT_MS, LoadPhase, PARALLEL_DOWNLOADS, type ProgressListener } from './tuning.ts';
-import { catalogEntryUrl } from './urls.ts';
+import type { AssetLocator } from './urls.ts';
 
 export type ImageDecoder = (url: string) => Promise<CanvasImageSource>;
 
@@ -61,14 +61,14 @@ export class GraphicImages implements GraphicSource {
 
   async loadAll(
     symbols: SymbolsCatalog,
-    location: { readonly baseUrl: string; readonly symbolsCatalogPath: string },
+    location: { readonly locator: AssetLocator; readonly symbolsCatalogPath: string },
     decode: ImageDecoder,
     onProgress: ProgressListener = () => undefined,
   ): Promise<void> {
     const paths = graphicPaths(symbols);
     let loaded = 0;
     await mapLimited(paths, PARALLEL_DOWNLOADS, async (path) => {
-      const image = await decode(catalogEntryUrl(location.baseUrl, location.symbolsCatalogPath, path));
+      const image = await decode(location.locator.entryUrl(location.symbolsCatalogPath, path));
       this.images.set(path, image);
       loaded++;
       onProgress({ phase: LoadPhase.Graphics, loaded, total: paths.length });

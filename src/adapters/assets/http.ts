@@ -19,10 +19,10 @@ export async function withTimeout<T>(work: Promise<T>, timeoutMs: number, descri
   }
 }
 
-export async function fetchAsset(url: string, fetchImpl: typeof fetch = fetch): Promise<Response> {
+export async function fetchAsset(url: string, fetchImpl: typeof fetch = fetch, init: RequestInit = {}): Promise<Response> {
   let response: Response;
   try {
-    response = await fetchImpl(url, { signal: AbortSignal.timeout(ASSET_REQUEST_TIMEOUT_MS) });
+    response = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(ASSET_REQUEST_TIMEOUT_MS) });
   } catch (error) {
     throw new AppError(ErrorCode.AssetMissing, `${url}: ${String(error)}`);
   }

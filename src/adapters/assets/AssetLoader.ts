@@ -20,19 +20,26 @@ import {
 } from './schemas.ts';
 import { fetchAsset } from './http.ts';
 import { LoadPhase, PARALLEL_DOWNLOADS, type ProgressListener } from './tuning.ts';
-import { catalogEntryUrl, joinUrl } from './urls.ts';
+import { AssetLocator, joinUrl } from './urls.ts';
 
 export const MANIFEST_FILE = 'manifest.json';
 
+const REVALIDATE: RequestInit = { cache: 'no-cache' };
+
 const SINGLE_CATALOGS = ['symbols', 'roomIndex', 'xsi', 'animMeta', 'sounds', 'fonts'] as const;
 
+export interface FetchOptions {
+  readonly revalidate?: boolean;
+}
+
 export interface Fetcher {
-  json(url: string): Promise<unknown>;
+  json(url: string, options?: FetchOptions): Promise<unknown>;
   bytes(url: string): Promise<ArrayBuffer>;
 }
 
 export interface GameCatalogs {
   readonly baseUrl: string;
+  readonly locator: AssetLocator;
   readonly manifest: Manifest;
   readonly symbols: SymbolsCatalog;
   readonly roomIndex: RoomIndex;
@@ -44,16 +51,16 @@ export interface GameCatalogs {
 }
 
 export const browserFetcher: Fetcher = {
-  async json(url) {
-    return (await fetchAsset(url)).json();
+  async json(url, options = {}) {
+    return (await fetchAsset(url, fetch, options.revalidate === true ? REVALIDATE : {})).json();
   },
   async bytes(url) {
     return (await fetchAsset(url)).arrayBuffer();
   },
 };
 
-export async function fetchValidated<T>(fetcher: Fetcher, url: string, schema: z.ZodType<T>): Promise<T> {
-  const raw = await fetcher.json(url);
+export async function fetchValidated<T>(fetcher: Fetcher, url: string, schema: z.ZodType<T>, options: FetchOptions = {}): Promise<T> {
+  const raw = await fetcher.json(url, options);
   const parsed = schema.safeParse(raw);
   if (!parsed.success) throw new AppError(ErrorCode.AssetInvalid, `${url}: ${parsed.error.message}`);
   return parsed.data;
@@ -79,7 +86,8 @@ export async function mapLimited<T, R>(items: readonly T[], limit: number, task:
 }
 
 export async function loadCatalogs(fetcher: Fetcher, baseUrl: string, onProgress: ProgressListener = () => undefined): Promise<GameCatalogs> {
-  const manifest = await fetchValidated(fetcher, joinUrl(baseUrl, MANIFEST_FILE), ManifestSchema);
+  const manifest = await fetchValidated(fetcher, joinUrl(baseUrl, MANIFEST_FILE), ManifestSchema, { revalidate: true });
+  const locator = new AssetLocator(baseUrl, manifest.files);
   const { catalogs } = manifest;
   const total = SINGLE_CATALOGS.length + catalogs.rooms.length;
   let loaded = 0;
@@ -88,7 +96,7 @@ export async function loadCatalogs(fetcher: Fetcher, baseUrl: string, onProgress
     onProgress({ phase: LoadPhase.Catalogs, loaded, total });
     return value;
   };
-  const url = (path: string): string => joinUrl(baseUrl, path);
+  const url = (path: string): string => locator.url(path);
   const [symbols, roomIndex, xsi, animMeta, sounds, fonts] = await Promise.all([
     fetchValidated(fetcher, url(catalogs.symbols), SymbolsCatalogSchema).then(tick),
     fetchValidated(fetcher, url(catalogs.roomIndex), RoomIndexSchema).then(tick),
@@ -100,7 +108,7 @@ export async function loadCatalogs(fetcher: Fetcher, baseUrl: string, onProgress
   const roomList = await mapLimited(catalogs.rooms, PARALLEL_DOWNLOADS, (path) => fetchValidated(fetcher, url(path), RoomSchema).then(tick));
   const rooms = new Map(roomList.map((room) => [room.id, room]));
   for (const entry of roomIndex.rooms) {
-    if (!rooms.has(entry.id)) throw new AppError(ErrorCode.AssetMissing, catalogEntryUrl(baseUrl, catalogs.roomIndex, entry.file));
+    if (!rooms.has(entry.id)) throw new AppError(ErrorCode.AssetMissing, locator.entryUrl(catalogs.roomIndex, entry.file));
   }
-  return { baseUrl, manifest, symbols, roomIndex, rooms, xsi, animMeta, sounds, fonts };
+  return { baseUrl, locator, manifest, symbols, roomIndex, rooms, xsi, animMeta, sounds, fonts };
 }

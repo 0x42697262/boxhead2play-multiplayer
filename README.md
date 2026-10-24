@@ -66,6 +66,10 @@ PORT=8080 npm start
 Players open `http://<your host>:8080`. Behind HTTPS, the page connects with `wss://` on
 the same host. Server settings and the protocol are in `docs/runtime/online.md`.
 
+The server sends precompressed (brotli or gzip) files and long-lived cache headers for
+content-versioned assets: a first visit downloads about 2.6 MiB, later visits only
+revalidate `index.html` and `manifest.json`. See `docs/runtime/http-caching.md`.
+
 ## Nix
 
 The repository is a Nix flake with a package, a `nix run` app, a dev shell and a NixOS

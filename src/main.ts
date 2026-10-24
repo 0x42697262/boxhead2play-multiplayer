@@ -64,11 +64,11 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   shell.showStatus(t('boot.loading'));
   const catalogs = await loadCatalogs(browserFetcher, settings.assetBaseUrl, showProgress);
   const images = new GraphicImages();
-  await images.loadAll(catalogs.symbols, { baseUrl: settings.assetBaseUrl, symbolsCatalogPath: catalogs.manifest.catalogs.symbols }, decodeBrowserImage, showProgress);
-  await loadFonts(catalogs.fonts, { baseUrl: settings.assetBaseUrl, fontsCatalogPath: catalogs.manifest.catalogs.fonts }, showProgress);
+  await images.loadAll(catalogs.symbols, { locator: catalogs.locator, symbolsCatalogPath: catalogs.manifest.catalogs.symbols }, decodeBrowserImage, showProgress);
+  await loadFonts(catalogs.fonts, { locator: catalogs.locator, fontsCatalogPath: catalogs.manifest.catalogs.fonts }, showProgress);
   const webAudio = WebAudioOutput.create();
   if (webAudio) {
-    await webAudio.load(catalogs.sounds, { baseUrl: settings.assetBaseUrl, soundsCatalogPath: catalogs.manifest.catalogs.sounds }, browserFetcher, showProgress);
+    await webAudio.load(catalogs.sounds, { locator: catalogs.locator, soundsCatalogPath: catalogs.manifest.catalogs.sounds }, browserFetcher, showProgress);
   } else {
     logger.warn(LogEvent.AudioUnavailable);
   }

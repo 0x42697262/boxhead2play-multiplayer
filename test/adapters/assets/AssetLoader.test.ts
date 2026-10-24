@@ -15,9 +15,10 @@ function diskFetcher(): Fetcher & { readonly requested: string[] } {
   const requested: string[] = [];
   return {
     requested,
-    json: (url) => {
-      requested.push(url);
-      return Promise.resolve(JSON.parse(readFileSync(path.join(ASSET_ROOT, url.slice(BASE.length)), 'utf8')) as unknown);
+    json: (url, options) => {
+      requested.push(options?.revalidate === true ? `${url} (revalidate)` : url);
+      const file = url.slice(BASE.length).split('?')[0] ?? '';
+      return Promise.resolve(JSON.parse(readFileSync(path.join(ASSET_ROOT, file), 'utf8')) as unknown);
     },
     bytes: () => Promise.reject(new Error('unused')),
   };
@@ -69,6 +70,10 @@ describe('asset loader', () => {
     expect(catalogs.roomIndex.rooms[0]?.name).toBe('BOXY');
     const last = progress[progress.length - 1];
     expect(last).toEqual({ phase: LoadPhase.Catalogs, loaded: last?.total, total: 24 });
+    expect(fetcher.requested[0]).toBe('assets/manifest.json (revalidate)');
+    const versioned = fetcher.requested.slice(1);
+    expect(versioned.every((url) => /\?v=[0-9a-f]{16}$/.test(url))).toBe(true);
+    expect(catalogs.locator.url(catalogs.manifest.catalogs.symbols)).toMatch(/^assets\/library\/symbols\.json\?v=[0-9a-f]{16}$/);
   });
 
   it.skipIf(assetsMissing)('lists every SVG of the library once', () => {

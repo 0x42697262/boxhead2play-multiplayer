@@ -14,13 +14,20 @@ async function readAsset(path: string): Promise<Buffer> {
   }
 }
 
+const QUERY_START = '?';
+
+function filePath(directory: string, url: string): string {
+  const query = url.indexOf(QUERY_START);
+  return join(directory, query < 0 ? url : url.slice(0, query));
+}
+
 export function directoryFetcher(directory: string): Fetcher {
   return {
     async json(path) {
-      return JSON.parse((await readAsset(join(directory, path))).toString('utf8')) as unknown;
+      return JSON.parse((await readAsset(filePath(directory, path))).toString('utf8')) as unknown;
     },
     async bytes(path) {
-      const buffer = await readAsset(join(directory, path));
+      const buffer = await readAsset(filePath(directory, path));
       return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     },
   };

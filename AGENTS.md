@@ -244,3 +244,7 @@ Add one line per behavior change: what to do, and the result you expect.
   to it and press TAB before any upgrade -> the full upgrade list shows (pistol rows faded).
 * `nix build` then `PORT=8391 ./result/bin/boxhead2play` -> `server.started` with 18 rooms;
   http://localhost:8391 shows the main menu. `nix flake check` -> all checks passed.
+* `npm run build`, `npm start`, open the page twice -> the second load requests only `/` and
+  `/assets/manifest.json` and both answer `304`; every other asset comes from the browser
+  cache. `curl -H 'accept-encoding: br' -D - http://localhost:8080/assets/characters/xsi.json?v=<16 hex from manifest>`
+  -> `content-encoding: br`, `cache-control: public, max-age=31536000, immutable`.

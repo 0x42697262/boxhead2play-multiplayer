@@ -40,3 +40,13 @@ describe('asset http', () => {
     expect(await withTimeout(Promise.resolve(3), 5, () => new AppError(ErrorCode.AssetTimedOut, 'x'))).toBe(3);
   });
 });
+
+describe('AssetLocator', () => {
+  it('appends the content version of files the manifest lists', async () => {
+    const { AssetLocator } = await import('../../../src/adapters/assets/urls.ts');
+    const locator = new AssetLocator('assets/', [{ path: 'library/shapes/1.svg', sha256: 'abcdef0123456789ffff' }]);
+    expect(locator.url('library/shapes/1.svg')).toBe('assets/library/shapes/1.svg?v=abcdef0123456789');
+    expect(locator.entryUrl('library/symbols.json', 'shapes/1.svg')).toBe('assets/library/shapes/1.svg?v=abcdef0123456789');
+    expect(locator.url('manifest.json')).toBe('assets/manifest.json');
+  });
+});
