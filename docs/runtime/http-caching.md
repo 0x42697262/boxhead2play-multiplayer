@@ -18,8 +18,21 @@ first visits about 4x smaller.
 A wrong `v` is still served (the current file) but with `no-cache`, so a stale client
 never pins the wrong content under an immutable URL.
 
-The Vite dev server (`npm run dev`) ignores the `v` query on public files and keeps its own
-caching. This document is about the production server. Behind Caddy, `encode` leaves
+The Vite dev server (`npm run dev`) uses the same rules for versioned asset URLs:
+`versionedAssetMiddleware` (`src/server/node/versionedAssets.ts`, installed by
+`tools/dev/onlineServerPlugin.ts`) serves every `/assets/...?v=...` request from `publicDir`
+through `staticFileHandler`, so a matching version is immutable and a reload takes the
+SVGs, MP3s and fonts from the browser cache. Without it Vite answered each of the ~700
+files with `no-cache`, and every reload revalidated all of them. Everything else, including
+`manifest.json`, Vite's own `/node_modules/.vite/deps/*.js?v=...` and the source modules,
+stays with Vite. Since the middleware stats files per request, assets that `npm run extract`
+writes while the dev server runs are served too; only the unversioned `manifest.json` still
+needs the restart described in `AGENTS.md`.
+
+Checking it in DevTools: keep "Disable cache" off and reload with F5, not Ctrl+Shift+R
+(which bypasses the cache). Cached rows still appear in the Network list, with "(disk
+cache)" or "(memory cache)" in Chrome's Size column and "cached" in Firefox's Transferred
+column. Behind Caddy, `encode` leaves
 responses that already carry `Content-Encoding` alone.
 
 ## Measured (2026-10-23, Firefox headless, production build, `npm start`)

@@ -5,6 +5,7 @@ import { LogEvent } from '../text/logEvents.ts';
 import { loadGameContent } from './node/content.ts';
 import { attachGameServer, type GameServer } from './node/gameServer.ts';
 import type { MonitorAccess } from './node/monitor.ts';
+export { versionedAssetMiddleware } from './node/versionedAssets.ts';
 
 const DEV_LOG_SESSION = 'dev-server';
 const DEV_MONITOR_ACCESS: MonitorAccess = { token: undefined, loopbackWithoutToken: true };

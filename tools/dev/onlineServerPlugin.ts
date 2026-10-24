@@ -2,7 +2,7 @@ import type { Server } from 'node:http';
 import path from 'node:path';
 import type { Plugin } from 'vite';
 import { LogLevel } from '../../src/config/env.ts';
-import type { attachDevGameServer } from '../../src/server/devServer.ts';
+import type { attachDevGameServer, versionedAssetMiddleware } from '../../src/server/devServer.ts';
 
 const PLUGIN_NAME = 'boxhead-online-server';
 const DEV_SERVER_MODULE = '/src/server/devServer.ts';
@@ -10,6 +10,7 @@ const DEV_ASSET_DIR = 'public/assets';
 
 interface DevServerModule {
   readonly attachDevGameServer: typeof attachDevGameServer;
+  readonly versionedAssetMiddleware: typeof versionedAssetMiddleware;
 }
 
 export function onlineServerPlugin(): Plugin {
@@ -25,6 +26,7 @@ export function onlineServerPlugin(): Plugin {
       server.middlewares.use((request, response, next) => {
         if (!game?.monitor.handle(request, response)) next();
       });
+      server.middlewares.use(module.versionedAssetMiddleware(server.config.publicDir));
     },
   };
 }

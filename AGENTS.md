@@ -112,6 +112,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * A NixOS host with `services.boxhead2play.environmentFile` holding `BOXHEAD_MONITOR_TOKEN` ->
   `npm run monitor -- --url https://<domain> --token <token>` shows the server; the token is not
   in `/nix/store`.
+* `npm run dev` (or `npm start`), load the page, DevTools Network with "Disable cache" off, F5 ->
+  every `.svg`, `.mp3` and `.woff` row says "(disk cache)"/"(memory cache)" (Chrome) or "cached"
+  (Firefox); only the page, `manifest.json` and, in dev, the source modules hit the server.
 * `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET
   rows, the lobby with its tick time and both players with their ONLINE time and about 0.5 KiB/s upload each, the lobby with MATCH and AGE times; `q`
   quits and restores the terminal. `npm start` without `BOXHEAD_MONITOR_TOKEN` -> `/__monitor`
