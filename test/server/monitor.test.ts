@@ -67,5 +67,8 @@ describe('server monitor', () => {
     expect(snapshot.clients.find((client) => client.name === 'Bob')?.activity).toBe(ClientActivity.Menu);
     expect(snapshot.lobbies).toHaveLength(1);
     expect(snapshot.lobbies[0]?.tickMs).toBeGreaterThan(0);
+    expect(snapshot.lobbies[0]?.matchSeconds).toBeGreaterThan(0);
+    expect(snapshot.lobbies[0]?.ageSeconds).toBeGreaterThan(snapshot.lobbies[0]?.matchSeconds ?? 0);
+    expect(ann?.onlineSeconds).toBeGreaterThan(0);
   });
 });

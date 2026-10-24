@@ -16,6 +16,7 @@ import { MAX_LOBBY_PLAYERS } from '../net/tuning.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import { Match, type MatchResult, type MatchStep } from './Match.ts';
+import { secondsSince } from './elapsed.ts';
 import type { MonitorLobby } from './monitorProtocol.ts';
 import type { Clock, GameContent, StopTicking, Ticker } from './ports.ts';
 import { lobbyName } from './sanitize.ts';
@@ -64,6 +65,8 @@ export class Lobby {
   private match: Match | undefined = undefined;
   private stopTicking: StopTicking | undefined = undefined;
   private tickMs: number | undefined = undefined;
+  private readonly createdMs: number;
+  private matchStartedMs: number | undefined = undefined;
 
   constructor(
     setup: LobbySetup,
@@ -73,6 +76,7 @@ export class Lobby {
   ) {
     this.id = setup.id;
     this.code = setup.code;
+    this.createdMs = deps.clock.now();
     this.mode = setup.mode;
     this.roomId = setup.roomId;
     this.options = setup.options;
@@ -227,6 +231,7 @@ export class Lobby {
     );
     if (!match) return ErrorReason.RoomUnknown;
     this.match = match;
+    this.matchStartedMs = this.deps.clock.now();
     players.forEach((member, index) => {
       member.playerIndex = index;
       this.sendStart(member, match);
@@ -255,7 +260,18 @@ export class Lobby {
 
   monitorRow(): MonitorLobby {
     const { id, name, mode, state } = this.dto();
-    return { id, name, mode, state, members: this.members.length, tickMs: this.match ? (this.tickMs ?? null) : null };
+    const now = this.deps.clock.now();
+    const running = this.match !== undefined && this.matchStartedMs !== undefined;
+    return {
+      id,
+      name,
+      mode,
+      state,
+      members: this.members.length,
+      tickMs: running ? (this.tickMs ?? null) : null,
+      ageSeconds: secondsSince(this.createdMs, now),
+      matchSeconds: running && this.matchStartedMs !== undefined ? secondsSince(this.matchStartedMs, now) : null,
+    };
   }
 
   private tick(match: Match): void {

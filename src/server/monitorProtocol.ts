@@ -1,5 +1,5 @@
 export const MONITOR_PATH = '/__monitor';
-export const MONITOR_FORMAT_VERSION = 1;
+export const MONITOR_FORMAT_VERSION = 2;
 export const MONITOR_TOKEN_HEADER = 'authorization';
 export const MONITOR_TOKEN_SCHEME = 'Bearer ';
 
@@ -23,6 +23,7 @@ export interface MonitorClient extends Traffic {
   readonly activity: ClientActivity;
   readonly lobby: string | null;
   readonly mode: string | null;
+  readonly onlineSeconds: number;
 }
 
 export interface MonitorLobby {
@@ -32,6 +33,8 @@ export interface MonitorLobby {
   readonly state: string;
   readonly members: number;
   readonly tickMs: number | null;
+  readonly ageSeconds: number;
+  readonly matchSeconds: number | null;
 }
 
 export interface MonitorSnapshot {

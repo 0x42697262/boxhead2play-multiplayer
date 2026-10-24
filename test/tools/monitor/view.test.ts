@@ -5,7 +5,7 @@ import { clientRates, cpuPercent, fit, formatBytes, formatDuration, httpErrorTex
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
 function client(name: string, bytesSent: number): MonitorClient {
-  return { id: name, name, activity: ClientActivity.Playing, lobby: "Ann's game", mode: 'coop', bytesSent, bytesReceived: bytesSent / 10 };
+  return { id: name, name, activity: ClientActivity.Playing, lobby: "Ann's game", mode: 'coop', onlineSeconds: 754, bytesSent, bytesReceived: bytesSent / 10 };
 }
 
 function snapshot(timeMs: number, cpuMicros: number, clients: readonly MonitorClient[]): MonitorSnapshot {
@@ -19,7 +19,7 @@ function snapshot(timeMs: number, cpuMicros: number, clients: readonly MonitorCl
     eventLoopDelayMs: { mean: 0.2, p99: 1.5, max: 2 },
     traffic: { bytesSent: clients.reduce((sum, item) => sum + item.bytesSent, 0), bytesReceived: 0 },
     clients,
-    lobbies: [{ id: 'l1', name: "Ann's game", mode: 'coop', state: 'playing', members: 2, tickMs: 1.25 }],
+    lobbies: [{ id: 'l1', name: "Ann's game", mode: 'coop', state: 'playing', members: 2, tickMs: 1.25, ageSeconds: 4000, matchSeconds: 95 }],
   };
 }
 
@@ -45,14 +45,14 @@ describe('monitor view', () => {
   });
 
   it('renders the header, system lines, lobbies and players within the terminal size', () => {
-    const lines = renderView({ url: 'http://localhost:5173', previous: snapshot(0, 0, [client('Ann', 0)]), current: snapshot(1000, 100_000, [client('Ann', 2048)]), error: undefined, width: 100, height: 30 });
+    const lines = renderView({ url: 'http://localhost:5173', previous: snapshot(0, 0, [client('Ann', 0)]), current: snapshot(1000, 100_000, [client('Ann', 2048)]), error: undefined, width: 120, height: 30 });
     const text = lines.map((line) => line.replace(ANSI, ''));
     expect(text[0]).toContain('up 1:02:05');
     expect(text.find((line) => line.startsWith('CPU'))).toContain('10.0% of one core (8 cores)');
     expect(text.find((line) => line.startsWith('NET'))).toContain('↑ 2.0 KiB/s');
-    expect(text.find((line) => line.startsWith("Ann's game"))).toContain('1.3 ms');
-    expect(text.find((line) => line.startsWith('Ann '))).toContain('2.0 KiB/s');
-    expect(text.every((line) => line.length <= 100)).toBe(true);
+    expect(text.find((line) => line.startsWith("Ann's game"))).toMatch(/1\.3 ms\s+0:01:35\s+1:06:40/);
+    expect(text.find((line) => line.startsWith('Ann '))).toMatch(/0:12:34\s+2\.0 KiB\/s/);
+    expect(text.every((line) => line.length <= 120)).toBe(true);
     expect(renderView({ url: 'u', previous: undefined, current: snapshot(0, 0, Array.from({ length: 50 }, (_unused, index) => client(`P${index}`, index))), error: undefined, width: 100, height: 20 })).toHaveLength(20);
   });
 

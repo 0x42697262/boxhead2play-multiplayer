@@ -30,8 +30,8 @@ Pointing the tool at a server nobody plays on shows 0 lobbies and 0 players.
 | MEM | `process.memoryUsage()`, `os.totalmem/freemem` | Process RSS (bar: share of system memory), V8 heap, system memory |
 | LOOP | `monitorEventLoopDelay` (10 ms resolution, minus the resolution) | How late timers fire since the last sample; ticks are late when this grows |
 | NET | TCP `bytesWritten` / `bytesRead` of every socket, plus closed sockets | Real bytes on the wire after permessage-deflate, including WebSocket framing |
-| Lobbies | `Lobby.monitorRow()` | Members and the smoothed time of one match tick (budget 40 ms at 25 ticks/s) |
-| Players | `Hub.monitorClients()` and the socket of each session | Activity (menu, lobby, playing, offline), lobby, upload/download rate and totals for the current socket |
+| Lobbies | `Lobby.monitorRow()` | Members, the smoothed time of one match tick (budget 40 ms at 25 ticks/s), how long the current match has run (MATCH) and how long the lobby exists (AGE) |
+| Players | `Hub.monitorClients()` and the socket of each session | Activity (menu, lobby, playing, offline), lobby, time since the session started (ONLINE, kept across reconnects), upload/download rate and totals for the current socket |
 
 Rates come from the difference between two samples. A reconnect resets a player's
 counters; the tool then counts from zero instead of showing a negative rate.
@@ -39,7 +39,7 @@ counters; the tool then counts from zero instead of showing a negative rate.
 ## Endpoint and access
 
 The server answers `GET /__monitor` (`MONITOR_PATH`) with a `MonitorSnapshot` JSON object
-(`src/server/monitorProtocol.ts`, `formatVersion` 1; the tool refuses other versions).
+(`src/server/monitorProtocol.ts`, `formatVersion` 2; the tool refuses other versions).
 
 * **Dev server** (`npm run dev`): answers requests from loopback addresses only, without a
   token (`devServer.ts`, Vite middleware in `tools/dev/onlineServerPlugin.ts`).

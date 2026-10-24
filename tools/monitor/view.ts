@@ -40,6 +40,7 @@ const MODE_WIDTH = 11;
 const STATE_WIDTH = 9;
 const NUMBER_WIDTH = 10;
 const SMALL_NUMBER_WIDTH = 8;
+const TIME_WIDTH = 9;
 
 export interface ViewInput {
   readonly url: string;
@@ -173,23 +174,25 @@ function systemLines(previous: MonitorSnapshot | undefined, current: MonitorSnap
 }
 
 function lobbyLines(current: MonitorSnapshot, rows: number): string[] {
-  const title = `${Style.Inverse}${cell('LOBBY', LOBBY_WIDTH)} ${cell('MODE', MODE_WIDTH)} ${cell('STATE', STATE_WIDTH)} ${cell('PLAYERS', SMALL_NUMBER_WIDTH, true)} ${cell('TICK', NUMBER_WIDTH, true)}${Style.Reset}`;
+  const title = `${Style.Inverse}${cell('LOBBY', LOBBY_WIDTH)} ${cell('MODE', MODE_WIDTH)} ${cell('STATE', STATE_WIDTH)} ${cell('PLAYERS', SMALL_NUMBER_WIDTH, true)} ${cell('TICK', NUMBER_WIDTH, true)} ${cell('MATCH', TIME_WIDTH, true)} ${cell('AGE', TIME_WIDTH, true)}${Style.Reset}`;
   const lines = current.lobbies.slice(0, rows).map((lobby) => {
     const tick = lobby.tickMs === null ? '-' : `${lobby.tickMs.toFixed(DELAY_DIGITS)} ms`;
     const color = lobby.tickMs === null ? '' : levelColor(lobby.tickMs / TICK_BUDGET_MS);
-    return `${cell(lobby.name, LOBBY_WIDTH)} ${cell(lobby.mode, MODE_WIDTH)} ${cell(lobby.state, STATE_WIDTH)} ${cell(String(lobby.members), SMALL_NUMBER_WIDTH, true)} ${color}${cell(tick, NUMBER_WIDTH, true)}${Style.Reset}`;
+    const match = lobby.matchSeconds === null ? '-' : formatDuration(lobby.matchSeconds);
+    return `${cell(lobby.name, LOBBY_WIDTH)} ${cell(lobby.mode, MODE_WIDTH)} ${cell(lobby.state, STATE_WIDTH)} ${cell(String(lobby.members), SMALL_NUMBER_WIDTH, true)} ${color}${cell(tick, NUMBER_WIDTH, true)}${Style.Reset} ${cell(match, TIME_WIDTH, true)} ${cell(formatDuration(lobby.ageSeconds), TIME_WIDTH, true)}`;
   });
   return [`${Style.Bold}Lobbies ${current.lobbies.length}${Style.Reset}`, title, ...lines, ...more(current.lobbies.length, rows)];
 }
 
 function clientLines(previous: MonitorSnapshot | undefined, current: MonitorSnapshot, rows: number): string[] {
   const rates = clientRates(previous, current);
-  const title = `${Style.Inverse}${cell('PLAYER', NAME_WIDTH)} ${cell('ACTIVITY', STATE_WIDTH)} ${cell('LOBBY', LOBBY_WIDTH)} ${cell('↑ RATE', NUMBER_WIDTH, true)} ${cell('↓ RATE', NUMBER_WIDTH, true)} ${cell('↑ TOTAL', NUMBER_WIDTH, true)} ${cell('↓ TOTAL', NUMBER_WIDTH, true)}${Style.Reset}`;
+  const title = `${Style.Inverse}${cell('PLAYER', NAME_WIDTH)} ${cell('ACTIVITY', STATE_WIDTH)} ${cell('LOBBY', LOBBY_WIDTH)} ${cell('ONLINE', TIME_WIDTH, true)} ${cell('↑ RATE', NUMBER_WIDTH, true)} ${cell('↓ RATE', NUMBER_WIDTH, true)} ${cell('↑ TOTAL', NUMBER_WIDTH, true)} ${cell('↓ TOTAL', NUMBER_WIDTH, true)}${Style.Reset}`;
   const lines = rates.slice(0, rows).map(({ client, sentPerSecond, receivedPerSecond }) =>
     [
       cell(client.name, NAME_WIDTH),
       cell(client.activity, STATE_WIDTH),
       cell(client.lobby ?? '-', LOBBY_WIDTH),
+      cell(formatDuration(client.onlineSeconds), TIME_WIDTH, true),
       cell(formatRate(sentPerSecond), NUMBER_WIDTH, true),
       cell(formatRate(receivedPerSecond), NUMBER_WIDTH, true),
       cell(formatBytes(client.bytesSent), NUMBER_WIDTH, true),

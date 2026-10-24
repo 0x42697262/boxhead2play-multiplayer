@@ -15,6 +15,7 @@ import { LogEvent } from '../text/logEvents.ts';
 import { Lobby, type LobbyClient } from './Lobby.ts';
 import type { CancelTimer, Connection, HubDependencies } from './ports.ts';
 import { lobbyCodeFromNumber, normalizeLobbyCode } from '../net/lobbyCode.ts';
+import { secondsSince } from './elapsed.ts';
 import { ClientActivity, type MonitorClient, type MonitorLobby, type Traffic } from './monitorProtocol.ts';
 import { nameKey, sanitizeName, uniqueName } from './sanitize.ts';
 import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from './tuning.ts';
@@ -30,6 +31,7 @@ class ClientSession implements LobbyClient {
     readonly sessionId: string,
     public name: string,
     connection: Connection,
+    readonly startedMs: number,
   ) {
     this.connection = connection;
   }
@@ -119,6 +121,7 @@ export class Hub {
   }
 
   monitorClients(): MonitorClient[] {
+    const now = this.deps.clock.now();
     return [...this.sessions.values()].map((session) => {
       const lobby = session.lobby?.dto();
       const member = lobby?.members.find((candidate) => candidate.id === session.id);
@@ -129,6 +132,7 @@ export class Hub {
         activity: clientActivity(session.connected, lobby?.state, member?.playerIndex ?? null),
         lobby: lobby?.name ?? null,
         mode: lobby?.mode ?? session.watching,
+        onlineSeconds: secondsSince(session.startedMs, now),
         ...traffic,
       };
     });
@@ -163,7 +167,7 @@ export class Hub {
       connection.close();
       return undefined;
     }
-    const session = new ClientSession(this.deps.newId(), this.deps.newId(), this.freeName(message.name, undefined), connection);
+    const session = new ClientSession(this.deps.newId(), this.deps.newId(), this.freeName(message.name, undefined), connection, this.deps.clock.now());
     this.sessions.set(session.sessionId, session);
     session.send({ type: ServerMessageType.Welcome, clientId: session.id, sessionId: session.sessionId, resumed: false });
     this.deps.logger.info(LogEvent.ClientConnected, { client: session.id, clients: this.sessions.size });

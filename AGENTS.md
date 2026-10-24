@@ -110,7 +110,7 @@ Add one line per behavior change: what to do, and the result you expect.
 * DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> TAB shows one more
   death for him and no kill for anybody.
 * `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET
-  rows, the lobby with its tick time and both players with about 0.5 KiB/s upload each; `q`
+  rows, the lobby with its tick time and both players with their ONLINE time and about 0.5 KiB/s upload each, the lobby with MATCH and AGE times; `q`
   quits and restores the terminal. `npm start` without `BOXHEAD_MONITOR_TOKEN` -> `/__monitor`
   is not served.
 * `npm run bandwidth` -> per-player rates for coop and deathmatch with 1/4/16 players; wire +
