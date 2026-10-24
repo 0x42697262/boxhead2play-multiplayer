@@ -83,6 +83,13 @@ describe('settings reading', () => {
     expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, soundVolume: 25, screenShake: true, blood: true });
   });
 
+  it('migrates version 5 to the uncapped frame rate and rejects other rates', () => {
+    const v5: Record<string, unknown> = { ...DEFAULT_SETTINGS, version: 5 };
+    delete v5.frameRate;
+    expect(readSettings(JSON.stringify(v5)).settings).toEqual(DEFAULT_SETTINGS);
+    expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, frameRate: 45 })).rejected).toBeDefined();
+  });
+
   it('rejects invalid JSON, invalid values and future versions', () => {
     expect(readSettings('{').rejected).toBe('json');
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, difficulty: 7 })).rejected).toBeDefined();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FrameClock } from '../../src/entry/FrameClock.ts';
+import { FrameGate, UNCAPPED_FRAME_RATE } from '../../src/entry/FrameGate.ts';
 import { GameLoop, type LoopClock } from '../../src/entry/GameLoop.ts';
 import { silentLogger } from '../../src/observability/logger.ts';
 import { Cursor, ScreenFlow, type Screen, type ScreenFactory } from '../../src/services/ScreenFlow.ts';
@@ -29,6 +30,23 @@ describe('FrameClock (CMain.ProcessFrames)', () => {
     expect(clock.process(80, 12.5)).toBe(1);
     clock.reset(1000);
     expect(clock.process(1020, 50)).toBe(1);
+  });
+});
+
+describe('FrameGate (SETTINGS frame rate)', () => {
+  it('draws every frame uncapped, every other 60 Hz frame at 30, and every 120 Hz frame at 120', () => {
+    const count = (rate: number, hz: number): number => {
+      const gate = new FrameGate();
+      let drawn = 0;
+      for (let frame = 0; frame < hz; frame++) if (gate.shouldPresent((frame * 1000) / hz, rate)) drawn++;
+      return drawn;
+    };
+    expect(count(UNCAPPED_FRAME_RATE, 144)).toBe(144);
+    expect(count(30, 60)).toBe(30);
+    expect(count(60, 144)).toBeGreaterThanOrEqual(58);
+    expect(count(60, 144)).toBeLessThanOrEqual(73);
+    expect(count(120, 120)).toBe(120);
+    expect(count(60, 60)).toBe(60);
   });
 });
 

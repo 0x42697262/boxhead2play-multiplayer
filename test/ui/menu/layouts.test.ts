@@ -21,7 +21,8 @@ describe('menu layouts from the real library', () => {
     for (const button of volume.buttons) expect(button.matrix?.[5]).toBeCloseTo(-40, 0);
     expect(graphics.buttons.every((button) => button.label !== undefined)).toBe(true);
     expect(graphics.title && volume.info).toBeDefined();
-    expect(hidden).toContain('_Collide_Off');
+    expect(hidden).toContain('_Devils_Off');
+    expect(hidden).not.toContain('_Collide_Off');
     expect(hidden).not.toContain('_Game1');
     const play = instanceHitArea(library, layout.items, [MainMenuChild.SinglePlay], {});
     const coopArea = instanceHitArea(library, layout.items, [MainMenuChild.CoopPlay], {});

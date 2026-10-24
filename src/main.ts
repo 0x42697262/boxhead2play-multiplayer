@@ -21,7 +21,7 @@ import { LocalStorageStore } from './adapters/storage/KeyValueStore.ts';
 import { loadSettings, readBrowserEnv } from './config/env.ts';
 import { SeededRng } from './domain/math/Rng.ts';
 import { createThingFactory } from './domain/things/factory.ts';
-import { GameLoop } from './entry/GameLoop.ts';
+import { browserLoopClock, GameLoop } from './entry/GameLoop.ts';
 import { attachListeners } from './entry/listeners.ts';
 import type { GameStarted } from './net/protocol.ts';
 import { createLogger, type Logger } from './observability/logger.ts';
@@ -141,7 +141,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   };
   const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor));
   startOnlineGame = (start) => flow.startOnlineGame(start);
-  const loop = new GameLoop(flow);
+  const loop = new GameLoop(flow, browserLoopClock, () => userSettings.settings.frameRate);
   const gameKeys = (): ReadonlySet<string> => boundCodes(buildBindings(userSettings.settings.keys));
   let keys = gameKeys();
   userSettings.subscribe(() => (keys = gameKeys()));

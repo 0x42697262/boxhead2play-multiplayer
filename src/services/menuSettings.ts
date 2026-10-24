@@ -82,9 +82,13 @@ export function effectPreferences(settings: UserSettings): { readonly screenShak
   return { screenShake: settings.screenShake, blood: settings.blood };
 }
 
+export function withFrameRate(settings: UserSettings, frameRate: UserSettings['frameRate']): UserSettings {
+  return { ...settings, frameRate };
+}
+
 export function resetSetup(settings: UserSettings): UserSettings {
-  const { graphics, soundVolume, screenShake, blood } = DEFAULT_SETTINGS;
-  return { ...settings, graphics, soundVolume, screenShake, blood };
+  const { graphics, soundVolume, screenShake, blood, frameRate } = DEFAULT_SETTINGS;
+  return { ...settings, graphics, soundVolume, screenShake, blood, frameRate };
 }
 
 export function soundGain(settings: UserSettings): number {

@@ -16,12 +16,16 @@ import { DEFAULT_GRAPHICS_QUALITY, GraphicsQuality } from './graphicsQuality.ts'
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 5;
+export const SETTINGS_VERSION = 6;
+export const FRAME_RATES = [0, 30, 60, 120] as const;
+export type FrameRate = (typeof FRAME_RATES)[number];
+export const UNCAPPED_FRAME_RATE: FrameRate = 0;
 const LEGACY_VERSION = 0;
 const LOCAL_TWO_PLAYER_VERSION = 1;
 const SOUND_SWITCH_VERSION = 2;
 const ORIGINAL_KEYS_VERSION = 3;
 const EFFECT_SWITCHES_VERSION = 4;
+const FRAME_RATE_VERSION = 5;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -53,6 +57,7 @@ export const UserSettingsSchema = z.object({
   graphics: z.enum(Object.values(GraphicsQuality) as [GraphicsQuality, ...GraphicsQuality[]]),
   screenShake: z.boolean(),
   blood: z.boolean(),
+  frameRate: z.number().refine((value): value is FrameRate => (FRAME_RATES as readonly number[]).includes(value)),
   musicActive: z.boolean(),
   detail: z.boolean(),
   difficulty: enumValue(Difficulty),
@@ -113,6 +118,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   graphics: DEFAULT_GRAPHICS_QUALITY,
   screenShake: true,
   blood: true,
+  frameRate: UNCAPPED_FRAME_RATE,
   musicActive: true,
   detail: true,
   difficulty: Difficulty.Beginner,
@@ -212,7 +218,11 @@ export function migrateOriginalKeys(raw: Raw): Raw {
 }
 
 export function migrateEffectSwitches(raw: Raw): Raw {
-  return { ...raw, version: SETTINGS_VERSION, screenShake: DEFAULT_SETTINGS.screenShake, blood: DEFAULT_SETTINGS.blood };
+  return { ...raw, version: FRAME_RATE_VERSION, screenShake: DEFAULT_SETTINGS.screenShake, blood: DEFAULT_SETTINGS.blood };
+}
+
+export function migrateFrameRate(raw: Raw): Raw {
+  return { ...raw, version: SETTINGS_VERSION, frameRate: DEFAULT_SETTINGS.frameRate };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
@@ -221,6 +231,7 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [SOUND_SWITCH_VERSION]: migrateSoundSwitch,
   [ORIGINAL_KEYS_VERSION]: migrateOriginalKeys,
   [EFFECT_SWITCHES_VERSION]: migrateEffectSwitches,
+  [FRAME_RATE_VERSION]: migrateFrameRate,
 };
 
 function versionOf(raw: Raw): number {

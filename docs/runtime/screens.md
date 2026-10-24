@@ -46,7 +46,7 @@ Only these parts of sprite 253 are drawn:
 
 The select-world OPTIONS window (`mcWindow_Options`, sprite 358) with a SETTINGS title.
 Only the background, `mcLock`, RESET and CLOSE keep their art; every other child is hidden.
-Four rows use the positions of the first four OPTIONS rows:
+Five rows use the positions of the first five OPTIONS rows:
 
 | Row | Buttons (instances, moved to the row) | Setting |
 |---|---|---|
@@ -54,10 +54,11 @@ Four rows use the positions of the first four OPTIONS rows:
 | Sound volume | OFF, LOW, MEDIUM, FULL (`_Game1`..`_Game4`) | `soundVolume` 0, 25, 50, 100 |
 | Screen shake | OFF, ON (`_Damage_Off`, `_Damage_On`) | `screenShake`: the renderer uses the camera rect instead of the shaken draw origin |
 | Blood | OFF, ON (`_Speed_Slow`, `_Speed_Normal`) | `blood`: blood decals are kept but not stamped; switching rebuilds the floor |
+| Frame rate | 30, 60, 120, DISPLAY (`_Collide_Off`, `_Collide_On`, `_Speed_Fast`, `_Level_Nightmare` moved to the four columns) | `frameRate`: `GameLoop` skips `present` until `FrameGate` allows the next frame |
 
 Button labels are attached edit texts with the glow of the original static labels. A click
 stores the value at once: the shell refits and the mixer changes its volume. RESET restores
-SHARP, FULL and both switches on. These are device settings, separate from the game OPTIONS of select world.
+SHARP, FULL, both switches on and DISPLAY. These are device settings, separate from the game OPTIONS of select world.
 
 Removed: the INSTRUCTIONS link of `mcInstructions` (external URL), button 203 (a "view the trailer" YouTube link),
 `_IconMoreGames`, `_STC` ("A SEAN COOPER GAME" link), the four game banners (depths 60,

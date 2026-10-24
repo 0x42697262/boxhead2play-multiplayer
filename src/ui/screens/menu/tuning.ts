@@ -2,7 +2,7 @@ import { GameMode } from '../../../domain/world/GameMode.ts';
 import { Difficulty, GameAmount, GameSpeed } from '../../../domain/world/SimulationSettings.ts';
 import { BASE_TICKS_PER_SECOND } from '../../../domain/world/tuning.ts';
 import { GraphicsQuality } from '../../../services/graphicsQuality.ts';
-import { SOUND_VOLUME_MAX, SOUND_VOLUME_OFF } from '../../../services/SettingsService.ts';
+import { SOUND_VOLUME_MAX, SOUND_VOLUME_OFF, UNCAPPED_FRAME_RATE, type FrameRate } from '../../../services/SettingsService.ts';
 import type { TextKey } from '../../../text/i18n.ts';
 import type { KeyField } from '../../../services/menuSettings.ts';
 import { OPTION_OFF, OPTION_ON, OptionField } from '../../../services/menuSettings.ts';
@@ -60,7 +60,10 @@ export interface SetupButtonSpec<Value> {
   readonly instance: string;
   readonly value: Value;
   readonly label: TextKey;
+  readonly x?: number;
 }
+
+const SETUP_COLUMN_X = [-76, 4, 84, 164.1] as const;
 
 export interface SetupRowSpec<Value> {
   readonly titleDepth: number;
@@ -122,6 +125,20 @@ export const BLOOD_ROW: SetupRowSpec<boolean> = {
   buttons: [
     { instance: '_Speed_Slow', value: false, label: 'setup.switch.off' },
     { instance: '_Speed_Normal', value: true, label: 'setup.switch.on' },
+  ],
+};
+
+export const FRAME_RATE_ROW: SetupRowSpec<FrameRate> = {
+  titleDepth: 76,
+  infoDepth: 98,
+  rowOf: '_Game1',
+  title: 'setup.frameRate.title',
+  info: 'setup.frameRate.info',
+  buttons: [
+    { instance: '_Collide_Off', value: 30, label: 'setup.frameRate.30', x: SETUP_COLUMN_X[0] },
+    { instance: '_Collide_On', value: 60, label: 'setup.frameRate.60', x: SETUP_COLUMN_X[1] },
+    { instance: '_Speed_Fast', value: 120, label: 'setup.frameRate.120', x: SETUP_COLUMN_X[2] },
+    { instance: '_Level_Nightmare', value: UNCAPPED_FRAME_RATE, label: 'setup.frameRate.uncapped', x: SETUP_COLUMN_X[3] },
   ],
 };
 

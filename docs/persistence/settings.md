@@ -10,15 +10,16 @@ validated with Zod and written back on every change (`CSaveData` flushed on ever
 Unreadable storage or a failed write is logged (`save.rejected`, `save.write_failed`) and
 the game continues with the values in memory.
 
-## Version 5
+## Version 6
 
 | Field | Type | Default | Original |
 |---|---|---|---|
-| `version` | `5` | | |
+| `version` | `6` | | |
 | `soundVolume` | 0..100 | 100 | `mSoundActive` (on/off) |
 | `graphics` | `sharp`, `smooth`, `pixelated` | `sharp` | none (ADR 0006) |
 | `screenShake` | boolean | true | none (explosions always shake) |
 | `blood` | boolean | true | none (blood splats always drawn) |
+| `frameRate` | 0 (display), 30, 60, 120 | 0 | none (Flash drew at 25 fps) |
 | `musicActive` | boolean | true | `mMusicActive` (no music is registered) |
 | `detail` | boolean | true | `mDetail` (`_quality` HIGH/LOW) |
 | `difficulty` | 0..3 | 0 | `mDifficulty` |
@@ -54,10 +55,12 @@ current version, then validates.
   still equal them (arrows, `/`, `.`, `,`) with W, S, A, D, Space, E, Q; rebound keys stay.
 * Version 4 had no effect switches. `migrateEffectSwitches` adds `screenShake: true` and
   `blood: true`.
+* Version 5 had no frame rate. `migrateFrameRate` adds `frameRate: 0` (draw every display
+  frame).
  A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 6: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[5]`
-that turns a version 5 object into a version 6 object.
+To add version 7: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[6]`
+that turns a version 6 object into a version 7 object.
