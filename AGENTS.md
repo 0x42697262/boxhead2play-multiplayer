@@ -122,6 +122,8 @@ Add one line per behavior change: what to do, and the result you expect.
   the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player and no frags bar;
   TAB -> SCOREBOARD with one row per player (rank and name, kills, deaths), your row green.
   A third tab can join the same death match.
+* Search the running game (menus, CONTROLS, lobby, HUD, scoreboard) for "Player 2" -> none;
+  a player without a name is shown as "Player".
 * In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
   SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
   screen (online: the lobby room).

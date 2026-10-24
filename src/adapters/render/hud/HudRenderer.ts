@@ -63,7 +63,7 @@ const MESSAGE_ORIGIN: Point2 = { x: SCREEN_WIDTH_PX / 2, y: SCREEN_HEIGHT_PX };
 
 export function playerDisplayName(hud: HudFrame, playerIndex: number): string {
   const name = hud.playerNames[playerIndex];
-  return name ? name : t('hud.playerName', { number: playerIndex + 1 });
+  return name ? name : t('hud.playerName');
 }
 
 function pointInRect(point: Point2, rect: Rect): boolean {

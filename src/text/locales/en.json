@@ -130,7 +130,7 @@
   "hud.multiplier": "x{multiplier}",
   "hud.scorePopup": "+{points}",
   "hud.ammo": "{weapon}:{ammo}",
-  "hud.playerName": "Player {number}",
+  "hud.playerName": "Player",
   "hud.scoreboard.title": "SCOREBOARD",
   "hud.scoreboard.kills": "KILLS",
   "hud.scoreboard.deaths": "DEATHS",
