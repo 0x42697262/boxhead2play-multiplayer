@@ -36,6 +36,10 @@ function spawnCollide(point: SpawnPoint): number {
   return point.cell.collide | (point.nextCell?.collide ?? CollideFlag.None);
 }
 
+export function standablePlayerPoints(points: readonly SpawnPoint[]): SpawnPoint[] {
+  return points.filter((point) => !(point.cell.collide & CollideMask.StaticImpassable));
+}
+
 export function pickSpawnPoint(points: readonly SpawnPoint[], rng: Rng): SpawnPoint | undefined {
   return scanFromRandom(points, rng, (point) => !(spawnCollide(point) & CollideMask.NoSpawn));
 }
@@ -90,7 +94,7 @@ export function openSpawnNear(origin: SpawnPoint, occupied: ReadonlySet<MapCell>
     }
     for (let direction = 0; direction < DIRECTION_COUNT; direction += STRAIGHT_DIRECTION_STEP) {
       const next = cell.adjacent(direction);
-      if (seen.has(next) || next.collide & CollideMask.StaticImpassable) continue;
+      if (seen.has(next) || next.collide & CollideFlag.EdgeOfMap) continue;
       seen.add(next);
       queue.push(next);
     }

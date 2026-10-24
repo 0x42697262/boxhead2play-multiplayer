@@ -24,15 +24,7 @@ import { IDLE_PLAYER_INPUT, IDLE_TICK_INPUT, type PlayerInput, type TickInput } 
 import { initObjectsInOrder, InitKind, screenToCell, type RoomDefinition, type RoomInitObject } from './RoomDefinition.ts';
 import { ScreenEffects } from './ScreenEffects.ts';
 import type { PlayerCharacter, SimulationSettings } from './SimulationSettings.ts';
-import {
-  pickSpawnPoint,
-  pickSpawnPointClose,
-  pickSpawnPointFar,
-  pickSpawnPointNonStrict,
-  openSpawnNear,
-  validateSpawnPoints,
-  type SpawnPoint,
-} from './spawning.ts';
+import { openSpawnNear, pickSpawnPoint, pickSpawnPointClose, pickSpawnPointFar, pickSpawnPointNonStrict, standablePlayerPoints, type SpawnPoint, validateSpawnPoints } from './spawning.ts';
 import {
   DROPPED_PICKUP_SECONDS,
   KILLS_TO_WIN,
@@ -65,6 +57,8 @@ export interface Presentation {
 
 const FIRST_PLAYER = 0;
 const DEGREES_TO_RADIANS = Math.PI / 180;
+
+const PLAYER_SPAWN_BLOCKED = CollideFlag.Player | CollideMask.StaticImpassable;
 
 export class World implements WorldContext, UpgradesHost {
   readonly events: EventQueue;
@@ -375,6 +369,8 @@ export class World implements WorldContext, UpgradesHost {
     for (const init of initObjectsInOrder(this.room)) this.initObject(init);
     this.zombiePoints = validateSpawnPoints(this.zombiePoints);
     this.devilPoints = validateSpawnPoints(this.devilPoints);
+    this.playerPoints = standablePlayerPoints(this.playerPoints);
+    if (this.playerStart && !this.playerPoints.includes(this.playerStart)) this.playerStart = undefined;
     this.settings.playerCharacters.forEach((character, index) => {
       const point = index === FIRST_PLAYER ? (this.playerStart ?? pickSpawnPoint(this.playerPoints, this.rng)) : this.playerRespawnPoint(undefined);
       this.spawnPlayer(index, character, this.unoccupied(point));
@@ -420,7 +416,7 @@ export class World implements WorldContext, UpgradesHost {
     const origin = point ?? this.playerStart ?? this.playerPoints[0];
     if (!origin) return undefined;
     const occupied = new Set(this.things.players().map((player) => this.map.cellAt(player.position.x, player.position.y)));
-    if (point && !occupied.has(point.cell) && !(point.cell.collide & CollideFlag.Player)) return point;
+    if (point && !occupied.has(point.cell) && !(point.cell.collide & PLAYER_SPAWN_BLOCKED)) return point;
     return openSpawnNear(origin, new Set([...occupied].filter((cell) => cell !== undefined)), OPEN_SPAWN_SEARCH_CELLS);
   }
 

@@ -98,6 +98,8 @@ Add one line per behavior change: what to do, and the result you expect.
   factory suites pass, and the integration suite runs 2000 ticks of single, coop and
   deathmatch play on ROOM_Single_0001 (a built-in room when assets are missing) with no NaN
   positions and identical traces for the same seed.
+* `npx vitest run test/domain/world/playerSpawns.test.ts` -> 4 players in every room, coop and
+  deathmatch, never stand inside a wall; ROOM_Single_0011 has no spawn point at (16, 9).
 * Zombie next to a player -> the player loses 50 life per attack (also with damage off).
   Devil within 5 cells, facing the player with a clear line -> a fireball for 50.
 * Shoot a barrel next to another barrel -> two explosions two ticks apart, both
