@@ -367,7 +367,6 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
     const next = this.world.map.collide.creatureCollide(this);
     if (Number.isNaN(next.x)) {
       this.flags |= ThingFlag.Dead;
-      this.world.things.invalidPositions++;
       this.setState(CreatureState.Dying);
       return;
     }

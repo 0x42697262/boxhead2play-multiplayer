@@ -9,7 +9,7 @@ import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import { ClipMode, VisualKind } from '../../../src/domain/visuals.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
 import { syntheticAnimationCatalog } from '../support/animationCatalog.ts';
-import { at, cellObject, room } from '../support/fakes.ts';
+import { at, cellObject, room, cellOf } from '../support/fakes.ts';
 import { makeRealWorld, ofClass, run, spawn } from '../support/realWorld.ts';
 
 const open = () => room(20, 14, [cellObject(InitKind.Player1, 1, 1)]);
@@ -65,11 +65,11 @@ describe('MuzzleFlash', () => {
     const world = makeRealWorld(open());
     const flash = spawn(world, new MuzzleFlash(world, at(5.5, 5.5, 0.5), new Angle(1), ClipSymbol.PistolMuzzleFlash));
     run(world, 1);
-    expect(world.map.cell(5, 5).things).toContain(flash);
+    expect(cellOf(world, 5, 5).things).toContain(flash);
     const visual = flash.visual();
     expect(visual).toMatchObject({ mode: ClipMode.OmniDirectional, symbol: 'Pistol.MuzzleFlash', rotationCount: 8 });
     expect(visual.angleRadians).toBeCloseTo(1);
     run(world, 1);
-    expect(world.map.cell(5, 5).things).not.toContain(flash);
+    expect(cellOf(world, 5, 5).things).not.toContain(flash);
   });
 });

@@ -21,6 +21,7 @@
 | Spawn points outside the map | Stored with an `undefined` cell | Dropped | The original would fail at the first use. No room has one. |
 | Zombie/devil spawn point angle | `undefined` | `Angle(0)` | Never read. |
 | `ThingFlag.Drawn` | Set by `CMap.Draw` | Not set | Never read. Keeps drawing read-only. |
+| `CThings` bookkeeping | Time slice counters (slow, medium, fast) advanced every pass, and a counter of creatures killed by an invalid knockback position | Not ported | Never read. |
 | `MoveInDirection2` | Direction arithmetic without wrapping | Wraps with `& 7` | The function has no caller. |
 | Quit | Only the pause screen button sets `quit` (the QUIT? button on the upgrade list in the port) | `TickInput.quitRequested` at any time | The UI decides when the request can be made. |
 | Thing ids | Static `CThing.mAllocate_ID`, renewed per world | `ThingIds` per world | Same numbers, no global state. |

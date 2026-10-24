@@ -9,7 +9,7 @@ import { ThingClass } from '../../../../src/domain/things/ThingClass.ts';
 import { ThingFlag } from '../../../../src/domain/things/ThingFlag.ts';
 import { VisualKind } from '../../../../src/domain/visuals.ts';
 import { InitKind } from '../../../../src/domain/world/RoomDefinition.ts';
-import { at, cellObject, room } from '../../support/fakes.ts';
+import { at, cellObject, room, cellOf } from '../../support/fakes.ts';
 import { makeRealWorld, ofClass, playerOf, run, spawn } from '../../support/realWorld.ts';
 
 const corridor = () => room(16, 7, [cellObject(InitKind.Player1, 2, 3)]);
@@ -21,7 +21,7 @@ describe('Zombie', () => {
     run(world, 1);
     expect(zombie.position).toEqual(at(12.5, 3.5));
     expect(zombie.state).toBe(CreatureState.EnterMap);
-    expect(world.map.cell(12, 3).collide & CollideFlag.Creature).toBeTruthy();
+    expect(cellOf(world, 12, 3).collide & CollideFlag.Creature).toBeTruthy();
     expect(zombie.speed).toBeCloseTo(0.022);
     run(world, 1);
     expect(zombie.state).toBe(CreatureState.CellToCell);

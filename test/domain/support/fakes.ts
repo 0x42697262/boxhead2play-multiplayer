@@ -19,6 +19,7 @@ import {
   type SimulationSettings,
 } from '../../../src/domain/world/SimulationSettings.ts';
 import { World } from '../../../src/domain/world/World.ts';
+import type { MapCell } from '../../../src/domain/map/MapCell.ts';
 import type { WorldContext } from '../../../src/domain/world/WorldContext.ts';
 
 export const CELL = 32;
@@ -171,6 +172,12 @@ export function makeWorld(definition: RoomDefinition, test: TestWorldOptions = {
   const settings = settingsWith(test.options, test.host);
   const world = test.start === false ? new World(definition, settings, dependencies) : World.create(definition, settings, dependencies);
   return { world, factory };
+}
+
+export function cellOf(world: World, x: number, y: number): MapCell {
+  const cell = world.map.cellAt(x, y);
+  if (!cell) throw new Error(`No map cell at (${x}, ${y})`);
+  return cell;
 }
 
 export function at(x: number, y: number, z = 0): Position {

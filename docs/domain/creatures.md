@@ -25,7 +25,7 @@ current state.
 | `turn` / `turnAndMove` | turn speed `speed * 10` radians per tick the short way, `stand` frame 0 | rotate; at the end snap to the target angle (`turnAndMove` walks on if the cell ahead is free) |
 | `sleep` | `stand` | count down, then the return state |
 | `wait` / `waitToMove` | 1 second | back to the base state (`waitToMove` also when the target cell frees up) |
-| `bulletHit`, `explosionHit`, `zombieHit` | count = number of `x 0.65` steps until the knockback is below 0.01, blood splat, release the reservation, random `shothit_1/2`, damage sound, no knockback inside a static cell | `creatureCollide` the knockback (a `NaN` result kills: `invalidPositions++`), blood splat except for explosions, mark dead at life 0; at the end check death or restore the angle and `sleep` 3 ticks |
+| `bulletHit`, `explosionHit`, `zombieHit` | count = number of `x 0.65` steps until the knockback is below 0.01, blood splat, release the reservation, random `shothit_1/2`, damage sound, no knockback inside a static cell | `creatureCollide` the knockback (a `NaN` result kills), blood splat except for explosions, mark dead at life 0; at the end check death or restore the angle and `sleep` 3 ticks |
 | `dying` | death sound, release the reservation, not collidable, affects off, `dying` animation, `World.logKill` | blood splat every tick, animate at 0.34, at the end the floor thud and `dead` |
 | `dead` | 2 s (players 4 s), `SortFloor`, `dead` animation, blood splat | fade during the last second at high detail, then delete |
 

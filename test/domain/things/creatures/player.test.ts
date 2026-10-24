@@ -18,7 +18,7 @@ import { PlayerControl } from '../../../../src/domain/world/input.ts';
 import { InitKind } from '../../../../src/domain/world/RoomDefinition.ts';
 import { Difficulty } from '../../../../src/domain/world/SimulationSettings.ts';
 import type { World } from '../../../../src/domain/world/World.ts';
-import { cellObject, room, solid } from '../../support/fakes.ts';
+import { cellObject, room, solid, cellOf } from '../../support/fakes.ts';
 import { held, tickInput } from '../../support/input.ts';
 import { makeRealWorld, ofClass, playerOf, run } from '../../support/realWorld.ts';
 
@@ -63,7 +63,7 @@ describe('Player control', () => {
   it('marks its cell for zombies, regenerates life and blinks while invincible', () => {
     const world = makeRealWorld(arena());
     const player = playerOf(world);
-    expect(world.map.cell(3, 3).collide & CollideFlag.Player).toBeTruthy();
+    expect(cellOf(world, 3, 3).collide & CollideFlag.Player).toBeTruthy();
     expect(player.invincible).toBe(200);
     expect(player.visible).toBe(true);
     run(world, 1);

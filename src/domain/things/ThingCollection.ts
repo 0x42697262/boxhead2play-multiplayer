@@ -5,13 +5,8 @@ import type { PlayerThing } from './PlayerThing.ts';
 import type { Thing } from './Thing.ts';
 import { ThingClass } from './ThingClass.ts';
 import { ThingFlag } from './ThingFlag.ts';
-import { TIME_SLICE_FAST, TIME_SLICE_MEDIUM, TIME_SLICE_SLOW } from './tuning.ts';
 
 export class ThingCollection {
-  timeSliceSlow = 0;
-  timeSliceMedium = 0;
-  timeSliceFast = 0;
-  invalidPositions = 0;
   private readonly living = new Map<string, Thing>();
   private readonly playerThings = new Map<string, PlayerThing>();
   private readonly counters = new Map<ThingClass, number>();
@@ -55,15 +50,6 @@ export class ThingCollection {
     this.playerThings.delete(thing.key);
   }
 
-  byUniqueId(uniqueId: number): Thing | undefined {
-    for (const thing of this.living.values()) if (thing.uniqueId === uniqueId) return thing;
-    return undefined;
-  }
-
-  search(predicate: (thing: Thing) => boolean, among: readonly Thing[] = this.newestFirst()): Thing[] {
-    return among.filter(predicate);
-  }
-
   closestPlayer(position?: Position): PlayerThing | undefined {
     const players = this.players();
     if (this.count(ThingClass.Player) === 1 || !position) return players[0];
@@ -85,9 +71,6 @@ export class ThingCollection {
   }
 
   process(): void {
-    this.timeSliceSlow = (this.timeSliceSlow + 1) % TIME_SLICE_SLOW;
-    this.timeSliceMedium = (this.timeSliceMedium + 1) % TIME_SLICE_MEDIUM;
-    this.timeSliceFast = (this.timeSliceFast + 1) % TIME_SLICE_FAST;
     this.flushDeletes();
     for (const thing of this.newestFirst()) {
       if (thing.isProcessing) thing.process();

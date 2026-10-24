@@ -16,7 +16,7 @@ import { INFINITE_AMMO, WeaponName } from '../../../src/domain/weapons/WeaponNam
 import { PlayerControl, type PlayerInput } from '../../../src/domain/world/input.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
 import type { World } from '../../../src/domain/world/World.ts';
-import { at, cellObject, room } from '../support/fakes.ts';
+import { at, cellObject, room, cellOf } from '../support/fakes.ts';
 import { held, tickInput } from '../support/input.ts';
 import { makeRealWorld, ofClass, playerOf, run, runUntil, spawn } from '../support/realWorld.ts';
 
@@ -166,7 +166,7 @@ describe('explosives', () => {
     expect(mine?.position).toEqual(at(2.5, 3.5));
     expect(mine?.hasFlag(ThingFlag.SortFloor)).toBe(true);
     run(world, 3);
-    world.map.cell(2, 3).collide |= CollideFlag.Creature;
+    cellOf(world, 2, 3).collide |= CollideFlag.Creature;
     const detonate = step(world);
     expect(sounds(detonate)).toContain('mineDetonate');
     run(world, 49);
@@ -197,7 +197,7 @@ describe('explosives', () => {
     run(world, 1);
     const [wall] = ofClass(world, ThingClass.Wall);
     expect(wall?.parent).toBe(player);
-    expect(world.map.cell(2, 3).collide & CollideFlag.Object).toBeTruthy();
+    expect(cellOf(world, 2, 3).collide & CollideFlag.Object).toBeTruthy();
     expect(player.inventory.current?.ammo).toBe(4);
   });
 

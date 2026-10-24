@@ -13,7 +13,7 @@ import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { PlayerControl } from '../../../src/domain/world/input.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
 import type { World } from '../../../src/domain/world/World.ts';
-import { at, cellObject, FakeThing, room } from '../support/fakes.ts';
+import { at, cellObject, FakeThing, room, cellOf } from '../support/fakes.ts';
 import { held, tickInput } from '../support/input.ts';
 import { makeRealWorld, ofClass, playerOf, run, spawn } from '../support/realWorld.ts';
 
@@ -24,7 +24,7 @@ describe('Barrel', () => {
     const world = makeRealWorld(room(16, 10, [cellObject(InitKind.Player1, 1, 1), cellObject(InitKind.Barrel, 6, 5, 1), cellObject(InitKind.Barrel, 7, 5, 2)]));
     const barrels = ofClass(world, ThingClass.Barrel) as Barrel[];
     expect(barrels).toHaveLength(2);
-    expect(world.map.cell(6, 5).collide & CollideFlag.Object).toBeTruthy();
+    expect(cellOf(world, 6, 5).collide & CollideFlag.Object).toBeTruthy();
     world.events.drain();
     barrels[1]?.affect(bullet(world, 1));
     run(world, 1);
@@ -37,7 +37,7 @@ describe('Barrel', () => {
     expect(ofClass(world, ThingClass.EffectExplosion).length).toBeGreaterThanOrEqual(2);
     run(world, 1);
     expect(ofClass(world, ThingClass.Barrel)).toHaveLength(0);
-    expect(world.map.cell(6, 5).collide & CollideFlag.Object).toBe(0);
+    expect(cellOf(world, 6, 5).collide & CollideFlag.Object).toBe(0);
   });
 });
 
@@ -56,7 +56,7 @@ describe('Wall', () => {
     expect(wall.alpha).toBe(80);
     run(world, 5);
     expect(ofClass(world, ThingClass.Wall)).toHaveLength(0);
-    expect(world.map.cell(6, 5).collide & CollideFlag.Object).toBe(0);
+    expect(cellOf(world, 6, 5).collide & CollideFlag.Object).toBe(0);
   });
 });
 

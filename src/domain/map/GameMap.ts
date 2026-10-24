@@ -78,12 +78,6 @@ export class GameMap {
     return this.cellAt(x, y)?.collide ?? CollideFlag.None;
   }
 
-  cell(x: number, y: number): MapCell {
-    const found = this.cellAt(x, y);
-    if (!found) throw new Error(`No map cell at (${x}, ${y})`);
-    return found;
-  }
-
   allCells(): MapCell[] {
     return this.rows.flat();
   }

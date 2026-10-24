@@ -3,7 +3,7 @@ import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import { ThingFlag } from '../../../src/domain/things/ThingFlag.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
-import { FakeThing, at, cellObject, makeWorld, place, room } from '../support/fakes.ts';
+import { FakeThing, at, cellObject, makeWorld, place, room, cellOf } from '../support/fakes.ts';
 
 class RecordingThing extends FakeThing {
   constructor(
@@ -61,7 +61,7 @@ describe('ThingCollection', () => {
     expect(zombie.isProcessing).toBe(false);
     world.things.process();
     expect(world.things.newestFirst()).not.toContain(zombie);
-    expect(world.map.cell(4, 4).childCount).toBe(0);
+    expect(cellOf(world, 4, 4).childCount).toBe(0);
   });
 
   it('returns the closest living player', () => {

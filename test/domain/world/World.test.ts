@@ -12,7 +12,7 @@ import { GameAmount, GameSpeed, LOCAL_SIMULATION_HOST, SERVER_SIMULATION_HOST, t
 import { MAX_PLAYERS, PLAYER_SPAWN_CLEARANCE_CELLS } from '../../../src/domain/world/tuning.ts';
 import type { World } from '../../../src/domain/world/World.ts';
 import type { FakePlayer } from '../support/fakes.ts';
-import { FakeThing, at, cellObject, makeWorld, place, room, solid } from '../support/fakes.ts';
+import { FakeThing, at, cellObject, makeWorld, place, room, solid, cellOf } from '../support/fakes.ts';
 
 const basicRoom = () =>
   room(20, 12, [
@@ -33,8 +33,8 @@ function ofType<T extends DomainEvent['type']>(events: readonly DomainEvent[], t
 describe('World initialisation', () => {
   it('builds collision, objects and spawn points from the room definition', () => {
     const { world } = makeWorld(basicRoom());
-    expect(world.map.cell(8, 3).collide & CollideFlag.Solid).toBeTruthy();
-    expect(world.map.cell(9, 4).collide & CollideFlag.Solid).toBeTruthy();
+    expect(cellOf(world, 8, 3).collide & CollideFlag.Solid).toBeTruthy();
+    expect(cellOf(world, 9, 4).collide & CollideFlag.Solid).toBeTruthy();
     const classes = world.things.newestFirst().map((thing) => thing.classId);
     expect(classes).toEqual(expect.arrayContaining([ThingClass.Barrel, ThingClass.Wall, ThingClass.Pickup, ThingClass.Player]));
     const barrel = world.things.newestFirst().find((thing) => thing.classId === ThingClass.Barrel);

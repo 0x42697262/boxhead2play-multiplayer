@@ -10,7 +10,7 @@ import { affectorsInProcessingOrder, HitState, resolveHit } from '../../../src/d
 import { ZombieAttackAffect } from '../../../src/domain/things/affects/ZombieAttackAffect.ts';
 import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import { Direction } from '../../../src/domain/math/Direction.ts';
-import { FakeThing, at, makeWorld, place, room } from '../support/fakes.ts';
+import { FakeThing, at, makeWorld, place, room, cellOf } from '../support/fakes.ts';
 
 describe('affect damage', () => {
   it('subtracts the flat damage for bullets, fireballs and zombie attacks', () => {
@@ -69,7 +69,7 @@ describe('MapAffect', () => {
     const zombie = new FakeThing(world, at(4.5, 4.5), ThingClass.Zombie);
     const player = place(world, new FakeThing(world, at(5.5, 4.5), ThingClass.Player));
     player.affectSetup(AffectType.ZombieAttack);
-    world.map.cell(4, 4).adjacent(Direction.East).affect(new ZombieAttackAffect(zombie, 50));
+    cellOf(world, 4, 4).adjacent(Direction.East).affect(new ZombieAttackAffect(zombie, 50));
     expect(player.affectors[0]?.type).toBe(AffectType.ZombieAttack);
   });
 });
