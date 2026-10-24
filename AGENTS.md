@@ -107,7 +107,7 @@ Add one line per behavior change: what to do, and the result you expect.
   deathmatch, never stand inside a wall; ROOM_Single_0011 has no spawn point at (16, 9).
 * Start any mode a few times -> player 1 starts in a different open spot each time, never next
   to a zombie door; 16 online players start spread out, at least 4 cells apart.
-* DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> TAB shows one more
+* DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> `` ` `` shows one more
   death for him and no kill for anybody.
 * A NixOS host with `services.boxhead2play.environmentFile` holding `BOXHEAD_MONITOR_TOKEN` ->
   `npm run monitor -- --url https://<domain> --token <token>` shows the server; the token is not
@@ -137,7 +137,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/ui/touch` -> a stick key released by a window blur is pressed again by
   the next thumb move in the same sector. Phone, push the stick far from its base, let go and
   touch the base again at once -> the base snaps back to its resting place, not shifted.
-* Two tabs in one coop match, hold the backquote/tilde key in tab 1 -> a dark rounded "PLAYERS
+* Online match: hold TAB -> the player list; press `` ` `` -> the upgrade list (scoreboard in
+  deathmatch) toggles; CONTROLS says "~ shows the upgrade list, hold TAB for players".
+* Two tabs in one coop match, hold TAB in tab 1 -> a dark rounded "PLAYERS
   2 / 16" card at the top center with both names, "Alive", life bars and green "<n> ms";
   release -> it disappears. Close tab 2 -> its row says "Offline" with "—". A dead player shows
   "Respawn in <n>s" counting down.
@@ -218,12 +220,12 @@ Add one line per behavior change: what to do, and the result you expect.
   `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
 * Let zombies reach the player -> blood decals appear on the floor but never on walls,
   and the life bar above the player shrinks.
-* Press TAB -> the upgrade list (keyboard focus does not move) over the running game, no "PAUSED!" (new weapons in green,
-  inactive ones faded); zombies keep moving and W A S D still walk; TAB again hides it; click
+* Press `` ` `` -> the upgrade list (keyboard focus does not move) over the running game, no "PAUSED!" (new weapons in green,
+  inactive ones faded); zombies keep moving and W A S D still walk; `` ` `` again hides it; click
   QUIT? -> back to the single select-world screen.
 * Two browser tabs on `npm run dev`: DEATH MATCH in both, HOST in one, JOIN and the row's JOIN in
   the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player and no frags bar;
-  TAB -> SCOREBOARD with one row per player (rank and name, kills, deaths), your row green.
+  `` ` `` -> SCOREBOARD with one row per player (rank and name, kills, deaths), your row green.
   A third tab can join the same death match.
 * Search the running game (menus, CONTROLS, lobby, HUD, scoreboard) for "Player 2" -> none;
   a player without a name is shown as "Player".
@@ -324,7 +326,7 @@ Add one line per behavior change: what to do, and the result you expect.
   weapons.
 * Two tabs on `npm run dev`, COOPERATIVE, HOST in tab 1, JOIN in tab 2 (the room lists both names
   and characters, tab 2 says "WAITING FOR ... TO START"), click the level in tab 1 -> both tabs play the same world with one shared score; W A S D
-  move only that tab's player; TAB in tab 2 shows the upgrade list there while both players keep
+  move only that tab's player; `` ` `` in tab 2 shows the upgrade list there while both players keep
   playing; QUIT? -> tab 2 is back in the room with "You left the match." and "CLICK TO JOIN GAME";
   clicking the level joins the running match again.
 * Two tabs in a coop game with names Ann and Bob -> under each player its name in small text;
@@ -339,7 +341,7 @@ Add one line per behavior change: what to do, and the result you expect.
   the page (`/` 200, `/../package.json` 404) and `ws://localhost:8099/ws`; a match streams 25
   frames per second of about 4 KB.
 * Two tabs on `npm run dev`, start a coop game while the guest tab is in the background, switch
-  to it and press TAB before any upgrade -> the full upgrade list shows (pistol rows faded).
+  to it and press `` ` `` before any upgrade -> the full upgrade list shows (pistol rows faded).
 * `nix build` then `PORT=8391 ./result/bin/boxhead2play` -> `server.started` with 18 rooms;
   http://localhost:8391 shows the main menu. `nix flake check` -> all checks passed.
 * `nix build -L .#checks.x86_64-linux.nixos` (KVM) -> the VM test serves `/` and
@@ -351,7 +353,7 @@ Add one line per behavior change: what to do, and the result you expect.
   -> `content-encoding: br`, `cache-control: public, max-age=31536000, immutable`.
 * `npx vitest run test/domain/world/World.test.ts test/domain/things/creatures/player.test.ts` ->
   a leaving player frees his map cell, leaving while being shot to death lowers the coop live
-  count once, and a late joiner on a freed index starts with 0 kills and 0 deaths (TAB in a
+  count once, and a late joiner on a freed index starts with 0 kills and 0 deaths (`` ` `` in a
   death match shows him with 0 / 0).
 * `npx vitest run test/domain/world/World.test.ts test/domain/world/SimulationSettings.test.ts`
   -> visible zombies produce ambience events in a local world and none in a world built with

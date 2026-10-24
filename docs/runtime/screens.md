@@ -157,7 +157,8 @@ covers the stage and swallows clicks, so the window is modal.
 * There is one key panel (ADR 0005): `mcPlayer1` is moved to the center (x -77.5). The
   second panel, `mc2PlayerCover`, both "PLAYER n CONTROLS:" headings and the "Additional
   Controls" line are hidden. Attached edit texts show "CONTROLS" above the panel and
-  "Additional controls: 0-9 select weapons, TAB shows the upgrade list" below it.
+  "Additional controls: 0-9 select weapons, ~ shows the upgrade list, hold TAB for players"
+  below it.
 * Space is named SPACE instead of the original `' '`.
 * Clicking `mcChangeKey_<name>` (`Click2`) shows `mcPressKey` (its own `mcLock` blocks the
   pointer) with the blinking "PRESS A KEY" clip. The next key (`KeyCapture`):

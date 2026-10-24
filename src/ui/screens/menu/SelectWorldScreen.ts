@@ -543,7 +543,7 @@ export class SelectWorldScreen implements Screen {
     const { controlsTitle, controlsInfo } = this.layout;
     const texts = [
       { frame: controlsTitle, name: ControlsWindowText.Title, style: TextStyles.Heading, text: t('controls.title') },
-      { frame: controlsInfo, name: ControlsWindowText.Info, style: TextStyles.Small, text: t('controls.info', { upgradeKey: t('controls.upgradeListKey') }) },
+      { frame: controlsInfo, name: ControlsWindowText.Info, style: TextStyles.Small, text: t('controls.info', { upgradeKey: t('controls.upgradeListKey'), playerKey: t('controls.playerListKey') }) },
     ];
     const attached = texts.flatMap(({ frame, name, style, text }, index) => {
       if (!frame) return [];

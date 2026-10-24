@@ -54,8 +54,8 @@ online client sends the same control masks, and rebinding keys never breaks touc
 | Fire | bottom right, 88 px | `TouchFire`, held while pressed |
 | Previous / next weapon | above Fire, 52 px | `TouchPrevWeapon`, `TouchNextWeapon` |
 | Menu | top left, 44 px, pause glyph; becomes a close glyph while the Esc menu is open | sends `Escape` through `ScreenFlow.key` |
-| List | next to Menu | `TouchUpgradeList` (TAB: upgrades in coop and single, scoreboard in deathmatch) |
-| Players | next to List, held | `TouchPlayerList` (the backquote key: the online player list) |
+| List | next to Menu | `TouchUpgradeList` (`` ` ``: upgrades in coop and single, scoreboard in deathmatch) |
+| Players | next to List, held | `TouchPlayerList` (held TAB: the online player list) |
 
 `stickSector` turns the thumb offset into one of eight equal 45 deg sectors, the eight WASD
 directions (`directionsOf`). Without help a thumb resting near a sector edge flips between

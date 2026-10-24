@@ -6,6 +6,7 @@ const NUMPAD_ZERO_KEY_CODE = 96;
 const NUMPAD_NINE_KEY_CODE = 105;
 
 export const TAB_KEY_CODE = 9;
+export const BACKQUOTE_KEY_CODE = 192;
 
 const NAMED_KEY_CODES: Readonly<Record<number, string>> = {
   [TAB_KEY_CODE]: 'Tab',
@@ -31,7 +32,7 @@ const NAMED_KEY_CODES: Readonly<Record<number, string>> = {
   189: 'Minus',
   190: 'Period',
   191: 'Slash',
-  192: 'Backquote',
+  [BACKQUOTE_KEY_CODE]: 'Backquote',
   219: 'BracketLeft',
   220: 'Backslash',
   221: 'BracketRight',

@@ -30,11 +30,11 @@ describe('legacy key codes', () => {
     expect(bindings.player.nextWeapon).toEqual(['KeyE', TouchCode.NextWeapon]);
     expect(bindings.player.prevWeapon).toEqual(['KeyQ', TouchCode.PrevWeapon]);
     expect(bindings.player.select3).toEqual(['Digit3']);
-    expect(bindings.upgradeList).toEqual(['Tab', TouchCode.UpgradeList]);
+    expect(bindings.upgradeList).toEqual(['Backquote', TouchCode.UpgradeList]);
     expect(boundCodes(bindings).has('ArrowLeft')).toBe(false);
     expect(bindings.player.fire).toEqual(['Space', TouchCode.Fire]);
-    expect(bindings.playerList).toEqual(['Backquote', TouchCode.PlayerList]);
-    expect(boundCodes(bindings).has('Backquote')).toBe(true);
+    expect(bindings.playerList).toEqual(['Tab', TouchCode.PlayerList]);
+    expect(boundCodes(bindings).has('Tab')).toBe(true);
   });
 
   it('add space as a second fire key', () => {
@@ -80,9 +80,9 @@ describe('tick input sampling (CInput edges)', () => {
   it('keeps edges until a tick consumes them', () => {
     const keyboard = new KeyboardState();
     const input = sampler();
-    keyboard.keyDown('Tab');
-    keyboard.keyUp('Tab');
-    keyboard.keyDown('Tab');
+    keyboard.keyDown('Backquote');
+    keyboard.keyUp('Backquote');
+    keyboard.keyDown('Backquote');
     const sampled = input.sample(keyboard, { quitRequested: true, ambienceSamplesPlaying: 2 });
     expect(sampled.upgradeListPressed).toBe(true);
     expect(sampled.tick.quitRequested).toBe(true);

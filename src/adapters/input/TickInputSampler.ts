@@ -1,5 +1,5 @@
 import { PlayerControl, type ControlState, type PlayerInput, type TickInput } from '../../domain/world/input.ts';
-import { asciiKeyCode, codeForKeyCode, TAB_KEY_CODE } from './keyCodes.ts';
+import { asciiKeyCode, BACKQUOTE_KEY_CODE, codeForKeyCode, TAB_KEY_CODE } from './keyCodes.ts';
 import type { KeyboardState } from './KeyboardState.ts';
 import { TouchCode } from './touchCodes.ts';
 
@@ -31,8 +31,8 @@ export interface SampledTick {
   readonly upgradeListPressed: boolean;
 }
 
-export const UPGRADE_LIST_KEY_CODE = TAB_KEY_CODE;
-export const PLAYER_LIST_CODES: readonly string[] = ['Backquote', TouchCode.PlayerList];
+export const UPGRADE_LIST_KEY_CODE = BACKQUOTE_KEY_CODE;
+export const PLAYER_LIST_CODES: readonly string[] = [...codes(TAB_KEY_CODE), TouchCode.PlayerList];
 export const EXTRA_FIRE_KEY = ' ';
 export const SELECT_KEYS = '0123456789';
 

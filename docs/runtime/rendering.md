@@ -202,7 +202,7 @@ Respawn countdown: in coop and deathmatch the local player's `status.respawnTick
 respawn state's) is drawn as "RESPAWN IN n" (whole seconds, rounded up) with `Hud.Message`
 at twice its size, centered at (320, 200). Single play has no respawn, so no countdown.
 
-Deathmatch scoreboard: TAB shows `HUD.Paused` with both titles (depths 14 and 15) hidden, a
+Deathmatch scoreboard: `` ` `` shows `HUD.Paused` with both titles (depths 14 and 15) hidden, a
 `Hud.Message` "SCOREBOARD" title at (320, 70) and one row per player in the three upgrade
 columns: rank and name, kills, deaths (`scoreboardRows`: most kills first, then fewer deaths;
 equal rows share the rank). The local player's row is green. QUIT? stays.

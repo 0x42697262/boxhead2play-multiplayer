@@ -109,7 +109,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
 * **Failed start.** If the online game screen cannot be built (for example a room the
   client's assets do not have), `ScreenFlow` sends `leaveGame` so no idle player stays in
   the match and opens the lobby room with "The match could not start in this browser."
-* **Leave.** QUIT? on the upgrade list (TAB) sends `leaveGame` and returns to the lobby room.
+* **Leave.** QUIT? on the upgrade list (`` ` ``) sends `leaveGame` and returns to the lobby room.
   "Back to menu" leaves the lobby (no notice for a leave the player asked for). The host
   role moves to the next connected member. An empty lobby
   closes. A match with no players left ends (`abandoned`).
@@ -151,7 +151,7 @@ added the `joined` message tone (`hud.joined`) and the `serverFull` error. Versi
 | `lobbies`, `lobby`, `lobbyLeft {reason}` | Lobby list and state |
 | `gameStarted {matchId, mode, roomId, options, playerIndex, ticksPerSecond, projectionFactor}` | Open the online game screen |
 | `frame {tick, brightness, camera, entries, hud, events}` | One world tick for one player |
-| `upgrades` | The multiplier upgrade list (sent when it changes, shown with TAB) |
+| `upgrades` | The multiplier upgrade list (sent when it changes, shown with `` ` ``) |
 | `gameOver {matchId, state, winnerName, score}` | Match result |
 | `error {reason}` | A request failed (`ErrorReason`) |
 | `pong {id}` | Echo of a `ping` |
@@ -185,10 +185,9 @@ up to 60 ms, yellow up to 120 ms, orange up to 200 ms and red above (`PING_COLOR
 Nothing is shown before the first pong or in single play. The value is the round trip
 to the game server, not the delay between players.
 
-## Player list (hold the backquote/tilde key)
+## Player list (hold TAB)
 
-Holding the key left of 1 (`Backquote`, the tilde key on US layouts) or the touch players
-button shows a list of everyone in the match over the game; releasing hides it. It covers
+Holding TAB or the touch players button shows a list of everyone in the match over the game; releasing hides it. It covers
 the center top only (300 x up to 340 stage px below the score), so the game stays visible
 around it, and fits all 16 players.
 
@@ -200,6 +199,8 @@ around it, and fits all 16 players.
 | Header | "PLAYERS", `<count> / <lobby maxPlayers>` |
 
 `playerListView` (`src/services/online/playerList.ts`) builds the rows, pure and tested.
+By owner request TAB holds the player list and `` ` `` (backquote, the tilde key) toggles
+the upgrade list; until then it was the other way around.
 `OnlineGameScreen.playerList` feeds it the lobby, the session's latest `hud.players` and
 the latencies; `main.ts` checks the held keys (`PLAYER_LIST_CODES`) once per animation frame
 and hands the view to `PlayerListOverlay` (`src/ui/hud/`), which rebuilds its DOM only when
@@ -257,7 +258,7 @@ connection allows:
 
 ## Upgrade list
 
-There is no pause. TAB shows or hides the upgrade list and QUIT? over the running game; the
+There is no pause. `` ` `` shows or hides the upgrade list and QUIT? over the running game; the
 player keeps moving and firing, and a new `upgrades` message refreshes the shown list.
 Hiding the tab sends released controls so the player stops walking.
 
