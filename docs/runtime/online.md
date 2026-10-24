@@ -103,7 +103,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 4)
+## Protocol (`src/net/protocol.ts`, version 5)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
@@ -112,6 +112,10 @@ of the same type. Both sides validate the decoded values with Zod. Anything that
 dropped (client) or answered with `error: badMessage` (server). `npm run bandwidth`
 measures the bytes per player for JSON, JSON + deflate, wire and wire + deflate and checks
 that every decoded frame equals the JSON one.
+
+Every change to a message schema, including a new enum value such as a HUD message tone
+or a text key a frame may carry, bumps `PROTOCOL_VERSION` (`src/net/tuning.ts`). Version 5
+added the `joined` message tone (`hud.joined`).
 
 | Client -> server | Purpose |
 |---|---|
