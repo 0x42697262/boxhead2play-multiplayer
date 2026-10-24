@@ -47,6 +47,29 @@ cache)" or "(memory cache)" in Chrome's Size column and "cached" in Firefox's Tr
 column. Behind Caddy, `encode` leaves
 responses that already carry `Content-Encoding` alone.
 
+## Service worker (production builds)
+
+HTTP caching alone depends on each browser's refresh rules. Chrome and Firefox take the
+immutable files from the cache on F5, but Safari (iPhone and Mac) revalidates every
+subresource on a reload, about 700 conditional requests even when each answers `304`. Players
+saw that as "the assets download again". So production builds also install a small service
+worker, `dist/sw.js`:
+
+| Piece | Where | What it does |
+|---|---|---|
+| Worker | `src/entry/serviceWorker.ts`, built by `npm run build:worker` (`vite.sw.config.ts`, one IIFE file, no imports: a classic worker cannot load module chunks, and a separate build cannot share chunks with the game) | Answers every `GET` for a content-versioned asset under the asset base (`isVersionedAsset`: URL starts with the base and has `v`) from Cache Storage `boxhead-assets-v1`; on a miss it fetches, keeps a `200` and deletes older versions of the same path. Everything else (the page, `manifest.json`, bundles, the WebSocket) goes to the network untouched. |
+| Logic | `src/adapters/assets/assetCache.ts` | `cacheFirst`, `isVersionedAsset`, `serviceWorkerUrl`. Tested with an in-memory cache. |
+| Registration | `registerAssetWorker` in `src/main.ts` | Only when `Settings.assetWorker` (`import.meta.env.PROD`); the dev server never registers it. The asset base (`VITE_ASSET_BASE_URL`, possibly another origin) travels in the worker URL (`sw.js?assets=...`), so the worker needs no config of its own. `skipWaiting` and `clients.claim` let the first visit already fill the cache. |
+
+`sw.js` itself is served with `no-cache`, so a new deploy's worker installs on the next visit.
+Since the versions are content hashes, the worker can never serve a stale file under a
+current URL. A hard reload (Ctrl+Shift+R, Cmd+Shift+R) bypasses service workers by design.
+
+Measured (2026-10-24, Chromium, `npm start` on a local port): first load 11 network
+requests, 690 through the worker; every F5 after that 2 network requests (`/` and
+`manifest.json`, both revalidations) and 696 answered by the worker from Cache Storage
+(696 entries).
+
 ## Measured (2026-10-23, Firefox headless, production build, `npm start`)
 
 | | Before | After |

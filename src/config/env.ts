@@ -18,6 +18,7 @@ const envSchema = z.object({
   VITE_DEBUG_OVERLAY: booleanString,
   VITE_LOG_LEVEL: z.enum([LogLevel.Debug, LogLevel.Info, LogLevel.Warn, LogLevel.Error]).default(LogLevel.Info),
   VITE_SERVER_URL: z.url({ protocol: /^wss?$/ }).optional(),
+  PROD: z.boolean().default(false),
 });
 
 export interface Settings {
@@ -25,6 +26,7 @@ export interface Settings {
   readonly debugOverlay: boolean;
   readonly logLevel: LogLevel;
   readonly serverUrl: string | undefined;
+  readonly assetWorker: boolean;
 }
 
 export class ConfigError extends Error {}
@@ -40,6 +42,7 @@ export function loadSettings(rawEnv: Record<string, unknown>): Settings {
     debugOverlay: env.VITE_DEBUG_OVERLAY,
     logLevel: env.VITE_LOG_LEVEL,
     serverUrl: env.VITE_SERVER_URL,
+    assetWorker: env.PROD,
   });
 }
 

@@ -137,6 +137,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/ui/touch` -> a stick key released by a window blur is pressed again by
   the next thumb move in the same sector. Phone, push the stick far from its base, let go and
   touch the base again at once -> the base snaps back to its resting place, not shifted.
+* `npm run build`, `PORT=8091 npm start`, open it, then press F5 twice -> the Network panel
+  shows only `/` and `manifest.json` from the network; every SVG, MP3, JSON and font says
+  "(ServiceWorker)". `npm run dev` registers no service worker.
 * Phone, game, hold the stick just past the right/down-right edge and wobble the thumb a few
   degrees -> the player keeps one direction; drag far right, then back left -> the base
   follows the thumb and the player turns left at once.

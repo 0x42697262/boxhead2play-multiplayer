@@ -22,6 +22,7 @@ import { XsiFrameCache } from './adapters/render/xsi/XsiFrameCache.ts';
 import { XsiRasterizer, XsiTextures } from './adapters/render/xsi/XsiRasterizer.ts';
 import { LocalStorageStore } from './adapters/storage/KeyValueStore.ts';
 import { loadSettings, readBrowserEnv } from './config/env.ts';
+import { serviceWorkerUrl } from './adapters/assets/assetCache.ts';
 import { SeededRng } from './domain/math/Rng.ts';
 import { createThingFactory } from './domain/things/factory.ts';
 import { browserLoopClock, GameLoop } from './entry/GameLoop.ts';
@@ -72,6 +73,7 @@ function randomSeed(): number {
 
 async function boot(shell: Shell, logger: Logger): Promise<void> {
   const settings = loadSettings(readBrowserEnv());
+  if (settings.assetWorker) registerAssetWorker(settings.assetBaseUrl, logger);
   const showProgress = (progress: LoadProgress): void => shell.showStatus(progressText(progress));
   shell.showStatus(t('boot.loading'));
   const catalogs = await loadCatalogs(browserFetcher, settings.assetBaseUrl, showProgress);
@@ -223,6 +225,14 @@ const BOOT_FAILURE_TEXT: Partial<Record<ErrorCode, TextKey>> = {
 function bootFailureText(error: unknown): string {
   const key = error instanceof AppError ? BOOT_FAILURE_TEXT[error.code] : undefined;
   return key ? t(key) : t('boot.failed', { reason: error instanceof Error ? error.message : String(error) });
+}
+
+function registerAssetWorker(assetBaseUrl: string, logger: Logger): void {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register(serviceWorkerUrl(window.location.href, assetBaseUrl)).then(
+    () => logger.info(LogEvent.AssetWorkerRegistered),
+    (error: unknown) => logger.warn(LogEvent.AssetWorkerFailed, { reason: String(error) }),
+  );
 }
 
 function browserViewport(view: Window): Viewport {
