@@ -11,6 +11,7 @@ import { LogEvent } from '../../text/logEvents.ts';
 import type { SessionAudio, SessionScene } from '../GameSession.ts';
 import type { GameSink } from './OnlineClient.ts';
 import { FrameBuffer, FrameUse } from './FrameBuffer.ts';
+import { PINGS_PER_SECOND } from './tuning.ts';
 
 export interface SampledControls {
   readonly masks: ControlMasks;
@@ -25,6 +26,8 @@ export interface OnlineLink {
   input(masks: ControlMasks): boolean;
   leaveGame(): void;
   attachGame(sink: GameSink): () => void;
+  ping(): void;
+  latencyMs(): number | undefined;
 }
 
 export const OnlineEnd = {
@@ -48,6 +51,7 @@ export interface OnlineSessionDependencies {
   readonly input: OnlineInput;
   readonly link: OnlineLink;
   readonly playerNames: () => HudFrame['playerNames'];
+  readonly showPing: () => boolean;
   readonly logger: Logger;
   readonly onFinished: (result: OnlineSessionResult) => void;
 }
@@ -69,6 +73,7 @@ export class OnlineGameSession implements GameSink {
   private upgradeList: readonly MultiplierListEntry[] = [];
   private ambience: AmbienceState = INITIAL_AMBIENCE;
   private sent: ControlMasks = IDLE_MASKS;
+  private ticks = 0;
 
   constructor(private readonly deps: OnlineSessionDependencies) {
     this.matchId = deps.start.matchId;
@@ -111,6 +116,8 @@ export class OnlineGameSession implements GameSink {
 
   tick(): void {
     if (this.finished) return;
+    if (this.ticks % Math.max(1, Math.round(this.ticksPerSecond / PINGS_PER_SECOND)) === 0) this.deps.link.ping();
+    this.ticks++;
     for (const { frame, use } of this.buffer.next()) this.apply(frame, use);
   }
 
@@ -182,8 +189,13 @@ export class OnlineGameSession implements GameSink {
       projectionFactor: start.projectionFactor,
       tick: frame.tick,
       ticksPerSecond: start.ticksPerSecond,
-      hud: { ...frame.hud, localPlayerIndex: start.playerIndex, playerNames: this.deps.playerNames(), upgrades: [] },
+      hud: { ...frame.hud, localPlayerIndex: start.playerIndex, playerNames: this.deps.playerNames(), upgrades: [], ...this.latency() },
     };
+  }
+
+  private latency(): { readonly latencyMs?: number } {
+    const latencyMs = this.deps.showPing() ? this.deps.link.latencyMs() : undefined;
+    return latencyMs === undefined ? {} : { latencyMs };
   }
 
   private finish(result: OnlineSessionResult): void {

@@ -16,7 +16,7 @@ import { DEFAULT_GRAPHICS_QUALITY, GraphicsQuality } from './graphicsQuality.ts'
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 6;
+export const SETTINGS_VERSION = 7;
 export const FRAME_RATES = [0, 30, 60, 120] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 export const UNCAPPED_FRAME_RATE: FrameRate = 0;
@@ -26,6 +26,7 @@ const SOUND_SWITCH_VERSION = 2;
 const ORIGINAL_KEYS_VERSION = 3;
 const EFFECT_SWITCHES_VERSION = 4;
 const FRAME_RATE_VERSION = 5;
+const PING_DISPLAY_VERSION = 6;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -58,6 +59,7 @@ export const UserSettingsSchema = z.object({
   screenShake: z.boolean(),
   blood: z.boolean(),
   frameRate: z.number().refine((value): value is FrameRate => (FRAME_RATES as readonly number[]).includes(value)),
+  showPing: z.boolean(),
   musicActive: z.boolean(),
   detail: z.boolean(),
   difficulty: enumValue(Difficulty),
@@ -119,6 +121,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   screenShake: true,
   blood: true,
   frameRate: UNCAPPED_FRAME_RATE,
+  showPing: true,
   musicActive: true,
   detail: true,
   difficulty: Difficulty.Beginner,
@@ -222,7 +225,11 @@ export function migrateEffectSwitches(raw: Raw): Raw {
 }
 
 export function migrateFrameRate(raw: Raw): Raw {
-  return { ...raw, version: SETTINGS_VERSION, frameRate: DEFAULT_SETTINGS.frameRate };
+  return { ...raw, version: PING_DISPLAY_VERSION, frameRate: DEFAULT_SETTINGS.frameRate };
+}
+
+export function migratePingDisplay(raw: Raw): Raw {
+  return { ...raw, version: SETTINGS_VERSION, showPing: DEFAULT_SETTINGS.showPing };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
@@ -232,6 +239,7 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [ORIGINAL_KEYS_VERSION]: migrateOriginalKeys,
   [EFFECT_SWITCHES_VERSION]: migrateEffectSwitches,
   [FRAME_RATE_VERSION]: migrateFrameRate,
+  [PING_DISPLAY_VERSION]: migratePingDisplay,
 };
 
 function versionOf(raw: Raw): number {

@@ -46,7 +46,9 @@ Only these parts of sprite 253 are drawn:
 
 The select-world OPTIONS window (`mcWindow_Options`, sprite 358) with a SETTINGS title.
 Only the background, `mcLock`, RESET and CLOSE keep their art; every other child is hidden.
-Five rows use the positions of the first five OPTIONS rows:
+Six rows, 38 px apart instead of the original 45 px so that a sixth fits above RESET and
+CLOSE (`SetupRowSpec.shiftY` moves each row's title, info line and buttons; the Ping row
+borrows the Frame rate row's title and info texts):
 
 | Row | Buttons (instances, moved to the row) | Setting |
 |---|---|---|
@@ -55,6 +57,7 @@ Five rows use the positions of the first five OPTIONS rows:
 | Screen shake | OFF, ON (`_Damage_Off`, `_Damage_On`) | `screenShake`: the renderer uses the camera rect instead of the shaken draw origin |
 | Blood | OFF, ON (`_Speed_Slow`, `_Speed_Normal`) | `blood`: blood decals are kept but not stamped; switching rebuilds the floor |
 | Frame rate | 30, 60, 120, DISPLAY (`_Collide_Off`, `_Collide_On`, `_Speed_Fast`, `_Level_Nightmare` moved to the four columns) | `frameRate`: `GameLoop` skips `present` until `FrameGate` allows the next frame |
+| Ping | OFF, ON (`_Devils_Off`, `_Devils_On`) | `showPing`: the round-trip time in the top-right corner of online matches (`docs/runtime/online.md`) |
 
 Button labels are attached edit texts with the glow of the original static labels. A click
 stores the value at once: the shell refits and the mixer changes its volume. RESET restores

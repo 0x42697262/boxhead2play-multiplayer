@@ -2,7 +2,7 @@ import type { DisplayItem, Filter } from '../../../adapters/assets/schemas.ts';
 import type { Matrix } from '../../../adapters/render/geometry/Matrix.ts';
 import { depthKey, type ButtonState, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import type { GraphicsQuality } from '../../../services/graphicsQuality.ts';
-import { resetSetup, withBlood, withFrameRate, withGraphics, withScreenShake, withSoundVolume } from '../../../services/menuSettings.ts';
+import { resetSetup, withBlood, withFrameRate, withGraphics, withScreenShake, withShowPing, withSoundVolume } from '../../../services/menuSettings.ts';
 import type { FrameRate } from '../../../services/SettingsService.ts';
 import type { SettingsService, UserSettings } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
@@ -14,6 +14,7 @@ import type { OverrideTree } from './overrideTree.ts';
 import {
   BLOOD_ROW,
   FRAME_RATE_ROW,
+  PING_ROW,
   GRAPHICS_ROW,
   MainMenuChild,
   SETUP_ATTACHED_DEPTH,
@@ -38,6 +39,7 @@ export const SetupAction = {
   ScreenShake: 'screenShake',
   Blood: 'blood',
   FrameRate: 'frameRate',
+  Ping: 'ping',
 } as const;
 
 export type SetupAction =
@@ -47,7 +49,8 @@ export type SetupAction =
   | { readonly kind: typeof SetupAction.Volume; readonly value: number }
   | { readonly kind: typeof SetupAction.ScreenShake; readonly value: boolean }
   | { readonly kind: typeof SetupAction.Blood; readonly value: boolean }
-  | { readonly kind: typeof SetupAction.FrameRate; readonly value: FrameRate };
+  | { readonly kind: typeof SetupAction.FrameRate; readonly value: FrameRate }
+  | { readonly kind: typeof SetupAction.Ping; readonly value: boolean };
 
 export interface SetupButtonLayout<Value> {
   readonly spec: SetupButtonSpec<Value>;
@@ -71,6 +74,7 @@ export interface SetupWindowLayout {
   readonly shake: SetupRowLayout<boolean>;
   readonly blood: SetupRowLayout<boolean>;
   readonly frameRate: SetupRowLayout<FrameRate>;
+  readonly ping: SetupRowLayout<boolean>;
   readonly hidden: readonly string[];
 }
 
@@ -107,12 +111,19 @@ export function applySetupAction(settings: SettingsService, action: SetupAction)
     case SetupAction.FrameRate:
       settings.update((current) => withFrameRate(current, action.value));
       return SetupOutcome.Open;
+    case SetupAction.Ping:
+      settings.update((current) => withShowPing(current, action.value));
+      return SetupOutcome.Open;
   }
 }
 const WHITE = 0xffffff;
 
 function childKey(item: DisplayItem): string {
   return item.name ?? depthKey(item.depth);
+}
+
+function shifted(frame: StaticTextFrame | undefined, shiftY: number): StaticTextFrame | undefined {
+  return frame ? { ...frame, top: frame.top + shiftY } : undefined;
 }
 
 function rowLayout<Value>(library: SymbolLibrary, children: readonly DisplayItem[], spec: SetupRowSpec<Value>): SetupRowLayout<Value> {
@@ -124,12 +135,12 @@ function rowLayout<Value>(library: SymbolLibrary, children: readonly DisplayItem
     const [a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0] = item?.matrix ?? [];
     return {
       spec: button,
-      matrix: item ? itemMatrix([a, b, c, d, button.x ?? tx, rowY ?? ty]) : undefined,
+      matrix: item ? itemMatrix([a, b, c, d, button.x ?? tx, (rowY ?? ty) + spec.shiftY]) : undefined,
       label: staticTextFrame(library, text),
       labelFilters: text?.filters,
     };
   });
-  return { spec, title: staticTextFrame(library, byDepth(spec.titleDepth)), info: staticTextFrame(library, byDepth(spec.infoDepth)), buttons };
+  return { spec, title: shifted(staticTextFrame(library, byDepth(spec.titleDepth)), spec.shiftY), info: shifted(staticTextFrame(library, byDepth(spec.infoDepth)), spec.shiftY), buttons };
 }
 
 export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | undefined): SetupWindowLayout {
@@ -139,12 +150,13 @@ export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | 
   const shake = rowLayout(library, children, SHAKE_ROW);
   const blood = rowLayout(library, children, BLOOD_ROW);
   const frameRate = rowLayout(library, children, FRAME_RATE_ROW);
+  const ping = rowLayout(library, children, PING_ROW);
   const kept = new Set<string>([
     Child.Lock,
     Child.Close,
     Child.Reset,
     depthKey(SETUP_WINDOW_BACKGROUND_DEPTH),
-    ...[...graphics.buttons, ...volume.buttons, ...shake.buttons, ...blood.buttons, ...frameRate.buttons].map((button) => button.spec.instance),
+    ...[...graphics.buttons, ...volume.buttons, ...shake.buttons, ...blood.buttons, ...frameRate.buttons, ...ping.buttons].map((button) => button.spec.instance),
   ]);
   return {
     window,
@@ -154,6 +166,7 @@ export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | 
     shake,
     blood,
     frameRate,
+    ping,
     hidden: children.map(childKey).filter((key) => !kept.has(key)),
   };
 }
@@ -180,6 +193,7 @@ export class SetupWindow {
       ...this.layout.shake.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.ScreenShake, value: button.spec.value })),
       ...this.layout.blood.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Blood, value: button.spec.value })),
       ...this.layout.frameRate.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.FrameRate, value: button.spec.value })),
+      ...this.layout.ping.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Ping, value: button.spec.value })),
       { path: [...WINDOW, Child.Lock], trigger: Trigger.Block },
     ];
   }
@@ -188,11 +202,11 @@ export class SetupWindow {
     tree.set(WINDOW, { visible: open });
     if (!open) return;
     for (const key of this.layout.hidden) tree.set([...WINDOW, key], { visible: false });
-    const { graphics, volume, shake, blood, frameRate } = this.layout;
+    const { graphics, volume, shake, blood, frameRate, ping } = this.layout;
     const { title } = this.layout;
     const texts = [
       title && this.text(tree, { name: Child.Title, depth: SETUP_ATTACHED_DEPTH, style: TextStyles.WindowTitle, anchorX: SETUP_TITLE_CENTER_X, top: title.top }, t('setup.title'), WINDOW_TEXT_COLOR),
-      ...[graphics, volume, shake, blood, frameRate].flatMap((row, index) => {
+      ...[graphics, volume, shake, blood, frameRate, ping].flatMap((row, index) => {
         const depth = SETUP_ATTACHED_DEPTH + (index + 1) * 2;
         const rowTitle = row.title;
         const info = row.info;
@@ -208,6 +222,7 @@ export class SetupWindow {
     this.buttons(tree, shake, settings.screenShake, buttonState);
     this.buttons(tree, blood, settings.blood, buttonState);
     this.buttons(tree, frameRate, settings.frameRate, buttonState);
+    this.buttons(tree, ping, settings.showPing, buttonState);
     for (const name of [Child.Close, Child.Reset]) {
       tree.set([...WINDOW, name, Child.Selected], { visible: false });
       tree.set(buttonPath(name), { buttonState: buttonState(buttonPath(name)) });

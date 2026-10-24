@@ -117,6 +117,7 @@ export const ClientMessageType = {
   StartGame: 'startGame',
   LeaveGame: 'leaveGame',
   Input: 'input',
+  Ping: 'ping',
 } as const;
 
 const ClientMessageSchema = z.discriminatedUnion('type', [
@@ -132,6 +133,7 @@ const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(ClientMessageType.StartGame) }),
   z.object({ type: z.literal(ClientMessageType.LeaveGame) }),
   z.object({ type: z.literal(ClientMessageType.Input), down: MaskSchema, pressed: MaskSchema, released: MaskSchema }),
+  z.object({ type: z.literal(ClientMessageType.Ping), id: z.number().int().nonnegative() }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -170,6 +172,7 @@ export const ServerMessageType = {
   Upgrades: 'upgrades',
   GameOver: 'gameOver',
   Error: 'error',
+  Pong: 'pong',
 } as const;
 
 const Point3Schema = z.object({ x: z.number(), y: z.number(), z: z.number() });
@@ -268,6 +271,7 @@ const ServerMessageSchema = z.discriminatedUnion('type', [
     score: z.number(),
   }),
   z.object({ type: z.literal(ServerMessageType.Error), reason: stringEnum(ErrorReason) }),
+  z.object({ type: z.literal(ServerMessageType.Pong), id: z.number().int() }),
 ]);
 
 type ParsedServerMessage = z.infer<typeof ServerMessageSchema>;

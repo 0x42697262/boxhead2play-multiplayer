@@ -2,7 +2,8 @@ import { PROTOCOL_VERSION } from '../../../src/net/tuning.ts';
 import { describe, expect, it } from 'vitest';
 import { MemoryStore } from '../../../src/adapters/storage/KeyValueStore.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
-import type { GameStarted } from '../../../src/net/protocol.ts';
+import { parseServerMessage, type GameStarted, type ServerMessage } from '../../../src/net/protocol.ts';
+import { WireDecoder, WireEncoder } from '../../../src/net/wire.ts';
 import { silentLogger } from '../../../src/observability/logger.ts';
 import { OnlineClient, OnlineStatus, SESSION_STORAGE_KEY, type GameSink } from '../../../src/services/online/OnlineClient.ts';
 import { FakeTransport, frame, lobby, OPTIONS, START } from './support.ts';
@@ -10,10 +11,59 @@ import { FakeTransport, frame, lobby, OPTIONS, START } from './support.ts';
 function client(session = new MemoryStore()) {
   const starts: GameStarted[] = [];
   const transport = new FakeTransport();
-  const online = new OnlineClient({ session, name: () => 'Ann', logger: silentLogger, onGameStarted: (start) => starts.push(start) });
+  const clock = { nowMs: 0 };
+  const online = new OnlineClient({ session, name: () => 'Ann', logger: silentLogger, onGameStarted: (start) => starts.push(start), now: () => clock.nowMs });
   online.bind(transport);
-  return { online, transport, starts, session };
+  return { online, transport, starts, session, clock };
 }
+
+describe('OnlineClient latency', () => {
+  it('pings only while welcomed and turns the echoed pong into a round-trip time', () => {
+    const { online, transport, clock } = client();
+    online.start();
+    online.ping();
+    online.opened();
+    online.receive({ type: 'welcome', clientId: 'c1', sessionId: 's', resumed: false });
+    clock.nowMs = 1000.123456;
+    online.ping();
+    const ping = transport.sent.at(-1);
+    expect(ping).toEqual({ type: 'ping', id: 0 });
+    expect(online.latencyMs()).toBeUndefined();
+    clock.nowMs = 1042.123456;
+    online.receive({ type: 'pong', id: 0 });
+    expect(online.latencyMs()).toBe(42);
+    expect(transport.types().filter((type) => type === 'ping')).toHaveLength(1);
+  });
+
+  it('matches a pong that went through the binary wire codec, with a fractional clock', () => {
+    const { online, transport, clock } = client();
+    const encoder = new WireEncoder();
+    const decoder = new WireDecoder();
+    const wire = (message: ServerMessage): ServerMessage | undefined => parseServerMessage(decoder.decode(encoder.encode(message)));
+    online.start();
+    online.opened();
+    online.receive({ type: 'welcome', clientId: 'c1', sessionId: 's', resumed: false });
+    clock.nowMs = 12345.678901;
+    online.ping();
+    const ping = transport.sent.at(-1);
+    const pong = ping?.type === 'ping' ? wire({ type: 'pong', id: ping.id }) : undefined;
+    clock.nowMs = 12363.678901;
+    if (pong) online.receive(pong);
+    expect(online.latencyMs()).toBe(18);
+  });
+
+  it('forgets the latency when the connection closes', () => {
+    const { online, clock } = client();
+    online.start();
+    online.opened();
+    online.receive({ type: 'welcome', clientId: 'c1', sessionId: 's', resumed: false });
+    online.ping();
+    clock.nowMs = 30;
+    online.receive({ type: 'pong', id: 0 });
+    online.closed();
+    expect(online.latencyMs()).toBeUndefined();
+  });
+});
 
 describe('OnlineClient connection', () => {
   it('says hello with the stored session, queues requests until welcome and stores the new session id', () => {

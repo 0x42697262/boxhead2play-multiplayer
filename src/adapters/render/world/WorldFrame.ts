@@ -28,6 +28,7 @@ export interface HudFrame {
   readonly messages: readonly HudMessageEntry[];
   readonly players: readonly PlayerHudFrame[];
   readonly upgrades: readonly MultiplierListEntry[];
+  readonly latencyMs?: number;
 }
 
 export interface WorldFrame {

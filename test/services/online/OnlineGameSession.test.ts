@@ -25,7 +25,8 @@ function zombie(key: string): DrawEntry {
   };
 }
 
-function harness() {
+function harness(showPing = true, latencyMs: () => number | undefined = () => 87) {
+  let pings = 0;
   const rendered: WorldFrame[] = [];
   const sounds: SoundId[] = [];
   const decals: unknown[] = [];
@@ -50,13 +51,39 @@ function harness() {
         sink = attached;
         return () => (sink = undefined);
       },
+      ping: () => pings++,
+      latencyMs,
     },
     playerNames: () => ({ 1: 'Bob' }),
+    showPing: () => showPing,
     logger: silentLogger,
     onFinished: (result) => results.push(result),
   });
-  return { session, rendered, sounds, decals, lists, sent, results, controls, leaves: () => leaves, sink: () => sink };
+  return { session, rendered, sounds, decals, lists, sent, results, controls, leaves: () => leaves, sink: () => sink, pings: () => pings };
 }
+
+describe('OnlineGameSession latency', () => {
+  it('pings once per second of ticks, starting with the first tick', () => {
+    const { session, pings } = harness();
+    for (let tick = 0; tick < START.ticksPerSecond * 2 + 1; tick++) session.tick();
+    expect(pings()).toBe(3);
+  });
+
+  it('puts the latency into the HUD only when the ping display is on and a value exists', () => {
+    const shown = harness();
+    shown.session.frame(frame(1));
+    shown.session.tick();
+    expect(shown.rendered[0]?.hud.latencyMs).toBe(87);
+    const hidden = harness(false);
+    hidden.session.frame(frame(1));
+    hidden.session.tick();
+    expect(hidden.rendered[0]?.hud).not.toHaveProperty('latencyMs');
+    const unknown = harness(true, () => undefined);
+    unknown.session.frame(frame(1));
+    unknown.session.tick();
+    expect(unknown.rendered[0]?.hud).not.toHaveProperty('latencyMs');
+  });
+});
 
 describe('OnlineGameSession playback', () => {
   it('plays a frame on the first tick after it arrives, as the local player', () => {

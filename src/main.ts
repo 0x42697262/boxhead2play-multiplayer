@@ -97,6 +97,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     name: () => userSettings.settings.playerName,
     logger,
     onGameStarted: (start) => startOnlineGame(start),
+    now: () => performance.now(),
   });
   online.bind(
     new ServerConnection(settings.serverUrl ?? defaultServerUrl(window.location), {

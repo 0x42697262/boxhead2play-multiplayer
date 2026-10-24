@@ -42,6 +42,11 @@ import {
   SCORE_DIGITS,
   UPGRADE_COLOR,
   UPGRADE_COLUMNS,
+  PING_BOX_WIDTH_PX,
+  PING_COLORS,
+  PING_FONT_PX,
+  PING_POSITION,
+  PING_SLOW_COLOR,
 } from './tuning.ts';
 
 export const HudAction = {
@@ -49,6 +54,20 @@ export const HudAction = {
 } as const;
 
 export type HudAction = (typeof HudAction)[keyof typeof HudAction];
+
+interface TextClipLook {
+  readonly text: string;
+  readonly color: number;
+  readonly fontPx: number;
+  readonly boxWidthPx: number;
+  readonly rightAligned: boolean;
+}
+
+const RIGHT = 'right';
+
+export function pingColor(latencyMs: number): number {
+  return PING_COLORS.find((band) => latencyMs <= band.maxMs)?.color ?? PING_SLOW_COLOR;
+}
 
 export interface PlayerLabel {
   readonly playerIndex: number;
@@ -157,11 +176,12 @@ export class HudRenderer {
     const totals = this.totals;
     if (totals && this.gameMode !== GameMode.DeathMatch) this.drawScoreTotal(ctx, totals);
     if (totals) this.drawRespawnCountdown(ctx, totals);
+    if (totals?.latencyMs !== undefined) this.drawPing(ctx, totals.latencyMs);
     for (const label of this.labels) {
       if (!label.visible) continue;
       const bitmap = this.playerClip(label);
       if (bitmap) blit(ctx, bitmap, label.screen, 1, OPAQUE_ALPHA, this.currentResolution);
-      const name = label.name ? this.nameClip(label.name, label.local ? LOCAL_PLAYER_NAME_COLOR : OTHER_PLAYER_NAME_COLOR) : undefined;
+      const name = label.name ? this.textClip({ text: label.name, color: label.local ? LOCAL_PLAYER_NAME_COLOR : OTHER_PLAYER_NAME_COLOR, fontPx: PLAYER_NAME_FONT_PX, boxWidthPx: PLAYER_NAME_BOX_WIDTH_PX, rightAligned: false }) : undefined;
       if (name) blit(ctx, name, { x: label.screen.x, y: label.screen.y + PLAYER_NAME_OFFSET_Y_PX }, 1, OPAQUE_ALPHA, this.currentResolution);
     }
     const panel = this.panelSurface();
@@ -216,8 +236,15 @@ export class HudRenderer {
     return this.clip(HudSymbol.Player, overrides, `player|${lifeFrame}|${label.text}`, LIVE_CLIP_INFLATE_PX);
   }
 
-  private nameClip(name: string, color: number): BufferedBitmap | undefined {
-    const key = `name|${color}|${name}`;
+  private drawPing(ctx: Context2D, latencyMs: number): void {
+    const text = t('hud.ping', { ms: latencyMs });
+    const bitmap = this.textClip({ text, color: pingColor(latencyMs), fontPx: PING_FONT_PX, boxWidthPx: PING_BOX_WIDTH_PX, rightAligned: true });
+    if (bitmap) blit(ctx, bitmap, PING_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
+  }
+
+  private textClip(look: TextClipLook): BufferedBitmap | undefined {
+    const { text: name, color } = look;
+    const key = `text|${look.rightAligned}|${look.fontPx}|${color}|${name}`;
     const hit = this.cache.get(key);
     if (hit) return hit;
     const library = this.renderer.library;
@@ -227,22 +254,23 @@ export class HudRenderer {
     const character = template ? library.character(template.characterId) : undefined;
     if (!template || character?.kind !== 'editText') return undefined;
     const { bounds, fontSize } = character.editText;
-    const scale = PLAYER_NAME_FONT_PX / (fontSize ?? PLAYER_NAME_FONT_PX);
+    const scale = look.fontPx / (fontSize ?? look.fontPx);
     const center = (bounds.xMin + bounds.xMax) / 2;
-    const halfWidth = PLAYER_NAME_BOX_WIDTH_PX / scale / 2;
-    const textBounds: Rect = { ...bounds, xMin: center - halfWidth, xMax: center + halfWidth };
+    const width = look.boxWidthPx / scale;
+    const anchor = look.rightAligned ? bounds.xMax : center;
+    const textBounds: Rect = look.rightAligned ? { ...bounds, xMin: anchor - width, xMax: anchor } : { ...bounds, xMin: center - width / 2, xMax: center + width / 2 };
     const item: DisplayItem = {
       depth: 1,
       characterId: template.characterId,
       instance: 0,
-      matrix: [scale, 0, 0, scale, -center * scale, 0],
+      matrix: [scale, 0, 0, scale, -anchor * scale, 0],
       name: PLAYER_NAME_CHILD,
       ...(template.filters ? { filters: template.filters } : {}),
     };
     const resolution = this.currentResolution;
     const layout = bufferLayout(transformRect(textBounds, item.matrix), 1, 1, LIVE_CLIP_INFLATE_PX, resolution);
     const surface = this.renderer.createSurface(layout.width, layout.height);
-    this.renderer.drawItems(surface.ctx, [item], layout.matrix, { overrides: { [PLAYER_NAME_CHILD]: { text: name, textColor: color, textBounds } }, resolution });
+    this.renderer.drawItems(surface.ctx, [item], layout.matrix, { overrides: { [PLAYER_NAME_CHILD]: { text: name, textColor: color, textBounds, ...(look.rightAligned ? { textAlign: RIGHT } : {}) } }, resolution });
     const bitmap = { surface, dispX: layout.dispX, dispY: layout.dispY };
     if (this.cache.size >= HUD_CACHE_LIMIT) this.cache.clear();
     this.cache.set(key, bitmap);

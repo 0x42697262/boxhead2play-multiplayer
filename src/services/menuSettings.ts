@@ -78,6 +78,10 @@ export function withBlood(settings: UserSettings, blood: boolean): UserSettings 
   return { ...settings, blood };
 }
 
+export function withShowPing(settings: UserSettings, showPing: boolean): UserSettings {
+  return { ...settings, showPing };
+}
+
 export function effectPreferences(settings: UserSettings): { readonly screenShake: boolean; readonly blood: boolean } {
   return { screenShake: settings.screenShake, blood: settings.blood };
 }
@@ -87,8 +91,8 @@ export function withFrameRate(settings: UserSettings, frameRate: UserSettings['f
 }
 
 export function resetSetup(settings: UserSettings): UserSettings {
-  const { graphics, soundVolume, screenShake, blood, frameRate } = DEFAULT_SETTINGS;
-  return { ...settings, graphics, soundVolume, screenShake, blood, frameRate };
+  const { graphics, soundVolume, screenShake, blood, frameRate, showPing } = DEFAULT_SETTINGS;
+  return { ...settings, graphics, soundVolume, screenShake, blood, frameRate, showPing };
 }
 
 export function soundGain(settings: UserSettings): number {

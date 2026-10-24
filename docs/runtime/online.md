@@ -103,7 +103,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 3)
+## Protocol (`src/net/protocol.ts`, version 4)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
@@ -123,6 +123,7 @@ that every decoded frame equals the JSON one.
 | `startGame` | Host: start the match. Member outside a running match: join it. |
 | `leaveGame` | Leave the running match, stay in the lobby |
 | `input {down, pressed, released}` | Control bit masks (`src/net/controlMask.ts`) |
+| `ping {id}` | Latency probe, once per second during a match |
 
 | Server -> client | Purpose |
 |---|---|
@@ -133,9 +134,27 @@ that every decoded frame equals the JSON one.
 | `upgrades` | The multiplier upgrade list (sent when it changes, shown with TAB) |
 | `gameOver {matchId, state, winnerName, score}` | Match result |
 | `error {reason}` | A request failed (`ErrorReason`) |
+| `pong {id}` | Echo of a `ping` |
 
 Fractions on the wire are rounded to three digits. Text travels as text keys from
 `en.json`, which the receiver checks with `isTextKey`.
+
+## Ping display
+
+During a match `OnlineGameSession` calls `OnlineClient.ping()` on the first tick and then
+once per second of ticks (`PINGS_PER_SECOND`). `LatencyMeter` remembers the local send
+time per ping id. The id, not a timestamp, travels: the wire rounds fractions to three
+digits, so an echoed `performance.now()` would no longer match. A `pong` gives the round
+trip, smoothed with `LATENCY_SMOOTHING` (0.3) after the first sample. While a ping is still
+unanswered, the shown value is at least the time it has been waiting, so a stalled
+connection climbs into red instead of freezing at its last good value. A closed socket
+resets the meter.
+
+With `showPing` on (SETTINGS, default on), the HUD draws "`<n>` ms" right-aligned in the
+top-right corner (`PING_POSITION`, 10 px, the player name text with its outline), in green
+up to 60 ms, yellow up to 120 ms, orange up to 200 ms and red above (`PING_COLORS`).
+Nothing is shown before the first pong or in single play. The value is the round trip
+to the game server, not the delay between players.
 
 ## Input
 

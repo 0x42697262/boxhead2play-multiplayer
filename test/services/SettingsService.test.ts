@@ -90,6 +90,14 @@ describe('settings reading', () => {
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, frameRate: 45 })).rejected).toBeDefined();
   });
 
+  it('migrates version 6 to the ping display switched on', () => {
+    const v6: Record<string, unknown> = { ...DEFAULT_SETTINGS, version: 6, blood: false };
+    delete v6.showPing;
+    const result = readSettings(JSON.stringify(v6));
+    expect(result.migratedFrom).toBe(6);
+    expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, blood: false, showPing: true });
+  });
+
   it('rejects invalid JSON, invalid values and future versions', () => {
     expect(readSettings('{').rejected).toBe('json');
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, difficulty: 7 })).rejected).toBeDefined();

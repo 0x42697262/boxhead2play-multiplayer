@@ -14,12 +14,13 @@ the game continues with the values in memory.
 
 | Field | Type | Default | Original |
 |---|---|---|---|
-| `version` | `6` | | |
+| `version` | `7` | | |
 | `soundVolume` | 0..100 | 100 | `mSoundActive` (on/off) |
 | `graphics` | `sharp`, `smooth`, `pixelated` | `sharp` | none (ADR 0006) |
 | `screenShake` | boolean | true | none (explosions always shake) |
 | `blood` | boolean | true | none (blood splats always drawn) |
 | `frameRate` | 0 (display), 30, 60, 120 | 0 | none (Flash drew at 25 fps) |
+| `showPing` | boolean | true | none (online play is new) |
 | `musicActive` | boolean | true | `mMusicActive` (no music is registered) |
 | `detail` | boolean | true | `mDetail` (`_quality` HIGH/LOW) |
 | `difficulty` | 0..3 | 0 | `mDifficulty` |
@@ -57,10 +58,11 @@ current version, then validates.
   `blood: true`.
 * Version 5 had no frame rate. `migrateFrameRate` adds `frameRate: 0` (draw every display
   frame).
+* Version 6 had no ping display. `migratePingDisplay` adds `showPing: true`.
  A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 7: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[6]`
-that turns a version 6 object into a version 7 object.
+To add version 8: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[7]`
+that turns a version 7 object into a version 8 object.

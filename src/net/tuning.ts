@@ -1,6 +1,6 @@
 import { MAX_PLAYERS } from '../domain/world/tuning.ts';
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 export const SOCKET_PATH = '/ws';
 
 export const PLAYER_NAME_MAX_LENGTH = 16;

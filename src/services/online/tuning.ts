@@ -4,3 +4,6 @@ export const MAX_BUFFERED_FRAMES = 6;
 export const CATCH_UP_SURPLUS_FRAMES = 2;
 export const SURPLUS_TICKS_BEFORE_CATCH_UP = 13;
 export const CALM_TICKS_BEFORE_SHRINK = 750;
+export const PINGS_PER_SECOND = 1;
+export const LATENCY_SMOOTHING = 0.3;
+export const LATENCY_MAX_PENDING = 8;

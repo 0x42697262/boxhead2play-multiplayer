@@ -35,6 +35,13 @@ describe('Hub sessions', () => {
     expect(setup.hub.clientCount).toBe(1);
   });
 
+  it('echoes a ping as a pong with the same id', () => {
+    const setup = testHub();
+    const ann = setup.connect('Ann');
+    ann.say({ type: 'ping', id: 7 });
+    expect(ann.last('pong')).toEqual({ type: 'pong', id: 7 });
+  });
+
   it('rejects a protocol version mismatch and malformed messages', () => {
     const setup = testHub();
     const connection = setup.connect('Ann');

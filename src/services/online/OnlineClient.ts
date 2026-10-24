@@ -21,6 +21,7 @@ import {
 } from '../../net/protocol.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { LogEvent } from '../../text/logEvents.ts';
+import { LatencyMeter } from './LatencyMeter.ts';
 
 export const SESSION_STORAGE_KEY = 'boxhead2play.onlineSession';
 
@@ -73,11 +74,13 @@ export interface OnlineClientDependencies {
   readonly name: () => string;
   readonly logger: Logger;
   readonly onGameStarted: (start: GameStarted) => void;
+  readonly now: () => number;
 }
 
 export class OnlineClient {
   private transport: Transport | undefined = undefined;
   private current: OnlineState = INITIAL_STATE;
+  private readonly latency = new LatencyMeter();
   private watching: OnlineMode | null = null;
   private welcomed = false;
   private queued: ClientMessage[] = [];
@@ -182,6 +185,16 @@ export class OnlineClient {
     this.send({ type: ClientMessageType.LeaveGame });
   }
 
+  ping(): void {
+    if (!this.welcomed) return;
+    const id = this.latency.sent(this.deps.now());
+    this.transport?.send({ type: ClientMessageType.Ping, id });
+  }
+
+  latencyMs(): number | undefined {
+    return this.latency.latencyMs(this.deps.now());
+  }
+
   input(masks: ControlMasks): boolean {
     if (!this.welcomed) return false;
     return this.transport?.send({ type: ClientMessageType.Input, ...masks }) ?? false;
@@ -193,6 +206,7 @@ export class OnlineClient {
 
   closed(): void {
     this.welcomed = false;
+    this.latency.reset();
     if (this.current.status === OnlineStatus.Offline) return;
     this.deps.logger.info(LogEvent.OnlineDisconnected);
     this.update({ status: OnlineStatus.Connecting });
@@ -234,6 +248,9 @@ export class OnlineClient {
       case ServerMessageType.GameOver:
         this.update({ result: message });
         if (this.sink?.matchId === message.matchId) this.sink.gameOver(message);
+        return;
+      case ServerMessageType.Pong:
+        this.latency.answered(message.id, this.deps.now());
         return;
       case ServerMessageType.Error:
         this.enterMatchOf = undefined;

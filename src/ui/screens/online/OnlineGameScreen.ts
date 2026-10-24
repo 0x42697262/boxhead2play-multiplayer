@@ -74,6 +74,7 @@ export class OnlineGameScreen implements Screen {
       },
       link: client,
       playerNames: () => playerNames(client),
+      showPing: () => deps.settings.settings.showPing,
       logger: deps.logger,
       onFinished: (result) => deps.controls.finishOnlineGame(result, client.lobby !== undefined),
     });

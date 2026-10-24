@@ -66,6 +66,16 @@ export const PLAYER_NAME_BOX_WIDTH_PX = 140;
 export const LOCAL_PLAYER_NAME_COLOR = 0x00ff00;
 export const OTHER_PLAYER_NAME_COLOR = 0xffffff;
 
+export const PING_POSITION = { x: 634, y: 4 } as const;
+export const PING_FONT_PX = 10;
+export const PING_BOX_WIDTH_PX = 80;
+export const PING_COLORS: readonly { readonly maxMs: number; readonly color: number }[] = [
+  { maxMs: 60, color: 0x00ff00 },
+  { maxMs: 120, color: 0xffff00 },
+  { maxMs: 200, color: 0xff9900 },
+];
+export const PING_SLOW_COLOR = 0xff0000;
+
 export const RESPAWN_TEXT_POSITION = { x: 320, y: 200 } as const;
 export const RESPAWN_TEXT_SCALE = 2;
 export const RESPAWN_TEXT_COLOR = 0xffffff;

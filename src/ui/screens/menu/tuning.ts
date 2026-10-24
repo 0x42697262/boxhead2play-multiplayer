@@ -73,6 +73,7 @@ export interface SetupRowSpec<Value> {
   readonly rowOf: string;
   readonly title: TextKey;
   readonly info: TextKey;
+  readonly shiftY: number;
   readonly buttons: readonly SetupButtonSpec<Value>[];
 }
 
@@ -82,6 +83,7 @@ export const GRAPHICS_ROW: SetupRowSpec<GraphicsQuality> = {
   rowOf: '_Collide_Off',
   title: 'setup.graphics.title',
   info: 'setup.graphics.info',
+  shiftY: -14.8,
   buttons: [
     { instance: '_Level_Beginner', value: GraphicsQuality.Sharp, label: 'setup.graphics.sharp' },
     { instance: '_Level_Intermediate', value: GraphicsQuality.Smooth, label: 'setup.graphics.smooth' },
@@ -98,6 +100,7 @@ export const VOLUME_ROW: SetupRowSpec<number> = {
   rowOf: '_Devils_Off',
   title: 'setup.volume.title',
   info: 'setup.volume.info',
+  shiftY: -22,
   buttons: [
     { instance: '_Game1', value: SOUND_VOLUME_OFF, label: 'setup.volume.off' },
     { instance: '_Game2', value: VOLUME_LOW, label: 'setup.volume.low' },
@@ -112,6 +115,7 @@ export const SHAKE_ROW: SetupRowSpec<boolean> = {
   rowOf: '_Damage_Off',
   title: 'setup.shake.title',
   info: 'setup.shake.info',
+  shiftY: -29.2,
   buttons: [
     { instance: '_Damage_Off', value: false, label: 'setup.switch.off' },
     { instance: '_Damage_On', value: true, label: 'setup.switch.on' },
@@ -124,6 +128,7 @@ export const BLOOD_ROW: SetupRowSpec<boolean> = {
   rowOf: '_Speed_Slow',
   title: 'setup.blood.title',
   info: 'setup.blood.info',
+  shiftY: -36.4,
   buttons: [
     { instance: '_Speed_Slow', value: false, label: 'setup.switch.off' },
     { instance: '_Speed_Normal', value: true, label: 'setup.switch.on' },
@@ -136,11 +141,25 @@ export const FRAME_RATE_ROW: SetupRowSpec<FrameRate> = {
   rowOf: '_Game1',
   title: 'setup.frameRate.title',
   info: 'setup.frameRate.info',
+  shiftY: -43.5,
   buttons: [
     { instance: '_Collide_Off', value: 30, label: 'setup.frameRate.30', x: SETUP_COLUMN_X[0] },
     { instance: '_Collide_On', value: 60, label: 'setup.frameRate.60', x: SETUP_COLUMN_X[1] },
     { instance: '_Speed_Fast', value: 120, label: 'setup.frameRate.120', x: SETUP_COLUMN_X[2] },
     { instance: '_Level_Nightmare', value: UNCAPPED_FRAME_RATE, label: 'setup.frameRate.uncapped', x: SETUP_COLUMN_X[3] },
+  ],
+};
+
+export const PING_ROW: SetupRowSpec<boolean> = {
+  titleDepth: 76,
+  infoDepth: 98,
+  rowOf: '_Game1',
+  title: 'setup.ping.title',
+  info: 'setup.ping.info',
+  shiftY: -5.5,
+  buttons: [
+    { instance: '_Devils_Off', value: false, label: 'setup.switch.off', x: SETUP_COLUMN_X[0] },
+    { instance: '_Devils_On', value: true, label: 'setup.switch.on', x: SETUP_COLUMN_X[1] },
   ],
 };
 

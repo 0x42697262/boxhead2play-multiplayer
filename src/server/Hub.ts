@@ -258,6 +258,9 @@ export class Hub {
       case ClientMessageType.Input:
         session.lobby?.input(session, message);
         return undefined;
+      case ClientMessageType.Ping:
+        session.send({ type: ServerMessageType.Pong, id: message.id });
+        return undefined;
     }
   }
 

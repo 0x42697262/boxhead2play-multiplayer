@@ -118,6 +118,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run dev` (or `npm start`), load the page, DevTools Network with "Disable cache" off, F5 ->
   every `.svg`, `.mp3` and `.woff` row says "(disk cache)"/"(memory cache)" (Chrome) or "cached"
   (Firefox); only the page, `manifest.json` and, in dev, the source modules hit the server.
+* Online match (coop or deathmatch) -> a small green "4 ms" in the top-right corner, updated every
+  second; delay the page's WebSocket sends by 150 ms -> orange "155 ms", by 400 ms -> red. SETTINGS
+  (main menu or Esc) Ping OFF -> it disappears; the SETTINGS window shows six rows above RESET/CLOSE.
 * `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET
   rows, the lobby with its tick time and both players with their ONLINE time and about 0.5 KiB/s upload each, the lobby with MATCH and AGE times; `q`
   quits and restores the terminal. `npm start` without `BOXHEAD_MONITOR_TOKEN` -> `/__monitor`

@@ -1,4 +1,4 @@
-import { respawnSeconds } from '../../../src/adapters/render/hud/HudRenderer.ts';
+import { pingColor, respawnSeconds } from '../../../src/adapters/render/hud/HudRenderer.ts';
 import { describe, expect, it } from 'vitest';
 import {
   lifeFrameIndex,
@@ -103,5 +103,11 @@ describe('pause screen upgrade list', () => {
       '_Upgrade_C2:1',
       '_Upgrade_C2:2',
     ]);
+  });
+});
+
+describe('ping color', () => {
+  it('is green when fast, then yellow, orange and red as the delay grows', () => {
+    expect([0, 60, 61, 120, 121, 200, 201, 5000].map(pingColor)).toEqual([0x00ff00, 0x00ff00, 0xffff00, 0xffff00, 0xff9900, 0xff9900, 0xff0000, 0xff0000]);
   });
 });
