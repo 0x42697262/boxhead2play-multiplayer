@@ -80,7 +80,8 @@ export class ScorePopups {
 }
 
 interface MessageState {
-  readonly entry: HudMessageEntry;
+  readonly key: string;
+  entry: HudMessageEntry;
   y: number;
   moveCount: number;
 }
@@ -96,19 +97,35 @@ export function messageAlpha(ageMs: number): number {
   return ageMs < MESSAGE_FADE_START_MS ? OPAQUE_ALPHA : OPAQUE_ALPHA - (ageMs - MESSAGE_FADE_START_MS) / MESSAGE_FADE_DIVISOR;
 }
 
+export function messageKey(entry: HudMessageEntry): string {
+  return JSON.stringify([entry.tick, entry.tone, entry.text.key, entry.text.params ?? null, entry.playerIndex ?? null]);
+}
+
+function messageKeys(entries: readonly HudMessageEntry[]): { readonly key: string; readonly entry: HudMessageEntry }[] {
+  const seen = new Map<string, number>();
+  return entries.map((entry) => {
+    const base = messageKey(entry);
+    const occurrence = seen.get(base) ?? 0;
+    seen.set(base, occurrence + 1);
+    return { key: `${base}#${occurrence}`, entry };
+  });
+}
+
 export class MessageTrack {
   private states: MessageState[] = [];
 
   constructor(private readonly origin: Point2) {}
 
   sync(entries: readonly HudMessageEntry[]): void {
-    const live = new Set(entries);
-    this.states = this.states.filter((state) => live.has(state.entry));
-    const known = new Set(this.states.map((state) => state.entry));
-    for (const entry of entries) {
-      if (known.has(entry)) continue;
+    const keyed = messageKeys(entries);
+    const live = new Map(keyed.map(({ key, entry }) => [key, entry]));
+    this.states = this.states.filter((state) => live.has(state.key));
+    for (const state of this.states) state.entry = live.get(state.key) ?? state.entry;
+    const known = new Set(this.states.map((state) => state.key));
+    for (const { key, entry } of keyed) {
+      if (known.has(key)) continue;
       for (const state of this.states) state.moveCount += MESSAGE_PUSH_PX;
-      this.states.push({ entry, y: this.origin.y, moveCount: MESSAGE_START_MOVE_PX });
+      this.states.push({ key, entry, y: this.origin.y, moveCount: MESSAGE_START_MOVE_PX });
     }
   }
 

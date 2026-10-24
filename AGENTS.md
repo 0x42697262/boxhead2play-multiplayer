@@ -178,6 +178,8 @@ Add one line per behavior change: what to do, and the result you expect.
   clicking the level joins the running match again.
 * Two tabs in a coop game with names Ann and Bob -> under each player its name in small text;
   your own is green, the other one white.
+* Online coop, unlock several weapons quickly -> each "New Weapon" message slides up and
+  pushes the older ones up by 19 px; no messages on top of each other.
 * Two tabs in a coop game, block one tab for a second (devtools console:
   `const t = performance.now() + 1000; while (performance.now() < t);`)
   -> movement in that tab feels as direct again within half a second (the frame buffer

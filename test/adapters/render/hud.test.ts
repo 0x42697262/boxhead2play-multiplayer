@@ -57,6 +57,24 @@ describe('HUD messages', () => {
     expect(second?.y).toBe(455);
   });
 
+  it('keep their place when every frame brings equal copies, like online JSON frames', () => {
+    const track = new MessageTrack({ x: 320, y: 480 });
+    const copy = (entry: ReturnType<typeof message>) => JSON.parse(JSON.stringify(entry)) as ReturnType<typeof message>;
+    const older = message(0);
+    const newer = message(1);
+    track.sync([copy(older)]);
+    track.step(0, 25);
+    track.sync([copy(older), copy(newer)]);
+    track.step(1, 25);
+    for (let tick = 2; tick < 30; tick++) {
+      track.sync([copy(older), copy(newer)]);
+      track.step(tick, 25);
+    }
+    const [first, second] = track.step(30, 25);
+    expect(first?.y).toBeCloseTo(480 - 100 - 19, 0);
+    expect(second?.y).toBeCloseTo(480 - 100, 0);
+  });
+
   it('fade during the last half second of three', () => {
     expect(messageAlpha(1000)).toBe(100);
     expect(messageAlpha(2750)).toBe(50);

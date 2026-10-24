@@ -161,7 +161,9 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
 Bitmap layer (drawn into the stage after brightness, like `CHud.Draw`): score popups
 (`+points`, speed 5 toward the score total, x1.05 per draw, alpha `y - 40` above y 140)
 and messages (start at the bottom center, move a quarter of the remaining 100 px per draw,
-older messages pushed by 19 px, fade after 2.5 s of the 3 s lifetime).
+older messages pushed by 19 px, fade after 2.5 s of the 3 s lifetime). Messages are matched
+by value (tick, tone, text, player, occurrence), not by object, because online frames are
+parsed from JSON on every tick.
 
 Live layer (the clips that Flash composited above the bitmap): `Hud.ScoreTotal` at
 (320, 0) with the 12-digit score, `x<multiplier>` and the timer frame;
