@@ -56,10 +56,22 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   server allows up to 256 lobbies (`MAX_LOBBIES`).
 * **Lobby codes.** Every lobby gets a 5 character code from `A-Z` and `2-9` without `I`, `L`,
   `O` (`lobbyCodeFromNumber(newSeed() + attempt)`, the first free one). The lobby room shows
-  "LOBBY CODE: XXXXX" above the player list. The online menu's `mcDeathPlay` slot is ENTER
-  CODE: click it, type (lower case and other characters are dropped or upper-cased by
-  `normalizeLobbyCode`), Enter or a second click sends `joinByCode`. An unknown code answers
-  `codeNotFound` ("No game has that code."). Joining a running game also asks to enter the match
+  "CODE XXXXX · CLICK TO COPY LINK" above the player list.
+* **Joining by code.** The only place to type a code is JOIN BY CODE at the bottom right of
+  the main menu (a scaled copy of the SETTINGS button, `JOIN_CODE_BUTTON`). Typing goes
+  through `normalizeLobbyCode` (upper case, other characters dropped); Enter or a second
+  click calls `FlowControls.joinByCode`, which opens the online menu (`CODE_JOIN_MENU_MODE`,
+  coop) with `entry.joinCode`. The menu sends `joinByCode` and enters the lobby room of the
+  joined lobby's mode. An unknown code leaves the player in the online menu with
+  `codeNotFound` ("No game has that code.").
+* **Game links.** `LobbyInvite.syncAddress` writes `?code=XXXXX` into the address bar
+  (`history.replaceState`) whenever the client's lobby code changes, and removes it after
+  leaving. On boot, `BrowserLobbyLink.initialCode` reads the parameter and `main.ts` calls
+  `flow.joinByCode`, so opening a pasted link lands in the lobby. The link is copied by
+  clicking the code line in the lobby room or COPY LINK (the `mcSinglePlay` slot) in the
+  in-game Esc menu. `navigator.clipboard` exists only on secure origins (https, localhost),
+  so on a LAN address `BrowserLobbyLink` falls back to a hidden text field and the copy
+  command. Joining a running game also asks to enter the match
   (`OnlineClient.joinLobby(..., enterMatch)`), so the player goes straight into it.
 * **Lobby room** (`SelectWorldScreen` with a `LobbyRoom`). The OBJECTIVE screen of the mode
   with the player list under the character card and the options summary under the level.

@@ -52,6 +52,7 @@ export interface GameSelection {
 export interface LobbyEntry {
   readonly mode: OnlineMode;
   readonly result: OnlineSessionResult | undefined;
+  readonly joinCode?: string;
 }
 
 export interface FlowControls {
@@ -61,6 +62,7 @@ export interface FlowControls {
   finishGame(result: SessionResult): void;
   openLobby(mode: OnlineMode, result?: OnlineSessionResult): void;
   enterLobby(mode: OnlineMode, result?: OnlineSessionResult): void;
+  joinByCode(code: string): void;
   startOnlineGame(start: GameStarted): void;
   finishOnlineGame(result: OnlineSessionResult, inLobby: boolean): void;
 }
@@ -94,6 +96,7 @@ export type Transition =
   | { readonly kind: typeof ScreenKind.OnlineGame; readonly start: GameStarted };
 
 export const DEFAULT_RETURN_MODE: GameMode = GameMode.Single;
+export const CODE_JOIN_MENU_MODE: OnlineMode = GameMode.Coop;
 const IDLE_TICKS_PER_SECOND = 1;
 
 export class ScreenFlow implements FlowControls {
@@ -153,6 +156,10 @@ export class ScreenFlow implements FlowControls {
 
   enterLobby(mode: OnlineMode, result?: OnlineSessionResult): void {
     this.pending = { kind: ScreenKind.LobbyRoom, entry: { mode, result } };
+  }
+
+  joinByCode(code: string): void {
+    this.pending = { kind: ScreenKind.OnlineMenu, entry: { mode: CODE_JOIN_MENU_MODE, result: undefined, joinCode: code } };
   }
 
   startOnlineGame(start: GameStarted): void {

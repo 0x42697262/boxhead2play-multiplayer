@@ -4,8 +4,7 @@ import { ButtonState, depthKey, type SymbolLibrary } from '../../../adapters/ren
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import type { OnlineMode } from '../../../net/protocol.ts';
-import { normalizeLobbyCode } from '../../../net/lobbyCode.ts';
-import { LOBBY_CODE_LENGTH, PLAYER_NAME_MAX_LENGTH } from '../../../net/tuning.ts';
+import { PLAYER_NAME_MAX_LENGTH } from '../../../net/tuning.ts';
 import { withPlayerName } from '../../../services/menuSettings.ts';
 import type { OnlineClient } from '../../../services/online/OnlineClient.ts';
 import type { Cursor, FlowControls, LobbyEntry, PointerInput, Screen } from '../../../services/ScreenFlow.ts';
@@ -68,7 +67,6 @@ export const OnlineMenuAction = {
   Back: 'back',
   Join: 'join',
   Page: 'page',
-  EditCode: 'editCode',
 } as const;
 
 export type OnlineMenuAction =
@@ -76,12 +74,11 @@ export type OnlineMenuAction =
   | { readonly kind: typeof OnlineMenuAction.OpenJoin }
   | { readonly kind: typeof OnlineMenuAction.CloseJoin }
   | { readonly kind: typeof OnlineMenuAction.EditName }
-  | { readonly kind: typeof OnlineMenuAction.EditCode }
   | { readonly kind: typeof OnlineMenuAction.Back }
   | { readonly kind: typeof OnlineMenuAction.Join; readonly row: JoinRow }
   | { readonly kind: typeof OnlineMenuAction.Page; readonly step: number };
 
-const MENU_BUTTONS = [Child.Host, Child.Join, Child.Code, Child.Name] as const;
+const MENU_BUTTONS = [Child.Host, Child.Join, Child.Name] as const;
 type MenuButton = (typeof MENU_BUTTONS)[number];
 const MENU_BUTTON_NAMES: ReadonlySet<string> = new Set(MENU_BUTTONS);
 const SELECT_WORLD_ITEMS: ReadonlySet<string> = new Set([Child.Back, Child.JoinWindow]);
@@ -146,7 +143,6 @@ export function onlineMenuLayout(library: SymbolLibrary): OnlineMenuLayout {
     labels: {
       [Child.Host]: menuButtonLabelFrame(library, main, Child.Host),
       [Child.Join]: menuButtonLabelFrame(library, main, Child.Join),
-      [Child.Code]: menuButtonLabelFrame(library, main, Child.Code),
       [Child.Name]: menuButtonLabelFrame(library, main, Child.Name),
     },
     title: staticTextFrame(library, byDepth(JOIN_TITLE_DEPTH)),
@@ -173,7 +169,6 @@ export class OnlineMenuScreen implements Screen {
   private joinPage = 0;
   private awaitingLobby = false;
   private draft: string | undefined = undefined;
-  private codeDraft: string | undefined = undefined;
   private result: LobbyEntry['result'];
   private ticks = 0;
 
@@ -185,6 +180,7 @@ export class OnlineMenuScreen implements Screen {
     this.unsubscribe = client.subscribe(() => this.observe());
     client.start();
     client.watch(entry.mode);
+    if (entry.joinCode !== undefined) this.joinByCode(entry.joinCode);
   }
 
   get cursor(): Cursor {
@@ -229,13 +225,6 @@ export class OnlineMenuScreen implements Screen {
   }
 
   key(code: string, typed?: string): boolean {
-    if (this.codeDraft !== undefined) {
-      const step = editName(this.codeDraft, code, typed === undefined ? undefined : normalizeLobbyCode(typed) || undefined, LOBBY_CODE_LENGTH);
-      if (step.outcome === NameEntryOutcome.Editing) this.codeDraft = step.draft;
-      else if (step.outcome === NameEntryOutcome.Confirmed) this.joinByCode(step.draft);
-      else this.codeDraft = undefined;
-      return true;
-    }
     if (this.draft === undefined) return false;
     const step = editName(this.draft, code, typed, PLAYER_NAME_MAX_LENGTH);
     if (step.outcome === NameEntryOutcome.Editing) this.draft = step.draft;
@@ -253,7 +242,6 @@ export class OnlineMenuScreen implements Screen {
   perform(action: OnlineMenuAction): void {
     const { audio } = this.deps.kit;
     if (this.draft !== undefined && action.kind !== OnlineMenuAction.EditName) this.saveName(this.draft);
-    if (action.kind !== OnlineMenuAction.EditCode) this.codeDraft = undefined;
     audio.play(action.kind === OnlineMenuAction.Join || action.kind === OnlineMenuAction.CloseJoin ? SoundId.Click2 : SoundId.Click);
     if (action.kind !== OnlineMenuAction.CloseJoin) this.clearNotices();
     switch (action.kind) {
@@ -274,10 +262,6 @@ export class OnlineMenuScreen implements Screen {
         return;
       case OnlineMenuAction.EditName:
         this.draft = this.draft === undefined ? this.deps.settings.settings.playerName : undefined;
-        return;
-      case OnlineMenuAction.EditCode:
-        if (this.codeDraft === undefined) this.codeDraft = '';
-        else this.joinByCode(this.codeDraft);
         return;
       case OnlineMenuAction.Back:
         this.deps.client.stop();
@@ -313,7 +297,6 @@ export class OnlineMenuScreen implements Screen {
     return [
       { path: [Child.Host], trigger: Trigger.Release, action: { kind: OnlineMenuAction.Host } },
       { path: [Child.Join], trigger: Trigger.Release, action: { kind: OnlineMenuAction.OpenJoin } },
-      { path: [Child.Code], trigger: Trigger.Release, action: { kind: OnlineMenuAction.EditCode } },
       { path: [Child.Name], trigger: Trigger.Release, action: { kind: OnlineMenuAction.EditName } },
       { path: [Child.Back], trigger: Trigger.Press, action: { kind: OnlineMenuAction.Back } },
     ];
@@ -336,7 +319,7 @@ export class OnlineMenuScreen implements Screen {
     }
     if (this.awaitingLobby && client.lobby) {
       this.awaitingLobby = false;
-      controls.enterLobby(this.mode);
+      controls.enterLobby(client.lobby.mode);
     }
   }
 
@@ -349,10 +332,7 @@ export class OnlineMenuScreen implements Screen {
     client.createLobby(this.mode, roomId, toLobbyOptions(current), current.character);
   }
 
-  private joinByCode(typed: string): void {
-    const code = normalizeLobbyCode(typed);
-    this.codeDraft = undefined;
-    if (code.length !== LOBBY_CODE_LENGTH) return;
+  private joinByCode(code: string): void {
     this.awaitingLobby = true;
     this.deps.client.joinByCode(code, this.deps.settings.settings.character);
   }
@@ -384,11 +364,6 @@ export class OnlineMenuScreen implements Screen {
         return t('online.menu.host');
       case Child.Join:
         return t('online.menu.join');
-      case Child.Code: {
-        if (this.codeDraft === undefined) return t('online.menu.enterCode');
-        const caret = Math.floor(this.ticks / CARET_BLINK_TICKS) % 2 === 0 ? t('online.menu.caret') : '';
-        return t('online.menu.code', { code: `${this.codeDraft}${caret}` });
-      }
       case Child.Name: {
         if (this.draft === undefined) return t('online.menu.name', { name: (this.deps.settings.settings.playerName || t('online.menu.noName')).toUpperCase() });
         const caret = Math.floor(this.ticks / CARET_BLINK_TICKS) % 2 === 0 ? t('online.menu.caret') : '';
@@ -402,7 +377,7 @@ export class OnlineMenuScreen implements Screen {
       name,
       frame: this.layout.labels[name],
       text: this.labelText(name),
-      highlighted: this.rolledOver?.name === name || (name === Child.Name && this.draft !== undefined) || (name === Child.Code && this.codeDraft !== undefined),
+      highlighted: this.rolledOver?.name === name || (name === Child.Name && this.draft !== undefined),
       filters: this.rolledOver?.name === name ? this.rolledOver.filters : undefined,
     });
   }

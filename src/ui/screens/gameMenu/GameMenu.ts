@@ -6,6 +6,7 @@ import type { SymbolRenderer } from '../../../adapters/render/symbols/SymbolRend
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import { Cursor, type PointerInput } from '../../../services/ScreenFlow.ts';
+import type { InviteView } from '../../../services/online/LobbyInvite.ts';
 import type { SettingsService } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
 import type { StaticTextFrame } from '../online/stageText.ts';
@@ -29,22 +30,25 @@ export const GameMenuView = {
 export type GameMenuView = (typeof GameMenuView)[keyof typeof GameMenuView];
 
 export const GameMenuAction = {
+  CopyLink: 'copyLink',
   OpenSettings: 'openSettings',
   Quit: 'quit',
   Settings: 'settings',
 } as const;
 
 export type GameMenuAction =
+  | { readonly kind: typeof GameMenuAction.CopyLink }
   | { readonly kind: typeof GameMenuAction.OpenSettings }
   | { readonly kind: typeof GameMenuAction.Quit }
   | { readonly kind: typeof GameMenuAction.Settings; readonly action: SetupAction };
 
+const INVITE_TARGET: MenuTarget<GameMenuAction> = { path: [GameMenuButton.Invite], trigger: Trigger.Release, action: { kind: GameMenuAction.CopyLink } };
 const CHOICE_TARGETS: readonly MenuTarget<GameMenuAction>[] = [
   { path: [GameMenuButton.Settings], trigger: Trigger.Release, action: { kind: GameMenuAction.OpenSettings } },
   { path: [GameMenuButton.Quit], trigger: Trigger.Release, action: { kind: GameMenuAction.Quit } },
 ];
 
-const BUTTONS: readonly GameMenuButton[] = [GameMenuButton.Settings, GameMenuButton.Quit];
+const BUTTONS: readonly GameMenuButton[] = [GameMenuButton.Invite, GameMenuButton.Settings, GameMenuButton.Quit];
 const BUTTON_NAMES: ReadonlySet<string> = new Set(BUTTONS);
 
 export interface GameMenuLayout {
@@ -62,6 +66,7 @@ export function gameMenuLayout(library: SymbolLibrary): GameMenuLayout {
   return {
     items: [...buttons, ...(window ? [window] : [])].sort((first, second) => first.depth - second.depth),
     labels: {
+      [GameMenuButton.Invite]: menuButtonLabelFrame(library, main, GameMenuButton.Invite),
       [GameMenuButton.Settings]: menuButtonLabelFrame(library, main, GameMenuButton.Settings),
       [GameMenuButton.Quit]: menuButtonLabelFrame(library, main, GameMenuButton.Quit),
     },
@@ -80,6 +85,7 @@ export interface GameMenuDependencies {
   readonly settings: SettingsService;
   readonly rng: Rng;
   readonly quit: () => void;
+  readonly invite?: InviteView;
 }
 
 export class GameMenu {
@@ -141,6 +147,10 @@ export class GameMenu {
   perform(action: GameMenuAction): void {
     const { audio } = this.deps;
     switch (action.kind) {
+      case GameMenuAction.CopyLink:
+        audio.play(SoundId.Click);
+        this.deps.invite?.copy();
+        return;
       case GameMenuAction.OpenSettings:
         audio.play(SoundId.Click);
         this.show(GameMenuView.Settings);
@@ -162,7 +172,7 @@ export class GameMenu {
       case GameMenuView.Closed:
         return [];
       case GameMenuView.Choices:
-        return CHOICE_TARGETS;
+        return this.inviteShown ? [INVITE_TARGET, ...CHOICE_TARGETS] : CHOICE_TARGETS;
       case GameMenuView.Settings:
         return mapTargets(this.setup.targets(), (action) => ({ kind: GameMenuAction.Settings, action }));
     }
@@ -173,18 +183,36 @@ export class GameMenu {
     const library = this.deps.renderer.library;
     const choices = this.current === GameMenuView.Choices;
     for (const name of BUTTONS) {
-      if (!choices) {
+      if (!choices || (name === GameMenuButton.Invite && !this.inviteShown)) {
         tree.set([name], { visible: false });
         continue;
       }
       const rolled = this.rolledOver?.name === name ? this.rolledOver : undefined;
-      sceneMenuButton(tree, library, { name, frame: this.layout.labels[name], text: buttonText(name), highlighted: rolled !== undefined, filters: rolled?.filters });
+      sceneMenuButton(tree, library, { name, frame: this.layout.labels[name], text: this.buttonText(name), highlighted: rolled !== undefined, filters: rolled?.filters });
     }
     this.setup.scene(tree, this.current === GameMenuView.Settings, this.deps.settings.settings, (path) => this.pointerState.buttonState(path));
     return { items: this.layout.items, overrides: tree.overrides, expand: SETUP_EXPANDED, transparent: true };
   }
 
+  private get inviteShown(): boolean {
+    return this.deps.invite?.code !== undefined;
+  }
+
+  private buttonText(name: GameMenuButton): string {
+    switch (name) {
+      case GameMenuButton.Invite: {
+        const invite = this.deps.invite;
+        return invite?.copied ? t('invite.copied') : t('invite.copy', { code: invite?.code ?? '' });
+      }
+      case GameMenuButton.Settings:
+        return t('setup.menuButton');
+      case GameMenuButton.Quit:
+        return t('gameMenu.quit');
+    }
+  }
+
   private show(view: GameMenuView): void {
+    if (this.current === GameMenuView.Closed) this.deps.invite?.forget();
     this.current = view;
     this.rolledOver = undefined;
     this.pointerState.refresh(this.hitTest());
@@ -193,8 +221,4 @@ export class GameMenu {
   private hitTest(): ReturnType<typeof sceneHitTest<GameMenuAction>> {
     return sceneHitTest(this.deps.renderer.library, this.scene(), this.targets());
   }
-}
-
-function buttonText(name: GameMenuButton): string {
-  return name === GameMenuButton.Settings ? t('setup.menuButton') : t('gameMenu.quit');
 }

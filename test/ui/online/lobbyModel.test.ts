@@ -96,7 +96,7 @@ describe('lobby room on the select-world screen', () => {
   it('shows the host the start prompt and the guest the waiting prompt, with the player list', () => {
     const host = roomPanel(lobby(), { ...ONLINE, clientId: 'c1' }, ROOMS, undefined);
     expect(host).toMatchObject({ host: true, levelIndex: 0, prompt: 'CLICK TO START GAME', canPlay: true });
-    expect(host.members).toEqual(['LOBBY CODE: ABCDE', 'PLAYERS: 2/4', '1. ANN · BAMBO (you, host)', '2. BOB · SWAT']);
+    expect(host.members).toEqual(['PLAYERS: 2/4', '1. ANN · BAMBO (you, host)', '2. BOB · SWAT']);
     const guest = roomPanel(lobby(), ONLINE, ROOMS, undefined);
     expect(guest).toMatchObject({ host: false, prompt: 'WAITING FOR ANN TO START', canPlay: false });
     expect(guest.options).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on');
@@ -106,7 +106,7 @@ describe('lobby room on the select-world screen', () => {
     const running = lobby({ state: 'playing', members: [{ id: 'c1', name: 'Ann', character: 3, host: true, connected: false, playerIndex: 0 }, { id: 'c2', name: 'Bob', character: 0, host: false, connected: true, playerIndex: null }] });
     const outside = roomPanel(running, ONLINE, ROOMS, undefined);
     expect(outside).toMatchObject({ prompt: 'CLICK TO JOIN GAME', canPlay: true });
-    expect(outside.members[2]).toBe('1. ANN · BAMBO (host, in game, offline)');
+    expect(outside.members[1]).toBe('1. ANN · BAMBO (host, in game, offline)');
     const inside = roomPanel(running, { ...ONLINE, clientId: 'c1' }, ROOMS, undefined);
     expect(inside).toMatchObject({ prompt: 'GAME RUNNING', canPlay: false });
   });

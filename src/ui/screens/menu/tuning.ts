@@ -26,6 +26,7 @@ export const SUB_SCREEN_SYMBOLS: Readonly<Record<GameMode, string>> = {
 
 export const MAIN_MENU_BACKGROUND_DEPTH = 1;
 export const MAIN_MENU_TITLE_DEPTH = 82;
+export const JOIN_CODE_BUTTON = { name: 'mcJoinCode', depth: 90, matrix: [0.45, 0, 0, 0.5, 548, 452] } as const;
 
 export const MainMenuChild = {
   SinglePlay: 'mcSinglePlay',

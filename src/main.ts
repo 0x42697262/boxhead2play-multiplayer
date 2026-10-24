@@ -7,6 +7,7 @@ import type { LoadProgress } from './adapters/assets/tuning.ts';
 import { SoundMixer, type AudioOutput } from './adapters/audio/SoundMixer.ts';
 import { WebAudioOutput } from './adapters/audio/WebAudioOutput.ts';
 import { KeyboardState } from './adapters/input/KeyboardState.ts';
+import { BrowserLobbyLink } from './adapters/net/BrowserLobbyLink.ts';
 import { defaultServerUrl, ServerConnection } from './adapters/net/ServerConnection.ts';
 import { boundCodes, buildBindings } from './adapters/input/TickInputSampler.ts';
 import { ClipBuffers } from './adapters/render/clips/ClipBuffers.ts';
@@ -25,6 +26,7 @@ import { browserLoopClock, GameLoop } from './entry/GameLoop.ts';
 import { attachListeners } from './entry/listeners.ts';
 import type { GameStarted } from './net/protocol.ts';
 import { createLogger, type Logger } from './observability/logger.ts';
+import { LobbyInvite } from './services/online/LobbyInvite.ts';
 import { OnlineClient } from './services/online/OnlineClient.ts';
 import { ScreenFlow, type ScreenFactory } from './services/ScreenFlow.ts';
 import { SettingsService } from './services/SettingsService.ts';
@@ -105,6 +107,10 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     }),
   );
 
+  const link = new BrowserLobbyLink(window);
+  const invite = new LobbyInvite(online, link);
+  invite.syncAddress();
+
   const screens: ScreenFactory = {
     mainMenu: (controls) => new MainMenuScreen({ kit: menuKit, rng: menuRng, controls, settings: userSettings }),
     selectWorld: (controls, mode) => new SelectWorldScreen({ kit: menuKit, settings: userSettings, rooms: catalogs.roomIndex, controls, logger, mode }),
@@ -134,10 +140,10 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         controls,
         logger,
         mode: entry.mode,
-        room: new LobbyRoom({ client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result }),
+        room: new LobbyRoom({ client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result, invite }),
       }),
     onlineGame: (controls, start) =>
-      new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start, uiRng: menuRng }),
+      new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start, uiRng: menuRng, invite }),
   };
   const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor));
   startOnlineGame = (start) => flow.startOnlineGame(start);
@@ -164,6 +170,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     },
   );
   flow.start();
+  if (link.initialCode !== undefined) flow.joinByCode(link.initialCode);
   loop.start();
 }
 

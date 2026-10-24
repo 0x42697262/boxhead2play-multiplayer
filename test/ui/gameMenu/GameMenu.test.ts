@@ -10,9 +10,9 @@ describe('in-game Esc menu', () => {
     expect(nextViewOnEscape(GameMenuView.Choices)).toBe(GameMenuView.Closed);
   });
 
-  it.skipIf(assetsMissing)('uses the COOP and DEATH MATCH slots for SETTINGS and QUIT, plus the options window, without the menu background', () => {
+  it.skipIf(assetsMissing)('uses the SINGLE, COOP and DEATH MATCH slots for COPY LINK, SETTINGS and QUIT, plus the options window, without the menu background', () => {
     const layout = gameMenuLayout(new SymbolLibrary(assetSymbols()));
-    expect(layout.items.map((item) => item.name ?? item.depth)).toEqual(['mcCoopPlay', 'mcDeathPlay', 'mcWindow_Options']);
+    expect(layout.items.map((item) => item.name ?? item.depth)).toEqual(['mcSinglePlay', 'mcCoopPlay', 'mcDeathPlay', 'mcWindow_Options']);
     expect(layout.labels.mcCoopPlay && layout.labels.mcDeathPlay).toBeDefined();
     expect(layout.setup.volume.buttons).toHaveLength(4);
   });

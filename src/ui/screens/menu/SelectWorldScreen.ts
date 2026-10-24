@@ -25,6 +25,7 @@ import { clipBefore, placedText, staticTextFrame, textOverride, type PlacedText,
 import type { Rect } from '../../../adapters/render/geometry/Rect.ts';
 import {
   MENU_TEXT_COLOR,
+  ROOM_INVITE,
   ROOM_MEMBERS,
   ROOM_NOTICE,
   ROOM_OPTIONS,
@@ -84,6 +85,7 @@ export const SelectAction = {
   Level: 'level',
   Play: 'play',
   ChangeKey: 'changeKey',
+  CopyLink: 'copyLink',
 } as const;
 
 export type SelectAction =
@@ -98,6 +100,7 @@ export type SelectAction =
   | { readonly kind: typeof SelectAction.Character; readonly delta: number }
   | { readonly kind: typeof SelectAction.Level; readonly delta: number }
   | { readonly kind: typeof SelectAction.Play }
+  | { readonly kind: typeof SelectAction.CopyLink }
   | { readonly kind: typeof SelectAction.ChangeKey; readonly target: KeyTarget };
 
 export interface SelectWorldDependencies {
@@ -289,6 +292,10 @@ export class SelectWorldScreen implements Screen {
         this.play();
         audio.play(SoundId.Click);
         return;
+      case SelectAction.CopyLink:
+        audio.play(SoundId.Click);
+        this.deps.room?.copyLink();
+        return;
       default:
         audio.play(SoundId.Click2);
     }
@@ -357,6 +364,7 @@ export class SelectWorldScreen implements Screen {
         ? [release([...LEVEL, Child.Left], { kind: SelectAction.Level, delta: PREVIOUS }), release([...LEVEL, Child.Right], { kind: SelectAction.Level, delta: NEXT })]
         : []),
       ...(playable ? [release([...LEVEL_ICONS, Child.Button], { kind: SelectAction.Play })] : []),
+      ...(panel ? [release([...SUB, RoomChild.Invite], { kind: SelectAction.CopyLink })] : []),
       ...cards,
     ];
   }
@@ -419,6 +427,7 @@ export class SelectWorldScreen implements Screen {
       const name = `${RoomChild.Members}${index}`;
       add(placedText(library, { name, depth: ROOM_MEMBERS.depth + index, style, anchorX: ROOM_MEMBERS.left, top, width: ROOM_MEMBERS.width }), line, MENU_TEXT_COLOR);
     });
+    add(placedText(library, { name: RoomChild.Invite, ...ROOM_INVITE, style: TextStyles.ListHeading }), panel.invite, MENU_TEXT_COLOR);
     const { levelCenterX } = this.layout;
     add(placedText(library, { name: RoomChild.Options, ...ROOM_OPTIONS, style: TextStyles.Small, anchorX: levelCenterX }), panel.options, ROW_LABEL_COLOR);
     if (panel.notice) add(placedText(library, { name: RoomChild.Notice, ...ROOM_NOTICE, style: TextStyles.Prompt }), panel.notice, MENU_TEXT_COLOR);

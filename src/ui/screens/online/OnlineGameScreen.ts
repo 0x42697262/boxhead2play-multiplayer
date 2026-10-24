@@ -12,6 +12,7 @@ import { gameOptionsFor, type GameStarted } from '../../../net/protocol.ts';
 import type { Logger } from '../../../observability/logger.ts';
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { GameMenu } from '../gameMenu/GameMenu.ts';
+import type { InviteView } from '../../../services/online/LobbyInvite.ts';
 import type { OnlineClient } from '../../../services/online/OnlineClient.ts';
 import { OnlineGameSession } from '../../../services/online/OnlineGameSession.ts';
 import type { Cursor} from '../../../services/ScreenFlow.ts';
@@ -33,6 +34,7 @@ export interface OnlineGameScreenDependencies {
   readonly controls: FlowControls;
   readonly start: GameStarted;
   readonly uiRng: Rng;
+  readonly invite: InviteView;
 }
 
 export function playerNames(client: OnlineClient): HudFrame['playerNames'] {
@@ -75,7 +77,7 @@ export class OnlineGameScreen implements Screen {
       logger: deps.logger,
       onFinished: (result) => deps.controls.finishOnlineGame(result, client.lobby !== undefined),
     });
-    this.menu = new GameMenu({ shell: deps.shell, renderer: deps.kit.renderer, audio: deps.audio, settings: deps.settings, rng: deps.uiRng, quit: () => this.session.requestQuit() });
+    this.menu = new GameMenu({ shell: deps.shell, renderer: deps.kit.renderer, audio: deps.audio, settings: deps.settings, rng: deps.uiRng, quit: () => this.session.requestQuit(), invite: deps.invite });
     deps.shell.hideOverlay();
   }
 

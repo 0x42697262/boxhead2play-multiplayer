@@ -100,8 +100,10 @@ Add one line per behavior change: what to do, and the result you expect.
   positions and identical traces for the same seed.
 * `npx vitest run test/domain/world/playerSpawns.test.ts` -> 16 players in every room, coop and
   deathmatch, never stand inside a wall; ROOM_Single_0011 has no spawn point at (16, 9).
-* Tab 1 HOST -> the room shows "LOBBY CODE: XXXXX"; tab 2 ENTER CODE, type it in lower case,
-  Enter -> tab 2 is in tab 1's room. A wrong code -> "No game has that code."
+* Tab 1 COOPERATIVE, HOST -> the address bar gets `?code=XXXXX`; click the code line -> "LINK
+  COPIED!". Paste the link in tab 2 -> tab 2 opens in tab 1's room. Main menu JOIN BY CODE
+  (bottom right), type the code in lower case, Enter -> the same room; a wrong code -> "No game
+  has that code.". In the game, Esc -> COPY LINK: XXXXX copies the link.
 * Two tabs both named "Player" in one lobby -> the room lists PLAYER and PLAYER #2.
 * `npx vitest run test/server` -> a 17th player gets `lobbyFull`; a death match starts with 16
   players at 16 different indices. The lobby room lists at most 11 players, your own line and

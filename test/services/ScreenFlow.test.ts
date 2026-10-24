@@ -49,6 +49,7 @@ class FakeScreen implements Screen {
 
 function harness(failGame = false) {
   const shown: FakeScreen[] = [];
+  const codes: (string | undefined)[] = [];
   const add = (screen: FakeScreen): FakeScreen => {
     shown.push(screen);
     return screen;
@@ -60,7 +61,10 @@ function harness(failGame = false) {
       if (failGame) throw new Error('unknown room');
       return add(new FakeScreen(`game:${selection.mode}:${selection.roomId}`, controls));
     },
-    onlineMenu: (controls, entry) => add(new FakeScreen(`onlineMenu:${entry.mode}:${entry.result?.end ?? ''}`, controls)),
+    onlineMenu: (controls, entry) => {
+      codes.push(entry.joinCode);
+      return add(new FakeScreen(`onlineMenu:${entry.mode}:${entry.result?.end ?? ''}`, controls));
+    },
     lobbyRoom: (controls, entry) => add(new FakeScreen(`lobbyRoom:${entry.mode}:${entry.result?.end ?? ''}`, controls)),
     onlineGame: (controls, start) => {
       if (failGame) throw new Error('unknown room');
@@ -70,7 +74,7 @@ function harness(failGame = false) {
   const cursors: Cursor[] = [];
   const flow = new ScreenFlow(factory, silentLogger, (cursor) => cursors.push(cursor));
   const names = (): string[] => shown.map((screen) => screen.name);
-  return { flow, shown, names, cursors };
+  return { flow, shown, names, cursors, codes };
 }
 
 const START: GameStarted = {
@@ -86,6 +90,17 @@ const START: GameStarted = {
 };
 
 describe('ScreenFlow online routing', () => {
+  it('opens the online menu with the code to join, and the lobby room of the joined mode', () => {
+    const { flow, codes, names } = harness();
+    flow.start();
+    flow.joinByCode('Y5Q3U');
+    flow.tick();
+    expect(codes).toEqual(['Y5Q3U']);
+    flow.enterLobby(GameMode.DeathMatch);
+    flow.tick();
+    expect(names()).toEqual(['mainMenu', 'onlineMenu:coop:', 'lobbyRoom:deathMatch:']);
+  });
+
   it('goes from the online menu into the lobby room, the online game and back to the room or the menu with the result', () => {
     const { flow, names } = harness();
     flow.start();

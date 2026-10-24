@@ -31,6 +31,7 @@ export interface RoomPanel {
   readonly members: readonly string[];
   readonly options: string;
   readonly notice: string | undefined;
+  readonly invite: string;
 }
 
 const TITLES: Readonly<Record<OnlineMode, TextKey>> = {
@@ -155,7 +156,7 @@ function memberLines(lobby: LobbyDto, clientId: string | undefined): string[] {
   const selfIndex = lobby.members.findIndex((member) => member.id === clientId);
   const { shown, hidden } = visibleMemberIndices(lobby.members.length, selfIndex < 0 ? undefined : selfIndex, ROOM_MEMBER_LINES);
   const lines = shown.map((index) => memberLine(lobby, index, clientId));
-  return [t('online.room.code', { code: lobby.code }), t('online.room.players', { count: lobby.members.length, max: lobby.maxPlayers }), ...lines, ...(hidden > 0 ? [t('online.room.more', { count: hidden })] : [])];
+  return [t('online.room.players', { count: lobby.members.length, max: lobby.maxPlayers }), ...lines, ...(hidden > 0 ? [t('online.room.more', { count: hidden })] : [])];
 }
 
 function roomPrompt(lobby: LobbyDto, clientId: string | undefined): { readonly prompt: string; readonly canPlay: boolean } {
@@ -167,7 +168,7 @@ function roomPrompt(lobby: LobbyDto, clientId: string | undefined): { readonly p
   return { prompt: t('online.room.waiting', { name: (host?.name ?? '').toUpperCase() }), canPlay: false };
 }
 
-export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex, result: OnlineSessionResult | undefined): RoomPanel {
+export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex, result: OnlineSessionResult | undefined, linkCopied = false): RoomPanel {
   const { clientId } = state;
   const host = lobby.members.some((member) => member.host && member.id === clientId);
   return {
@@ -177,5 +178,6 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
     members: memberLines(lobby, clientId),
     options: optionsSummary(lobby.mode, lobby.options),
     notice: noticeText(state, result),
+    invite: t(linkCopied ? 'invite.roomCopied' : 'invite.roomCopy', { code: lobby.code }),
   };
 }

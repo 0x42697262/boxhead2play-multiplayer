@@ -1,6 +1,7 @@
 import { MainMenuChild } from '../menu/tuning.ts';
 
 export const GameMenuButton = {
+  Invite: MainMenuChild.SinglePlay,
   Settings: MainMenuChild.CoopPlay,
   Quit: MainMenuChild.DeathPlay,
 } as const;
