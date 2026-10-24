@@ -56,9 +56,14 @@ online client sends the same control masks, and rebinding keys never breaks touc
 | Menu | top left, 44 px, pause glyph; becomes a close glyph while the Esc menu is open | sends `Escape` through `ScreenFlow.key` |
 | List | next to Menu | `TouchUpgradeList` (TAB: upgrades in coop and single, scoreboard in deathmatch) |
 
-`stickDirections` turns the thumb offset into the eight WASD directions: a dead zone of
-22 % of the 44 px travel, then each axis counts when its share exceeds sin(22.5 deg),
-so the eight sectors are equal. The knob is clamped to the travel and springs back.
+`stickSector` turns the thumb offset into one of eight equal 45 deg sectors, the eight WASD
+directions (`directionsOf`). Without help a thumb resting near a sector edge flips between
+two directions on a 1 px wobble, which players feel as the stick "going where it wants".
+So the held sector has hysteresis: it stays until the thumb is 12 deg past its edge
+(`STICK_SECTOR_HYSTERESIS_RADIANS`), and the dead zone (22 % of the 44 px travel) releases
+only at 60 % of that radius (`STICK_RELEASE_FACTOR`). Past the rim the base follows the
+thumb (`followOrigin`), so pulling back reverses at once instead of first travelling back
+through a dead stretch. The knob is clamped to the travel and springs back on release.
 Several fingers work at once (stick plus Fire plus a weapon button) through pointer
 capture per control. Leaving the play layout releases every virtual key.
 

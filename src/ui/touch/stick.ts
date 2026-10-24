@@ -1,4 +1,4 @@
-import { STICK_AXIS_THRESHOLD, STICK_DEAD_ZONE } from './tuning.ts';
+import { STICK_DEAD_ZONE, STICK_RELEASE_FACTOR, STICK_SECTOR_HYSTERESIS_RADIANS } from './tuning.ts';
 
 export interface StickDirections {
   readonly up: boolean;
@@ -21,12 +21,44 @@ export interface LayoutBox {
 
 export const STICK_IDLE: StickDirections = { up: false, down: false, left: false, right: false };
 
-export function stickDirections(dx: number, dy: number, travel: number): StickDirections {
+const SECTORS = 8;
+const FULL_TURN = 2 * Math.PI;
+const SECTOR_RADIANS = FULL_TURN / SECTORS;
+const SECTOR_DIRECTIONS: readonly StickDirections[] = [
+  { up: false, down: false, left: false, right: true },
+  { up: false, down: true, left: false, right: true },
+  { up: false, down: true, left: false, right: false },
+  { up: false, down: true, left: true, right: false },
+  { up: false, down: false, left: true, right: false },
+  { up: true, down: false, left: true, right: false },
+  { up: true, down: false, left: false, right: false },
+  { up: true, down: false, left: false, right: true },
+];
+
+export function directionsOf(sector: number | undefined): StickDirections {
+  return sector === undefined ? STICK_IDLE : (SECTOR_DIRECTIONS[sector] ?? STICK_IDLE);
+}
+
+function angleBetween(a: number, b: number): number {
+  const difference = Math.abs(a - b) % FULL_TURN;
+  return Math.min(difference, FULL_TURN - difference);
+}
+
+export function stickSector(dx: number, dy: number, travel: number, held: number | undefined): number | undefined {
+  const deadZone = travel * STICK_DEAD_ZONE * (held === undefined ? 1 : STICK_RELEASE_FACTOR);
+  if (Math.hypot(dx, dy) < deadZone) return undefined;
+  const angle = Math.atan2(dy, dx);
+  if (held !== undefined && angleBetween(angle, held * SECTOR_RADIANS) <= SECTOR_RADIANS / 2 + STICK_SECTOR_HYSTERESIS_RADIANS) return held;
+  return (Math.round(angle / SECTOR_RADIANS) + SECTORS) % SECTORS;
+}
+
+export function followOrigin(origin: Point, touch: Point, travel: number): Point {
+  const dx = touch.x - origin.x;
+  const dy = touch.y - origin.y;
   const distance = Math.hypot(dx, dy);
-  if (distance < travel * STICK_DEAD_ZONE) return STICK_IDLE;
-  const x = dx / distance;
-  const y = dy / distance;
-  return { up: y < -STICK_AXIS_THRESHOLD, down: y > STICK_AXIS_THRESHOLD, left: x < -STICK_AXIS_THRESHOLD, right: x > STICK_AXIS_THRESHOLD };
+  if (distance <= travel) return origin;
+  const excess = (distance - travel) / distance;
+  return { x: origin.x + dx * excess, y: origin.y + dy * excess };
 }
 
 export function knobOffset(dx: number, dy: number, travel: number): Point {

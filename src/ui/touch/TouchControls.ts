@@ -62,6 +62,7 @@ export class TouchControls {
   private readonly zone: HTMLElement;
   private readonly base: HTMLElement;
   private readonly knob: HTMLElement;
+  private rest: Point = { x: 0, y: 0 };
   private readonly menuGlyph: SVGSVGElement;
   private readonly menuButton: HTMLButtonElement;
   private layout: TouchLayout = TouchLayout.Hidden;
@@ -147,7 +148,8 @@ export class TouchControls {
       if (!origin) return;
       event.preventDefault();
       this.zone.setPointerCapture(event.pointerId);
-      this.base.style.transform = `translate(${origin.x - rest.x}px, ${origin.y - rest.y}px)`;
+      this.rest = rest;
+      this.placeBase(origin);
       this.base.classList.add(TouchClass.Dragging);
       this.moveStick(event);
     });
@@ -163,8 +165,14 @@ export class TouchControls {
   }
 
   private moveStick(event: PointerEvent): void {
-    const knob = this.input.moveStick(event.pointerId, clientPoint(event));
-    if (knob) this.knob.style.transform = `translate(${knob.x}px, ${knob.y}px)`;
+    const view = this.input.moveStick(event.pointerId, clientPoint(event));
+    if (!view) return;
+    this.placeBase(view.origin);
+    this.knob.style.transform = `translate(${view.knob.x}px, ${view.knob.y}px)`;
+  }
+
+  private placeBase(origin: Point): void {
+    this.base.style.transform = `translate(${origin.x - this.rest.x}px, ${origin.y - this.rest.y}px)`;
   }
 
   private resetStick(): void {

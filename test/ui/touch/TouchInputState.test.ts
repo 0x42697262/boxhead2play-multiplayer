@@ -30,13 +30,21 @@ describe('TouchInputState', () => {
     expect(input.grabStick(OTHER_FINGER, REST, REST)).toBeUndefined();
     expect(input.moveStick(OTHER_FINGER, { x: REST.x + STICK_TRAVEL_PX, y: REST.y })).toBeUndefined();
     expect(held(keyboard)).toEqual([]);
-    expect(input.moveStick(THUMB, { x: REST.x + STICK_TRAVEL_PX * 2, y: REST.y })).toEqual({ x: STICK_TRAVEL_PX, y: 0 });
+    expect(input.moveStick(THUMB, { x: REST.x + STICK_TRAVEL_PX * 2, y: REST.y })?.knob).toEqual({ x: STICK_TRAVEL_PX, y: 0 });
     expect(held(keyboard)).toEqual([TouchCode.Right]);
     input.moveStick(THUMB, { x: REST.x - STICK_TRAVEL_PX, y: REST.y + STICK_TRAVEL_PX });
     expect(held(keyboard)).toEqual([TouchCode.Down, TouchCode.Left]);
     input.endStick();
     expect(held(keyboard)).toEqual([]);
     expect(input.ownsStick(THUMB)).toBe(false);
+  });
+
+  it('drags the base along past the rim, so reversing responds at once', () => {
+    const { keyboard, input } = setup();
+    input.grabStick(THUMB, REST, REST);
+    expect(input.moveStick(THUMB, { x: REST.x + STICK_TRAVEL_PX * 3, y: REST.y })?.origin).toEqual({ x: REST.x + STICK_TRAVEL_PX * 2, y: REST.y });
+    input.moveStick(THUMB, { x: REST.x + STICK_TRAVEL_PX * 1.5, y: REST.y });
+    expect(held(keyboard)).toEqual([TouchCode.Left]);
   });
 
   it('presses the stick key again after a window blur released it, without leaving the sector', () => {

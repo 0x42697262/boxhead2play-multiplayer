@@ -137,6 +137,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/ui/touch` -> a stick key released by a window blur is pressed again by
   the next thumb move in the same sector. Phone, push the stick far from its base, let go and
   touch the base again at once -> the base snaps back to its resting place, not shifted.
+* Phone, game, hold the stick just past the right/down-right edge and wobble the thumb a few
+  degrees -> the player keeps one direction; drag far right, then back left -> the base
+  follows the thumb and the player turns left at once.
 * Phone, main menu, tap NAME -> the keyboard opens and the game shrinks above it; type, tap
   Done -> the name is saved. Tap JOIN BY CODE, type `ab-c` -> `CODE: ABC`. With a mouse, NAME
   still edits with the physical keyboard and no input gets focus.
