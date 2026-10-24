@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PlayerControl } from '../../src/domain/world/input.ts';
 import { GameMode } from '../../src/domain/world/GameMode.ts';
 import { CompletionState } from '../../src/domain/world/CompletionState.ts';
 import { controlBit } from '../../src/net/controlMask.ts';
 import { ErrorReason, LeaveReason, LobbyState, PROTOCOL_VERSION } from '../../src/net/protocol.ts';
 import { MAX_LOBBY_PLAYERS } from '../../src/net/tuning.ts';
+import { Lobby } from '../../src/server/Lobby.ts';
 import type { Ticker } from '../../src/server/ports.ts';
 import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from '../../src/server/tuning.ts';
 import { FakeConnection, OPTIONS, ROOM_ID, testHub, type TestHub } from './support.ts';
@@ -158,6 +159,28 @@ describe('Hub lobbies', () => {
     const deathMatch = setup.connect('Other');
     deathMatch.say({ type: 'watchLobbies', mode: GameMode.DeathMatch });
     expect(deathMatch.last('lobbies')?.lobbies).toEqual([]);
+  });
+
+  it('builds the lobby list once per change and sends it only when a listed field changed', () => {
+    const setup = testHub();
+    const watchers = ['W1', 'W2', 'W3'].map((name) => setup.connect(name));
+    for (const watcher of watchers) watcher.say({ type: 'watchLobbies', mode: GameMode.Coop });
+    const { host, guest } = hostAndGuest(setup);
+    const lists = (): number[] => watchers.map((watcher) => watcher.all('lobbies').length);
+    const listed = lists();
+    const lobbyUpdates = guest.all('lobby').length;
+    host.say({ type: 'setCharacter', character: 2 });
+    host.say({ type: 'setName', name: 'Ann' });
+    host.say({ type: 'configureLobby', roomId: ROOM_ID, options: OPTIONS });
+    expect(lists()).toEqual(listed);
+    expect(guest.all('lobby')).toHaveLength(lobbyUpdates + 1);
+    const summaries = vi.spyOn(Lobby.prototype, 'summary');
+    host.say({ type: 'setName', name: 'Zed' });
+    expect(summaries).toHaveBeenCalledTimes(1);
+    summaries.mockRestore();
+    expect(lists()).toEqual(listed.map((count) => count + 1));
+    expect(watchers.map((watcher) => watcher.last('lobbies')?.lobbies[0]?.name)).toEqual(["Zed's game", "Zed's game", "Zed's game"]);
+    expect(guest.all('lobby')).toHaveLength(lobbyUpdates + 2);
   });
 
   it('only lets the host configure and start, and rejects unknown rooms', () => {

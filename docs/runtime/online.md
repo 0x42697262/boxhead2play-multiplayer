@@ -136,6 +136,14 @@ that every decoded frame equals the JSON one.
 | `error {reason}` | A request failed (`ErrorReason`) |
 | `pong {id}` | Echo of a `ping` |
 
+The `Hub` keeps the last listed summary of every lobby. A lobby change sends `lobbies` to
+the clients watching that mode only when one of the listed fields (name, room, state,
+player count) changed, and builds that list once for all of them. A `setName` with the
+same name, a `configureLobby` with the same room and options, or a character change does
+not touch the lobby list; the last one still sends `lobby` to the members. Watcher
+broadcasts are not batched over time: each listed change goes out at once, so the join
+list stays exact for the JOIN button.
+
 Fractions on the wire are rounded to three digits. Text travels as text keys from
 `en.json`, which the receiver checks with `isTextKey`.
 

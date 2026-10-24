@@ -20,6 +20,7 @@ import { secondsSince } from './elapsed.ts';
 import type { MonitorLobby } from './monitorProtocol.ts';
 import type { Clock, GameContent, StopTicking, Ticker } from './ports.ts';
 import { lobbyName } from './sanitize.ts';
+import { sameFields } from './sameFields.ts';
 import { MATCH_ABANDONED, TICK_TIME_SMOOTHING } from './tuning.ts';
 
 export interface LobbyClient {
@@ -100,6 +101,10 @@ export class Lobby {
     return this.match;
   }
 
+  get name(): string {
+    return lobbyName(this.host?.client.name ?? '');
+  }
+
   get host(): LobbyMember | undefined {
     return this.member(this.hostId);
   }
@@ -109,11 +114,10 @@ export class Lobby {
   }
 
   dto(): LobbyDto {
-    const host = this.host;
     return {
       id: this.id,
       code: this.code,
-      name: lobbyName(host?.client.name ?? ''),
+      name: this.name,
       mode: this.mode,
       roomId: this.roomId,
       options: this.options,
@@ -131,8 +135,7 @@ export class Lobby {
   }
 
   summary(): LobbySummaryDto {
-    const { id, name, mode, roomId, state, maxPlayers } = this.dto();
-    return { id, name, mode, roomId, state, maxPlayers, players: this.members.length };
+    return { id: this.id, name: this.name, mode: this.mode, roomId: this.roomId, state: this.state, maxPlayers: MAX_LOBBY_PLAYERS, players: this.members.length };
   }
 
   add(client: LobbyClient, character: PlayerCharacter): ErrorReason | undefined {
@@ -161,6 +164,7 @@ export class Lobby {
     if (client.id !== this.hostId) return ErrorReason.NotHost;
     if (this.match) return ErrorReason.AlreadyPlaying;
     if (!this.deps.content.rooms.has(roomId)) return ErrorReason.RoomUnknown;
+    if (roomId === this.roomId && sameFields(options, this.options)) return undefined;
     this.roomId = roomId;
     this.options = options;
     this.changed();
@@ -263,7 +267,7 @@ export class Lobby {
   }
 
   monitorRow(): MonitorLobby {
-    const { id, name, mode, state } = this.dto();
+    const { id, name, mode, state } = this.summary();
     const now = this.deps.clock.now();
     const running = this.match !== undefined && this.matchStartedMs !== undefined;
     return {

@@ -160,6 +160,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/server/Hub.test.ts` -> joining a full lobby answers `lobbyFull` and keeps
   the player in their own lobby; a burst of 240 messages passes, the next is `rateLimited`, one
   second later 120 more pass; client 257 and lobby 257 are refused.
+* `npx vitest run test/server/Hub.test.ts` -> clients in the JOIN list get a new `lobbies` only
+  when a listed field changes (host name, room, state, player count), built once per change.
 * `npx vitest run test/server` -> a 17th player gets `lobbyFull`; a death match starts with 16
   players at 16 different indices. The lobby room lists at most 11 players, your own line and
   "+N MORE", under "PLAYERS: n/16".

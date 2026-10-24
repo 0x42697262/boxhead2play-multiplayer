@@ -8,6 +8,7 @@ import {
   ServerMessageType,
   type ClientMessage,
   type ErrorReason as ErrorReasonValue,
+  type LobbySummaryDto,
   type OnlineMode,
   type ServerMessage,
 } from '../net/protocol.ts';
@@ -18,6 +19,7 @@ import { lobbyCodeFromNumber, normalizeLobbyCode } from '../net/lobbyCode.ts';
 import { secondsSince } from './elapsed.ts';
 import { ClientActivity, type MonitorClient, type MonitorLobby, type Traffic } from './monitorProtocol.ts';
 import { nameKey, sanitizeName, uniqueName } from './sanitize.ts';
+import { sameFields } from './sameFields.ts';
 import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from './tuning.ts';
 
 class ClientSession implements LobbyClient {
@@ -80,6 +82,8 @@ export class Hub {
   private readonly lobbies = new Map<string, Lobby>();
 
   private readonly codes = new Map<string, string>();
+  private readonly listed = new Map<string, LobbySummaryDto>();
+
   constructor(private readonly deps: HubDependencies) {}
 
   get lobbyCount(): number {
@@ -226,10 +230,13 @@ export class Hub {
     switch (message.type) {
       case ClientMessageType.Hello:
         return undefined;
-      case ClientMessageType.SetName:
-        session.name = this.freeName(message.name, session);
+      case ClientMessageType.SetName: {
+        const name = this.freeName(message.name, session);
+        if (name === session.name) return undefined;
+        session.name = name;
         session.lobby?.memberChanged(session);
         return undefined;
+      }
       case ClientMessageType.WatchLobbies:
         session.watching = message.mode;
         if (message.mode) this.sendLobbies(session, message.mode);
@@ -307,20 +314,35 @@ export class Hub {
   }
 
   private lobbyChanged(lobby: Lobby): void {
-    for (const session of this.sessions.values()) {
-      if (session.watching === lobby.mode && !session.lobby) this.sendLobbies(session, lobby.mode);
-    }
+    const summary = lobby.summary();
+    const previous = this.listed.get(lobby.id);
+    if (previous && sameFields(previous, summary)) return;
+    this.listed.set(lobby.id, summary);
+    this.broadcastLobbies(lobby.mode);
   }
 
   private lobbyClosed(lobby: Lobby): void {
     this.lobbies.delete(lobby.id);
     this.codes.delete(lobby.code);
+    this.listed.delete(lobby.id);
     for (const session of this.sessions.values()) if (session.lobby === lobby) session.lobby = undefined;
-    this.lobbyChanged(lobby);
+    this.broadcastLobbies(lobby.mode);
+  }
+
+  private broadcastLobbies(mode: OnlineMode): void {
+    let message: ServerMessage | undefined;
+    for (const session of this.sessions.values()) {
+      if (session.watching !== mode || session.lobby) continue;
+      message ??= this.lobbiesMessage(mode);
+      session.send(message);
+    }
   }
 
   private sendLobbies(session: ClientSession, mode: OnlineMode): void {
-    const lobbies = [...this.lobbies.values()].filter((lobby) => lobby.mode === mode).map((lobby) => lobby.summary());
-    session.send({ type: ServerMessageType.Lobbies, lobbies });
+    session.send(this.lobbiesMessage(mode));
+  }
+
+  private lobbiesMessage(mode: OnlineMode): ServerMessage {
+    return { type: ServerMessageType.Lobbies, lobbies: [...this.listed.values()].filter((summary) => summary.mode === mode) };
   }
 }
