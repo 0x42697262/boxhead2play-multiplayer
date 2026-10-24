@@ -4,7 +4,6 @@ export const STICK_TRAVEL_PX = 44;
 export const STICK_DEAD_ZONE = 0.22;
 export const STICK_RELEASE_FACTOR = 0.6;
 export const STICK_SECTOR_HYSTERESIS_RADIANS = (12 * Math.PI) / 180;
-export const STICK_GRAB_RADIUS_FACTOR = 1.25;
 export const FIRE_BUTTON_PX = 88;
 export const WEAPON_BUTTON_PX = 52;
 export const SYSTEM_BUTTON_PX = 44;

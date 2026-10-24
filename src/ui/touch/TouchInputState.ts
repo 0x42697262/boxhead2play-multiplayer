@@ -1,7 +1,7 @@
 import type { KeyboardState } from '../../adapters/input/KeyboardState.ts';
 import { TOUCH_CODES, TouchCode } from '../../adapters/input/touchCodes.ts';
-import { directionsOf, followOrigin, knobOffset, STICK_IDLE, stickSector, type Point, type StickDirections } from './stick.ts';
-import { STICK_BASE_PX, STICK_GRAB_RADIUS_FACTOR, STICK_TRAVEL_PX } from './tuning.ts';
+import { directionsOf, knobOffset, STICK_IDLE, stickSector, type Point, type StickDirections } from './stick.ts';
+import { STICK_TRAVEL_PX } from './tuning.ts';
 
 const STICK_KEYS: readonly (readonly [keyof StickDirections, TouchCode])[] = [
   ['up', TouchCode.Up],
@@ -9,13 +9,6 @@ const STICK_KEYS: readonly (readonly [keyof StickDirections, TouchCode])[] = [
   ['left', TouchCode.Left],
   ['right', TouchCode.Right],
 ];
-
-export interface StickView {
-  readonly origin: Point;
-  readonly knob: Point;
-}
-
-const GRAB_RADIUS_PX = (STICK_BASE_PX / 2) * STICK_GRAB_RADIUS_FACTOR;
 
 export class TouchInputState {
   private stickPointer: number | undefined = undefined;
@@ -36,22 +29,21 @@ export class TouchInputState {
     return this.keyboard.isDown(code);
   }
 
-  grabStick(pointerId: number, touch: Point, rest: Point): Point | undefined {
-    if (this.stickPointer !== undefined) return undefined;
+  grabStick(pointerId: number, center: Point): boolean {
+    if (this.stickPointer !== undefined) return false;
     this.stickPointer = pointerId;
     this.sector = undefined;
-    this.origin = Math.hypot(touch.x - rest.x, touch.y - rest.y) <= GRAB_RADIUS_PX ? rest : touch;
-    return this.origin;
+    this.origin = center;
+    return true;
   }
 
-  moveStick(pointerId: number, touch: Point): StickView | undefined {
+  moveStick(pointerId: number, touch: Point): Point | undefined {
     if (pointerId !== this.stickPointer) return undefined;
-    this.origin = followOrigin(this.origin, touch, STICK_TRAVEL_PX);
     const dx = touch.x - this.origin.x;
     const dy = touch.y - this.origin.y;
     this.sector = stickSector(dx, dy, STICK_TRAVEL_PX, this.sector);
     this.steer(directionsOf(this.sector));
-    return { origin: this.origin, knob: knobOffset(dx, dy, STICK_TRAVEL_PX) };
+    return knobOffset(dx, dy, STICK_TRAVEL_PX);
   }
 
   ownsStick(pointerId: number): boolean {

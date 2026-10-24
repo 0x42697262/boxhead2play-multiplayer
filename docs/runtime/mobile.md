@@ -50,7 +50,7 @@ online client sends the same control masks, and rebinding keys never breaks touc
 
 | Control | Place | Virtual keys |
 |---|---|---|
-| Stick | bottom left; the whole lower-left area (45 % x 75 % of the screen) is a touch zone. A touch on the base grabs it; a touch elsewhere moves the base under the thumb (floating stick) | `TouchUp/Down/Left/Right` |
+| Stick | bottom left; the whole lower-left area (45 % x 75 % of the screen) is a touch zone. The base never moves: wherever the thumb lands in the zone, the direction is measured from the base's center (fixed stick) | `TouchUp/Down/Left/Right` |
 | Fire | bottom right, 88 px | `TouchFire`, held while pressed |
 | Previous / next weapon | above Fire, 52 px | `TouchPrevWeapon`, `TouchNextWeapon` |
 | Menu | top left, 44 px, pause glyph; becomes a close glyph while the Esc menu is open | sends `Escape` through `ScreenFlow.key` |
@@ -62,9 +62,9 @@ directions (`directionsOf`). Without help a thumb resting near a sector edge fli
 two directions on a 1 px wobble, which players feel as the stick "going where it wants".
 So the held sector has hysteresis: it stays until the thumb is 12 deg past its edge
 (`STICK_SECTOR_HYSTERESIS_RADIANS`), and the dead zone (22 % of the 44 px travel) releases
-only at 60 % of that radius (`STICK_RELEASE_FACTOR`). Past the rim the base follows the
-thumb (`followOrigin`), so pulling back reverses at once instead of first travelling back
-through a dead stretch. The knob is clamped to the travel and springs back on release.
+only at 60 % of that radius (`STICK_RELEASE_FACTOR`). The base stays put (owner request:
+a floating base that jumps under the thumb or trails it past the rim felt like the stick
+"moving somewhere"); only the knob moves. The knob is clamped to the travel and springs back on release.
 Several fingers work at once (stick plus Fire plus a weapon button) through pointer
 capture per control. Leaving the play layout releases every virtual key.
 

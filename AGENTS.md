@@ -147,8 +147,8 @@ Add one line per behavior change: what to do, and the result you expect.
   shows only `/` and `manifest.json` from the network; every SVG, MP3, JSON and font says
   "(ServiceWorker)". `npm run dev` registers no service worker.
 * Phone, game, hold the stick just past the right/down-right edge and wobble the thumb a few
-  degrees -> the player keeps one direction; drag far right, then back left -> the base
-  follows the thumb and the player turns left at once.
+  degrees -> the player keeps one direction. Touch anywhere in the lower-left area or drag far
+  past the rim -> the stick base never moves; only the knob follows inside it.
 * Phone, main menu, tap NAME -> the keyboard opens and the game shrinks above it; type, tap
   Done -> the name is saved. Tap JOIN BY CODE, type `ab-c` -> `CODE: ABC`. With a mouse, NAME
   still edits with the physical keyboard and no input gets focus.

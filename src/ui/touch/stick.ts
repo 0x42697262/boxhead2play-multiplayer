@@ -52,15 +52,6 @@ export function stickSector(dx: number, dy: number, travel: number, held: number
   return (Math.round(angle / SECTOR_RADIANS) + SECTORS) % SECTORS;
 }
 
-export function followOrigin(origin: Point, touch: Point, travel: number): Point {
-  const dx = touch.x - origin.x;
-  const dy = touch.y - origin.y;
-  const distance = Math.hypot(dx, dy);
-  if (distance <= travel) return origin;
-  const excess = (distance - travel) / distance;
-  return { x: origin.x + dx * excess, y: origin.y + dy * excess };
-}
-
 export function knobOffset(dx: number, dy: number, travel: number): Point {
   const distance = Math.hypot(dx, dy);
   if (distance <= travel) return { x: dx, y: dy };

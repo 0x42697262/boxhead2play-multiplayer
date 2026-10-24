@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { directionsOf, followOrigin, knobOffset, restCenter, STICK_IDLE, stickSector } from '../../../src/ui/touch/stick.ts';
+import { directionsOf, knobOffset, restCenter, STICK_IDLE, stickSector } from '../../../src/ui/touch/stick.ts';
 import { STICK_DEAD_ZONE, STICK_TRAVEL_PX } from '../../../src/ui/touch/tuning.ts';
 
 const TRAVEL = STICK_TRAVEL_PX;
@@ -42,11 +42,6 @@ describe('virtual stick', () => {
   it('keeps moving while the thumb drifts back toward the center', () => {
     expect(stickSector(TRAVEL * STICK_DEAD_ZONE * 0.8, 0, TRAVEL, RIGHT)).toBe(RIGHT);
     expect(stickSector(TRAVEL * STICK_DEAD_ZONE * 0.5, 0, TRAVEL, RIGHT)).toBeUndefined();
-  });
-
-  it('drags the origin along only past the rim', () => {
-    expect(followOrigin({ x: 0, y: 0 }, { x: TRAVEL * 3, y: 0 }, TRAVEL)).toEqual({ x: TRAVEL * 2, y: 0 });
-    expect(followOrigin({ x: 5, y: 5 }, { x: 10, y: 5 }, TRAVEL)).toEqual({ x: 5, y: 5 });
   });
 
   it('keeps the knob inside the base however far the thumb goes', () => {
