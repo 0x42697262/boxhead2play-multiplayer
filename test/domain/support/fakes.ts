@@ -45,6 +45,7 @@ export class FakePlayer extends FakeThing implements PlayerThing {
   resets = 0;
   pickups = 0;
   lastAttackerIndex: number | undefined = undefined;
+  lastAttackerClass: ThingClass | undefined = undefined;
 
   constructor(
     world: WorldContext,

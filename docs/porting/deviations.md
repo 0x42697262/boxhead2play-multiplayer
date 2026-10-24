@@ -65,6 +65,8 @@
 | Zombie attack cells | The attack starts when the cell ahead or, on a diagonal, either side cell holds a player, but only the cell ahead is hit | On a diagonal the side cells that hold a player are hit too (`MapCell.cellsToward`) | A player near a cell corner was never hurt by a zombie next to it. |
 | Fireball hits | The fireball explodes on touching a thing but only affects the cells within its 0.25 radius | It also affects the things it touched (`MapCollide.lastTouched`) | A player just across a cell border took no damage. |
 | Option info lines | Collisions, Devils and Friendly Fire end with "Forfeits hiscore!" | The original static text is clipped before "Forfeits hiscore!" (`clipBefore`, glyph positions from the catalog) | There is no high score server. |
+| Kill messages | No message when a player dies | A red HUD message names the killer (player name, zombie or devil) and the victim | Owner request. |
+| Explosion kills | `mLastAttacker` is the affect owner, which is the shot for grenades, rockets and mines | The root of the owner's parent chain (the player who fired) | Deathmatch frags and kill messages credit the right player. |
 | Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
 | Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |

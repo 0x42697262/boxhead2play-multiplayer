@@ -1,5 +1,6 @@
 import { worldProjectionFactor, type AnimationCatalog } from '../animation/AnimationCatalog.ts';
-import { DomainEventType, EventQueue, type Point2, type Point3 } from '../events.ts';
+import { DomainEventType, EventQueue, MessageTone, type Point2, type Point3 } from '../events.ts';
+import { killMessage } from '../hud/killMessage.ts';
 import { HudState } from '../hud/HudState.ts';
 import { Angle } from '../math/Angle.ts';
 import type { Position } from '../math/Position.ts';
@@ -363,6 +364,8 @@ export class World implements WorldContext, UpgradesHost {
       .filter((player) => player !== thing)
       .map((player) => player.playerIndex);
     this.hud.recordDeath({ victim: thing.playerIndex, killer: thing.lastAttackerIndex, opponents });
+    const message = killMessage({ victim: thing.playerIndex, killer: thing.lastAttackerIndex, killerClass: thing.lastAttackerClass });
+    this.hud.addMessage(MessageTone.Critical, message.text, undefined, message.names);
   }
 
   private initThings(): void {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DomainEventType } from '../../../../src/domain/events.ts';
+import { DomainEventType, MessageTone } from '../../../../src/domain/events.ts';
+import { killMessage } from '../../../../src/domain/hud/killMessage.ts';
+import { ExplosionAffect } from '../../../../src/domain/things/affects/ExplosionAffect.ts';
+import { Zombie } from '../../../../src/domain/things/creatures/Zombie.ts';
+import { FireBall } from '../../../../src/domain/things/shots/FireBall.ts';
 import { CollideFlag } from '../../../../src/domain/map/CollideFlag.ts';
 import { BulletAffect } from '../../../../src/domain/things/affects/BulletAffect.ts';
 import { ZombieAttackAffect } from '../../../../src/domain/things/affects/ZombieAttackAffect.ts';
@@ -169,6 +173,40 @@ describe('Player death and respawn', () => {
     victim.affect(new BulletAffect(shooter, shooter, 1000, shooter.angle.clone()));
     for (let tick = 0; tick < 100 && victim.state !== CreatureState.Dead; tick++) world.update();
     expect(world.hud.frags.slice(0, 3)).toEqual([0, 0, 1]);
+  });
+});
+
+describe('Player kill messages', () => {
+  it('credits an explosion to the player who fired the shot and announces it in red with both names', () => {
+    const world = makeRealWorld(arena(), { options: { gameMode: GameMode.DeathMatch, playerCharacters: [0, 1, 2] } });
+    const victim = playerOf(world, 0);
+    const shooter = playerOf(world, 2);
+    run(world, 15);
+    victim.invincible = 0;
+    const shot = new FireBall(world, shooter.position.clone(), shooter.angle.clone(), shooter, 0, false);
+    victim.affect(new ExplosionAffect(shot, shot, 1000, 2));
+    for (let tick = 0; tick < 100 && victim.state !== CreatureState.Dead; tick++) world.update();
+    expect(world.hud.frags.slice(0, 3)).toEqual([0, 0, 1]);
+    expect(world.hud.messages.find((message) => message.tone === MessageTone.Critical)).toMatchObject({ text: { key: 'hud.kill.player' }, names: { killer: 2, victim: 0 } });
+  });
+
+  it('names the kind of enemy that killed a player', () => {
+    const world = makeRealWorld(arena(), { options: { gameMode: GameMode.Coop, playerCharacters: [0, 1] } });
+    const victim = playerOf(world, 1);
+    run(world, 15);
+    victim.invincible = 0;
+    victim.life = 1;
+    const zombie = new Zombie(world, victim.position.clone());
+    victim.affect(new ZombieAttackAffect(zombie, 50));
+    for (let tick = 0; tick < 100 && victim.state !== CreatureState.Dead; tick++) world.update();
+    expect(world.hud.messages.find((message) => message.tone === MessageTone.Critical)).toMatchObject({ text: { key: 'hud.kill.zombie' }, names: { victim: 1 } });
+  });
+
+  it('picks the message for player, self, zombie, devil and other kills', () => {
+    expect(killMessage({ victim: 0, killer: 1, killerClass: ThingClass.Player }).text.key).toBe('hud.kill.player');
+    expect(killMessage({ victim: 0, killer: 0, killerClass: ThingClass.Player }).text.key).toBe('hud.kill.self');
+    expect(killMessage({ victim: 0, killer: undefined, killerClass: ThingClass.Devil }).text.key).toBe('hud.kill.devil');
+    expect(killMessage({ victim: 0, killer: undefined, killerClass: ThingClass.Barrel }).text.key).toBe('hud.kill.other');
   });
 });
 

@@ -98,7 +98,7 @@ export function messageAlpha(ageMs: number): number {
 }
 
 export function messageKey(entry: HudMessageEntry): string {
-  return JSON.stringify([entry.tick, entry.tone, entry.text.key, entry.text.params ?? null, entry.playerIndex ?? null]);
+  return JSON.stringify([entry.tick, entry.tone, entry.text.key, entry.text.params ?? null, entry.playerIndex ?? null, entry.names ?? null]);
 }
 
 function messageKeys(entries: readonly HudMessageEntry[]): { readonly key: string; readonly entry: HudMessageEntry }[] {

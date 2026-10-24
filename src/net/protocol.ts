@@ -181,6 +181,7 @@ const HudMessageSchema = z.object({
   text: TextRefSchema,
   tick: z.number(),
   playerIndex: z.number().int().optional(),
+  names: z.record(z.string(), z.number().int()).optional(),
 });
 
 const PlayerStatusSchema = z.object({

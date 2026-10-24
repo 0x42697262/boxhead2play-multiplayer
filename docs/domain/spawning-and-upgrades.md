@@ -117,6 +117,13 @@ created only if its cell is not static impassable. It disappears after 10 s
 | Single, Coop | a dead player's last second calls `playerDead()` and the player count is `<= 0` | `playerDead` |
 | DeathMatch | a player's frags reach `KILLS_TO_WIN[gameAmount]` (5/10/20/50) | `playerWon`, `world.winnerIndex` |
 
+Kill messages: every player death adds a red (`Critical`) HUD message for all players
+(`killMessage`): "<KILLER> killed <VICTIM>!", "<VICTIM> killed themselves!", "<VICTIM> was
+killed by a zombie!" / "a devil!", or "<VICTIM> died!". The message carries `names` (param ->
+player index); the client fills in the online names. The attacker is the root of the
+affect owner's `parent` chain (`rootOwner`), so grenades, rockets, mines and barrels count
+for the player who fired or placed them.
+
 Frags (`HudState.recordDeath`): a player death credits the victim's `lastAttackerIndex`
 when it is another player. Otherwise (suicide by barrel, own grenade, an unknown killer)
 it credits every opponent, which for two players is the original rule (a death counts as

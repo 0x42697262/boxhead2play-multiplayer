@@ -7,6 +7,7 @@ export interface HudMessageEntry {
   readonly text: TextRef;
   readonly tick: number;
   readonly playerIndex?: number;
+  readonly names?: Readonly<Record<string, number>>;
 }
 
 export interface HudClock {
@@ -62,9 +63,9 @@ export class HudState {
     for (const index of credited) this.kills[index] = this.fragsOf(index) + 1;
   }
 
-  addMessage(tone: MessageTone, text: TextRef, playerIndex?: number): void {
+  addMessage(tone: MessageTone, text: TextRef, playerIndex?: number, names?: Readonly<Record<string, number>>): void {
     if (this.silentMessages) return;
-    const base = { tone, text, tick: this.clock.tick };
+    const base = { tone, text, tick: this.clock.tick, ...(names ? { names } : {}) };
     this.recent.push(playerIndex === undefined ? base : { ...base, playerIndex });
     this.events.emit(
       playerIndex === undefined

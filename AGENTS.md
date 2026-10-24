@@ -130,6 +130,9 @@ Add one line per behavior change: what to do, and the result you expect.
   a player without a name is shown as "Player".
 * SETTINGS -> Screen shake OFF, shoot a barrel -> the view does not shake; Blood OFF -> zombies
   hit by bullets leave no blood, existing blood disappears; ON brings it back.
+* Online coop, let a zombie kill a player -> red "<NAME> was killed by a zombie!" at the bottom
+  for everyone; deathmatch grenade kill -> red "<KILLER> killed <VICTIM>!" and the frag goes to
+  the thrower.
 * In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
   SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
   screen (online: the lobby room).

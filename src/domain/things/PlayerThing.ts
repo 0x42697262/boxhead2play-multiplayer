@@ -13,6 +13,7 @@ export interface PlayerHudStatus {
 export interface PlayerCapabilities {
   readonly playerIndex: number;
   readonly lastAttackerIndex: number | undefined;
+  readonly lastAttackerClass: ThingClass | undefined;
   life: number;
   maxLife: number;
   newWeapon(name: WeaponName): void;

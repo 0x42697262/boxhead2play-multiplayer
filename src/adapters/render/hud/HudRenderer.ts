@@ -66,6 +66,10 @@ export function playerDisplayName(hud: HudFrame, playerIndex: number): string {
   return name ? name : t('hud.playerName');
 }
 
+export function namedParams(hud: HudFrame, names: Readonly<Record<string, number>> | undefined): Record<string, string> {
+  return Object.fromEntries(Object.entries(names ?? {}).map(([param, playerIndex]) => [param, playerDisplayName(hud, playerIndex)]));
+}
+
 function pointInRect(point: Point2, rect: Rect): boolean {
   return point.x >= rect.xMin && point.x <= rect.xMax && point.y >= rect.yMin && point.y <= rect.yMax;
 }
@@ -117,7 +121,7 @@ export class HudRenderer {
     }
     this.messages.sync(hud.messages);
     for (const draw of this.messages.step(tick, ticksPerSecond)) {
-      const text = t(draw.entry.text.key, draw.entry.text.params ?? {});
+      const text = t(draw.entry.text.key, { ...draw.entry.text.params, ...namedParams(hud, draw.entry.names) });
       const color = MESSAGE_COLORS[draw.entry.tone];
       const bitmap = this.clip(HudSymbol.Message, { [HudChild.MessageText]: { text, textColor: color } }, `message|${color}|${text}`, HUD_BUFFER_INFLATE_PX);
       if (bitmap) blit(ctx, bitmap, { x: draw.x, y: draw.y }, 1, draw.alpha, this.currentResolution);

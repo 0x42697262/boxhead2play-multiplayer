@@ -119,3 +119,9 @@ export abstract class Thing {
     this.world.map.mapwho.deleteThing(this);
   }
 }
+
+export function rootOwner(thing: Thing | undefined): Thing | undefined {
+  let current = thing;
+  while (current?.parent) current = current.parent;
+  return current;
+}
