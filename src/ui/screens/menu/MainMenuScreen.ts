@@ -5,7 +5,7 @@ import type { SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibra
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import { GameMode } from '../../../domain/world/GameMode.ts';
-import type { Cursor, FlowControls, PointerInput, Screen } from '../../../services/ScreenFlow.ts';
+import { TextEntryKind, type Cursor, type FlowControls, type PointerInput, type Screen, type TextEntry } from '../../../services/ScreenFlow.ts';
 import type { SettingsService } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
 import { normalizeLobbyCode } from '../../../net/lobbyCode.ts';
@@ -166,6 +166,12 @@ export class MainMenuScreen implements Screen {
     if (action === undefined) return;
     this.perform(action);
     this.core.refresh(this.scene(), this.targets());
+  }
+
+  get textEntry(): TextEntry | undefined {
+    if (this.nameDraft !== undefined) return { kind: TextEntryKind.Name, draft: this.nameDraft, maxLength: PLAYER_NAME_MAX_LENGTH };
+    if (this.codeDraft !== undefined) return { kind: TextEntryKind.Code, draft: this.codeDraft, maxLength: LOBBY_CODE_LENGTH };
+    return undefined;
   }
 
   key(code: string, typed?: string): boolean {

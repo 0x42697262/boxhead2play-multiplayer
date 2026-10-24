@@ -39,8 +39,8 @@ function typingInForm(event: KeyboardEvent): boolean {
 export function attachListeners(targets: ListenerTargets, handlers: ListenerHandlers): void {
   const { window, document, canvas } = targets;
   window.addEventListener('keydown', (event) => {
-    handlers.onGesture(false);
     if (typingInForm(event)) return;
+    handlers.onGesture(false);
     if (handlers.isGameKey(event.code)) event.preventDefault();
     if (!event.repeat && handlers.flow.key(event.code, typedCharacter(event))) event.preventDefault();
     handlers.keyboard.keyDown(event.code);
@@ -56,6 +56,8 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
   window.addEventListener('pointerup', (event) => handlers.onGesture(event.pointerType !== MOUSE));
   document.addEventListener(IOS_PINCH_EVENT, (event) => event.preventDefault());
   window.addEventListener('resize', handlers.onResize);
+  window.visualViewport?.addEventListener('resize', handlers.onResize);
+  window.visualViewport?.addEventListener('scroll', handlers.onResize);
   const pointer = (phase: PointerPhase) => (event: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
     handlers.flow.pointer({
@@ -67,6 +69,7 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
     });
   };
   canvas.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
     pointer(PointerPhase.Down)(event);
   });

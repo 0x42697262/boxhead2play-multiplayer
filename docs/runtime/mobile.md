@@ -74,3 +74,30 @@ more` darkens the fills.
 Each screen reports its `touchLayout` (`ScreenFlow.Screen`): `GameScreen` and
 `OnlineGameScreen` return `play`, or `menu` while the Esc menu is open; every menu screen
 has none and the layer hides. `main.ts` syncs it once per animation frame.
+
+## On-screen keyboard (`src/ui/mobile/SoftKeyboard.ts`)
+
+NAME and JOIN BY CODE are drawn on the canvas, and a canvas cannot open a phone keyboard.
+A screen that edits text reports `textEntry` (`ScreenFlow.TextEntry`: kind, draft, max
+length); only `MainMenuScreen` does. After a touch `pointerup`, `main.ts` calls
+`SoftKeyboard.open()`, which focuses a hidden `<input>` (16 px font so iOS does not zoom,
+`enterkeyhint="done"`, autocorrect and spellcheck off, capitals for codes, words for names).
+iOS opens the keyboard only for a focus inside a user gesture, so it must happen in that
+`pointerup`; the window listener runs after the canvas listener, so the screen already has
+its draft.
+
+The input is not the source of truth. On every `input` event, `textEdit(previous, value)`
+turns the change into backspaces and typed characters for `ScreenFlow.key`, the same path a
+physical key takes. Then the input is reset to the screen's draft, so names keep their
+length limit and codes their alphabet and uppercase. During an IME composition the input is
+left alone and the next diff corrects it. Characters outside the BMP (emoji) are dropped, as
+with a physical keyboard. Done or Enter confirms, Escape cancels, and closing the keyboard
+(blur) confirms. When the draft ends another way, the next animation frame blurs the input.
+
+The canvas `pointerdown` calls `preventDefault`. Without it, the compatibility `mousedown`
+after a tap moves focus to the page, blurs the input and confirms the entry at once.
+
+While the keyboard is open the stage fits the visible area: `fitShell` uses
+`visualViewport` and writes `--visible-top` / `--visible-height` for `#app`, and the
+viewport meta has `interactive-widget=resizes-content` for Android Chrome. So the label
+being edited stays visible above the keyboard.

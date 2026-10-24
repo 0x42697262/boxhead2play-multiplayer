@@ -46,11 +46,14 @@ import { OnlineGameScreen } from './ui/screens/online/OnlineGameScreen.ts';
 import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX, type Viewport } from './ui/shell/Shell.ts';
 import { attachHomeScreenHint, attachRotateHint, setHomeScreenTitle } from './ui/mobile/MobileChrome.ts';
 import { TouchControls } from './ui/touch/TouchControls.ts';
+import { SoftKeyboard } from './ui/mobile/SoftKeyboard.ts';
 import { GameMenuKey } from './ui/screens/gameMenu/tuning.ts';
 import { enterLandscapeFullscreen, isHomeScreenCandidate } from './adapters/display/fullscreen.ts';
 
 const APP_ELEMENT_ID = 'app';
 const COARSE_POINTER_QUERY = '(pointer: coarse)';
+const VISIBLE_TOP_PROPERTY = '--visible-top';
+const VISIBLE_HEIGHT_PROPERTY = '--visible-height';
 const PERCENT = 100;
 const SEED_WORDS = 1;
 
@@ -163,8 +166,10 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     { document, keyboard, toggleMenu: () => flow.key(GameMenuKey.Toggle), vibrate: (durationMs) => navigator.vibrate?.(durationMs) },
     window.matchMedia(COARSE_POINTER_QUERY).matches,
   );
+  const softKeyboard = new SoftKeyboard({ document, entry: () => flow.screen?.textEntry, key: (code, typed) => flow.key(code, typed) });
   const syncTouch = (): void => {
     touch.show(flow.screen?.touchLayout ?? TouchLayout.Hidden);
+    softKeyboard.sync();
     window.requestAnimationFrame(syncTouch);
   };
   syncTouch();
@@ -177,6 +182,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
       isGameKey: (code) => keys.has(code),
       onGesture: (touchInput) => {
         touch.setTouchInput(touchInput);
+        if (touchInput) softKeyboard.open();
         if (webAudio && !webAudio.unlocked) void webAudio.unlock().then(() => logger.info(LogEvent.AudioUnlocked));
         if (touchInput) void enterLandscapeFullscreen(document, window.screen.orientation).then((entered) => entered && logger.info(LogEvent.FullscreenEntered));
       },
@@ -185,7 +191,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         if (!visible) void webAudio?.suspend();
         else void webAudio?.unlock();
       },
-      onResize: () => shell.fit(browserViewport(window)),
+      onResize: () => fitShell(shell),
     },
   );
   flow.start();
@@ -205,14 +211,23 @@ function bootFailureText(error: unknown): string {
 }
 
 function browserViewport(view: Window): Viewport {
-  return { width: view.innerWidth, height: view.innerHeight, devicePixelRatio: view.devicePixelRatio };
+  const visible = view.visualViewport;
+  return { width: visible?.width ?? view.innerWidth, height: visible?.height ?? view.innerHeight, devicePixelRatio: view.devicePixelRatio };
+}
+
+function fitShell(shell: Shell): void {
+  const viewport = browserViewport(window);
+  const root = document.documentElement.style;
+  root.setProperty(VISIBLE_TOP_PROPERTY, `${window.visualViewport?.offsetTop ?? 0}px`);
+  root.setProperty(VISIBLE_HEIGHT_PROPERTY, `${viewport.height}px`);
+  shell.fit(viewport);
 }
 
 function main(): void {
   const host = document.getElementById(APP_ELEMENT_ID);
   if (!host) return;
   const shell = Shell.create(document, host);
-  shell.fit(browserViewport(window));
+  fitShell(shell);
   setHomeScreenTitle(document);
   attachRotateHint(document);
   if (isHomeScreenCandidate(navigator, document.fullscreenEnabled)) attachHomeScreenHint(document, (run, delayMs) => window.setTimeout(run, delayMs));

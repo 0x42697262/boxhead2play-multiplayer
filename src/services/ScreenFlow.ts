@@ -18,6 +18,19 @@ export const TouchLayout = {
 
 export type TouchLayout = (typeof TouchLayout)[keyof typeof TouchLayout];
 
+export const TextEntryKind = {
+  Name: 'name',
+  Code: 'code',
+} as const;
+
+export type TextEntryKind = (typeof TextEntryKind)[keyof typeof TextEntryKind];
+
+export interface TextEntry {
+  readonly kind: TextEntryKind;
+  readonly draft: string;
+  readonly maxLength: number;
+}
+
 export const PointerPhase = {
   Down: 'down',
   Up: 'up',
@@ -44,6 +57,7 @@ export interface Screen {
   readonly ticksPerSecond: number;
   readonly cursor: Cursor;
   readonly touchLayout?: TouchLayout;
+  readonly textEntry?: TextEntry | undefined;
   tick(): void;
   present(): void;
   idle(hasTime: () => boolean): void;

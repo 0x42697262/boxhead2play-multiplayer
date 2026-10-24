@@ -131,6 +131,9 @@ Add one line per behavior change: what to do, and the result you expect.
   hold Fire while steering -> both work; > -> next weapon; list -> upgrades (scoreboard in
   deathmatch); pause -> the Esc menu, only a close button stays; menus show no controls. Use a
   mouse or key -> the controls hide.
+* Phone, main menu, tap NAME -> the keyboard opens and the game shrinks above it; type, tap
+  Done -> the name is saved. Tap JOIN BY CODE, type `ab-c` -> `CODE: ABC`. With a mouse, NAME
+  still edits with the physical keyboard and no input gets focus.
 * Tab 1 hosts and starts coop, tab 2 opens the link and joins the running match -> tab 1 shows a
   yellow "Player #2 joined the game!" where the red kill messages appear.
 * `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET

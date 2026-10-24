@@ -122,3 +122,16 @@
     transition: opacity 0.2s ease;
   }
 }
+
+.soft-keyboard-input {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  pointer-events: none;
+}

@@ -8,6 +8,8 @@
   "touch.fire": "Fire",
   "touch.prevWeapon": "Previous weapon",
   "touch.nextWeapon": "Next weapon",
+  "mobile.keyboard.name": "Your name",
+  "mobile.keyboard.code": "Lobby code",
   "mobile.rotate": "Turn your device sideways to play.",
   "mobile.homeScreen.title": "Play in full screen",
   "mobile.homeScreen.body": "Tap Share, then Add to Home Screen.",
