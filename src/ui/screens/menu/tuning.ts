@@ -157,6 +157,9 @@ export const CONTROLS_TEXT_CENTER_X = 0;
 export const CONTROLS_TEXT_WIDTH_PX = 440;
 export const CONTROLS_ATTACHED_DEPTH = 130;
 
+export const HISCORE_NOTE = 'Forfeits hiscore!';
+export const OPTION_INFO_CLIP_MARGIN_PX = 4;
+
 export const ControlsWindowText = {
   Title: 'controlsTitle',
   Info: 'controlsInfo',

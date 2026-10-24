@@ -21,7 +21,8 @@ import { t } from '../../../text/i18n.ts';
 import { LogEvent } from '../../../text/logEvents.ts';
 import { roomIdForLevel, type RoomPanel } from '../online/lobbyModel.ts';
 import type { SelectWorldRoom } from '../online/LobbyRoom.ts';
-import { placedText, staticTextFrame, textOverride, type PlacedText, type StaticTextFrame } from '../online/stageText.ts';
+import { clipBefore, placedText, staticTextFrame, textOverride, type PlacedText, type StaticTextFrame } from '../online/stageText.ts';
+import type { Rect } from '../../../adapters/render/geometry/Rect.ts';
 import {
   MENU_TEXT_COLOR,
   ROOM_MEMBERS,
@@ -50,6 +51,8 @@ import {
   CONTROLS_TEXT_WIDTH_PX,
   CONTROLS_TITLE_DEPTH,
   ControlsWindowText,
+  HISCORE_NOTE,
+  OPTION_INFO_CLIP_MARGIN_PX,
   KEY_ROWS,
   KEY_TEXT_PREFIX,
   MENU_TICKS_PER_SECOND,
@@ -118,6 +121,7 @@ export interface SelectWorldLayout {
   readonly levelCenterX: number;
   readonly controlsTitle: StaticTextFrame | undefined;
   readonly controlsInfo: StaticTextFrame | undefined;
+  readonly optionInfoClips: readonly { readonly key: string; readonly clip: Rect }[];
 }
 
 const NEXT = 1;
@@ -169,6 +173,8 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
   const pressAKey = controls ? library.findChild(controls.item.characterId, Child.PressAKey) : undefined;
   const windowItem = items.find((item) => item.name === Child.WindowControls);
   const windowChildren = windowItem ? library.frameItems(windowItem.characterId, 0) : [];
+  const optionsItem = items.find((item) => item.name === Child.WindowOptions);
+  const optionsChildren = optionsItem ? library.frameItems(optionsItem.characterId, 0) : [];
   const windowText = (depth: number): StaticTextFrame | undefined => staticTextFrame(library, windowChildren.find((item) => item.depth === depth));
   return {
     items,
@@ -181,6 +187,11 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
     levelCenterX: selection?.matrix[4] ?? 0,
     controlsTitle: windowText(CONTROLS_TITLE_DEPTH),
     controlsInfo: windowText(CONTROLS_INFO_DEPTH),
+    optionInfoClips: optionsChildren.flatMap((item) => {
+      const text = library.staticText(item.characterId);
+      const clip = text ? clipBefore(text, HISCORE_NOTE, OPTION_INFO_CLIP_MARGIN_PX) : undefined;
+      return clip ? [{ key: depthKey(item.depth), clip }] : [];
+    }),
   };
 }
 
@@ -478,6 +489,7 @@ export class SelectWorldScreen implements Screen {
       }
     }
     this.windowButtons(tree, OPTIONS);
+    for (const { key, clip } of this.layout.optionInfoClips) tree.set([...OPTIONS, key], { clip });
   }
 
   private sceneControls(tree: OverrideTree): void {

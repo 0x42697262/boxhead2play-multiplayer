@@ -1,4 +1,4 @@
-import type { DisplayItem, EditText } from '../../../adapters/assets/schemas.ts';
+import type { DisplayItem, EditText, StaticText } from '../../../adapters/assets/schemas.ts';
 import type { Rect } from '../../../adapters/render/geometry/Rect.ts';
 import { TEXT_GUTTER_PX, textAnchorX } from '../../../adapters/render/symbols/editText.ts';
 import type { ChildOverride, SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
@@ -65,6 +65,13 @@ export function staticTextFrame(library: SymbolLibrary, item: DisplayItem | unde
   const bounds: Rect = character.graphic.bounds;
   const [scaleX, , , scaleY, tx, ty] = item.matrix;
   return { left: tx + bounds.xMin * scaleX, centerX: tx + ((bounds.xMin + bounds.xMax) / 2) * scaleX, top: ty + bounds.yMin * scaleY };
+}
+
+export function clipBefore(text: StaticText, cut: string, marginPx: number): Rect | undefined {
+  const glyph = text.glyphs?.[text.text.indexOf(cut)];
+  if (!text.text.includes(cut) || !glyph) return undefined;
+  const { bounds } = text;
+  return { xMin: bounds.xMin - marginPx, yMin: bounds.yMin - marginPx, xMax: glyph.x, yMax: bounds.yMax + marginPx };
 }
 
 export function clippedAt(placed: PlacedText, right: number): Rect {

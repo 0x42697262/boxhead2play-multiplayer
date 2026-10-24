@@ -165,6 +165,8 @@ Add one line per behavior change: what to do, and the result you expect.
   "Page 1 of 3", NEXT > and < PREV step through the pages, faded at the ends.
 * Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),
   kept after a reload; the game uses the chosen characters. Every level starts (no exclusive lock).
+* OPTIONS (single play and lobby room) -> the italic info lines under Object collision, Devils
+  and Friendly Fire end without "Forfeits hiscore!".
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET
   -> Beginner, Normal, on, on, on, first to 10. CONTROLS -> one centered panel titled
   CONTROLS with the key names (SHOOT/USE: SPACE), no player 2 panel; click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->

@@ -1,4 +1,4 @@
-import type { Button, DisplayItem, EditText, Filter, Graphic, Sprite, SymbolsCatalog } from '../../assets/schemas.ts';
+import type { Button, DisplayItem, EditText, Filter, Graphic, Sprite, StaticText, SymbolsCatalog } from '../../assets/schemas.ts';
 import { IDENTITY, multiply, type Matrix } from '../geometry/Matrix.ts';
 import { transformRect, union, type Rect } from '../geometry/Rect.ts';
 
@@ -84,6 +84,10 @@ export class SymbolLibrary {
 
   characterId(linkage: string): number | undefined {
     return this.catalog.exports[linkage];
+  }
+
+  staticText(characterId: number): StaticText | undefined {
+    return this.catalog.texts[String(characterId)];
   }
 
   character(characterId: number): Character | undefined {

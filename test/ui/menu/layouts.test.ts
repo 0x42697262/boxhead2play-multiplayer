@@ -32,6 +32,12 @@ describe('menu layouts from the real library', () => {
     expect(deathArea && hitAreaContains(deathArea, { x: 320, y: 259 })).toBe(false);
   });
 
+  it.skipIf(assetsMissing)('cuts "Forfeits hiscore!" off the three option info lines', () => {
+    const layout = selectWorldLayout(new SymbolLibrary(assetSymbols()), GameMode.Single);
+    expect(layout.optionInfoClips.map((entry) => entry.key)).toEqual(['#20', '#36', '#52']);
+    for (const { clip } of layout.optionInfoClips) expect(clip.xMax).toBeGreaterThan(200);
+  });
+
   it.skipIf(assetsMissing)('online menu reuses the main menu slots for HOST, JOIN and NAME plus the back tab and the controls window with 14 join rows', () => {
     const library = new SymbolLibrary(assetSymbols());
     const layout = onlineMenuLayout(library);
