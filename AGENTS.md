@@ -330,6 +330,9 @@ Add one line per behavior change: what to do, and the result you expect.
   to it and press TAB before any upgrade -> the full upgrade list shows (pistol rows faded).
 * `nix build` then `PORT=8391 ./result/bin/boxhead2play` -> `server.started` with 18 rooms;
   http://localhost:8391 shows the main menu. `nix flake check` -> all checks passed.
+* `nix build -L .#checks.x86_64-linux.nixos` (KVM) -> the VM test serves `/` and
+  `/assets/manifest.json` on port 81 bound to `::` and through Caddy, and `/__monitor` with the
+  token.
 * `npm run build`, `npm start`, open the page twice -> the second load requests only `/` and
   `/assets/manifest.json` and both answer `304`; every other asset comes from the browser
   cache. `curl -H 'accept-encoding: br' -D - http://localhost:8080/assets/characters/xsi.json?v=<16 hex from manifest>`

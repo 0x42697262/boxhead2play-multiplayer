@@ -52,6 +52,7 @@
 
       checks = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system: {
         package = self.packages.${system}.boxhead2play;
+        nixos = import ./nix/vmTest.nix self { pkgs = nixpkgs.legacyPackages.${system}; };
       });
 
       formatter = forAllSystems (pkgs: pkgs.nixfmt);

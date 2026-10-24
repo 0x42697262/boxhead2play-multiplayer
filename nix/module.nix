@@ -14,6 +14,15 @@ let
     mkMerge
     types
     ;
+  privilegedPortLimit = 1024;
+  bindsPrivilegedPort = cfg.port < privilegedPortLimit;
+  wildcardLoopback = {
+    "0.0.0.0" = "127.0.0.1";
+    "::" = "::1";
+  };
+  upstreamHost = wildcardLoopback.${cfg.host} or cfg.host;
+  upstreamAddress = if lib.hasInfix ":" upstreamHost then "[${upstreamHost}]" else upstreamHost;
+  portCapability = "CAP_NET_BIND_SERVICE";
 in
 {
   options.services.boxhead2play = {
@@ -130,6 +139,8 @@ in
           RestartSec = 2;
 
           DynamicUser = true;
+          AmbientCapabilities = mkIf bindsPrivilegedPort portCapability;
+          CapabilityBoundingSet = if bindsPrivilegedPort then portCapability else "";
           NoNewPrivileges = true;
           ProtectSystem = "strict";
           ProtectHome = true;
@@ -138,6 +149,13 @@ in
           ProtectKernelTunables = true;
           ProtectKernelModules = true;
           ProtectControlGroups = true;
+          ProtectClock = true;
+          ProtectHostname = true;
+          ProtectKernelLogs = true;
+          ProtectProc = "invisible";
+          RestrictRealtime = true;
+          RestrictSUIDSGID = true;
+          UMask = "0077";
           RestrictAddressFamilies = [
             "AF_INET"
             "AF_INET6"
@@ -162,7 +180,7 @@ in
       services.caddy.enable = true;
       services.caddy.virtualHosts.${cfg.caddy.domain}.extraConfig = ''
         encode zstd gzip
-        reverse_proxy ${cfg.host}:${toString cfg.port}
+        reverse_proxy ${upstreamAddress}:${toString cfg.port}
         ${cfg.caddy.extraConfig}
       '';
 

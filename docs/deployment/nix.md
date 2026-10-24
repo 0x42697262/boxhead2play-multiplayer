@@ -11,6 +11,7 @@ The repository is a Nix flake (`flake.nix`, `nix/`).
 | `nixosModules.default` | `services.boxhead2play`. |
 | `overlays.default` | Adds `pkgs.boxhead2play`. |
 | `checks.<linux>.package` | `nix flake check` builds the package. |
+| `checks.<linux>.nixos` | A NixOS VM test (`nix/vmTest.nix`, needs KVM): the service on port 81 bound to `::`, Caddy in front on `http://localhost:8000`; it curls `/`, `/assets/manifest.json` directly and through Caddy, and `/__monitor` with the token from `environmentFile`. |
 | `formatter` | `nix fmt` runs nixfmt. |
 
 ## How the package builds
@@ -75,8 +76,8 @@ Paste the printed hash into `nix/package.nix`.
 |---|---|---|
 | `enable` | `false` | Run the server as a systemd service. |
 | `package` | this flake's package | The package to run. |
-| `host` | `127.0.0.1` | Bind address (`HOST`). Loopback is meant for a reverse proxy; use `0.0.0.0` to expose it directly. |
-| `port` | `8080` | Port for the page, the assets and the WebSocket server at `/ws` (`PORT`). |
+| `host` | `127.0.0.1` | Bind address (`HOST`). Loopback is meant for a reverse proxy; use `0.0.0.0` to expose it directly. Caddy proxies a wildcard bind (`0.0.0.0`, `::`) through loopback (`127.0.0.1`, `[::1]`) and puts IPv6 addresses in brackets. |
+| `port` | `8080` | Port for the page, the assets and the WebSocket server at `/ws` (`PORT`). Below 1024 the service gets `CAP_NET_BIND_SERVICE` (ambient and bounding set) and no other capability. |
 | `logLevel` | `info` | `LOG_LEVEL`: `debug`, `info`, `warn` or `error`. |
 | `openFirewall` | `false` | Opens 80 and 443 with Caddy, otherwise `port`. |
 | `extraEnvironment` | `{}` | Extra environment variables. They end up in the world-readable Nix store, so no secrets. |
@@ -87,8 +88,13 @@ Paste the printed hash into `nix/package.nix`.
 
 The server keeps lobbies in memory and writes nothing, so the service runs as a
 `DynamicUser` in a systemd sandbox (`ProtectSystem=strict`,
-`ProtectHome`, `PrivateTmp`, a `@system-service` syscall filter, IPv4/IPv6 sockets only).
-`MemoryDenyWriteExecute` stays off because V8 compiles JIT code.
+`ProtectHome`, `PrivateTmp`, a `@system-service` syscall filter, IPv4/IPv6 sockets only,
+an empty capability bounding set, `ProtectClock`, `ProtectHostname`, `ProtectKernelLogs`,
+`ProtectProc=invisible`, `RestrictRealtime`, `RestrictSUIDSGID`, `UMask=0077`).
+`MemoryDenyWriteExecute` stays off because V8 compiles JIT code. `ProcSubset=pid` stays off
+because it hides `/proc/meminfo`: Node's `os.freemem()` then falls back to `sysinfo()` free
+RAM without the page cache, and the monitor's MEM row would show far less free memory than
+the host has.
 
 There are no abuse-limit options: this server has no environment variables for them yet. Add options here once `src/config/serverEnv.ts` reads them.
 
@@ -114,3 +120,10 @@ Caddy forwards `/__monitor` like every other path.
 * `nix develop` provides Node v24.21.0, OpenJDK 21.0.12 and an existing `FFDEC_JAR`.
 * `nix flake check` passes. A test `nixosSystem` with Caddy enabled evaluates to the
   expected `ExecStart`, environment, firewall ports 80/443 and Caddy site.
+
+## Verified (2026-10-24, Nix 2.34.7, nixpkgs nixos-unstable 02c087f)
+
+* `nix build -L .#checks.x86_64-linux.nixos` passes in about 2 minutes: the service binds port
+  81 on `::` with only `CAP_NET_BIND_SERVICE`, Caddy reaches it at `[::1]:81`, and the
+  monitor reports nonzero `systemTotal`, `systemFree` and three load averages under
+  `ProtectProc=invisible`.
