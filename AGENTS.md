@@ -200,6 +200,15 @@ Add one line per behavior change: what to do, and the result you expect.
   far side, no arms or feet showing through the body (like the SWF).
 * Fire the rocket launcher (key 8 after unlocking) -> one yellow-white glowing projectile, not
   three separate white dots.
+* `npm run dev`, play until blood covers the floor, drag the window edge for a few seconds ->
+  the page follows the drag at once; the canvas size (DevTools, `canvas.width`) changes once,
+  250 ms after you let go, and the blood is still on the floor. DevTools Performance shows no
+  long frames during the drag.
+* `npx vitest run test/adapters/render/worldRenderer.test.ts test/adapters/render/xsiFrameCache.test.ts
+  test/adapters/render/clipBuffers.test.ts test/adapters/render/hudRenderer.test.ts test/entry/debounce.test.ts`
+  -> a resolution change rebuilds the room planes at the new size and stamps all decals again
+  through one scratch surface (blood off: only scorch marks), character frames are queued for
+  prewarm again, clip and HUD buffers render at the new size, and a resize burst settles once.
 * `npm run dev` in a 1920 x 1080 window -> the canvas is 1440 x 1080 device pixels
   (`resolution` 2.25); menu text, character cards, barrels and characters have smooth edges,
   no 2-pixel steps; barrel outlines stay 1 stage pixel thick.

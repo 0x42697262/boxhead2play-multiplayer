@@ -3,7 +3,7 @@ import { prewarmCollections } from '../../src/adapters/render/xsi/collections.ts
 import { CharacterStyle } from '../../src/domain/visuals.ts';
 import { DEFAULT_GAME_OPTIONS } from '../../src/domain/world/SimulationSettings.ts';
 import { GraphicsQuality } from '../../src/services/graphicsQuality.ts';
-import { sharpResolution, stageFit } from '../../src/ui/shell/Shell.ts';
+import { layoutFit, sharpResolution, stageFit } from '../../src/ui/shell/Shell.ts';
 
 const viewport = (width: number, height: number, devicePixelRatio = 1) => ({ width, height, devicePixelRatio });
 
@@ -24,6 +24,13 @@ describe('stage fit per graphics quality', () => {
     expect(stageFit(viewport(1920, 1080), GraphicsQuality.Pixelated)).toEqual({ cssScale: 2, resolution: 1, pixelated: true });
     expect(stageFit(viewport(700, 500), GraphicsQuality.Pixelated)).toEqual({ cssScale: 1, resolution: 1, pixelated: true });
     expect(stageFit(viewport(320, 480), GraphicsQuality.Pixelated)).toEqual({ cssScale: 0.5, resolution: 1, pixelated: false });
+  });
+});
+
+describe('layout fit during a resize', () => {
+  it('follows the window size but keeps the current resolution until the resize settles', () => {
+    expect(layoutFit(viewport(1920, 1080), GraphicsQuality.Sharp, 1.5)).toEqual({ cssScale: 2.25, resolution: 1.5, pixelated: false });
+    expect(layoutFit(viewport(1920, 1080), GraphicsQuality.Pixelated, 1)).toEqual({ cssScale: 2, resolution: 1, pixelated: true });
   });
 });
 

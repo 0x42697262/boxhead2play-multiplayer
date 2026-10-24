@@ -9,7 +9,7 @@ import { cssColor, resetContext, type Context2D, type Surface } from '../surface
 import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
 import { CHANNEL_MAX } from '../tuning.ts';
 import { floorSourceOrigin, roundedScreenPoint } from './projection.ts';
-import { buildRoomPlanes, stampDecal, type RoomPlanes } from './RoomPlanes.ts';
+import { buildRoomPlanes, DecalStamper, type RoomPlanes } from './RoomPlanes.ts';
 import type { VisualPainter } from './VisualPainter.ts';
 import type { CameraFrame, PlayerHudFrame, WorldFrame } from './WorldFrame.ts';
 
@@ -62,6 +62,7 @@ export class WorldRenderer {
   private readonly decals: DecalRequested[] = [];
   private lastDrawOrigin: CameraFrame['view']['drawOrigin'] | undefined = undefined;
   private bloodShown: boolean;
+  private readonly stamper: DecalStamper;
 
   constructor(
     private readonly room: Room,
@@ -73,6 +74,7 @@ export class WorldRenderer {
   ) {
     this.currentResolution = options.resolution();
     this.bloodShown = this.effects.blood;
+    this.stamper = new DecalStamper(renderer);
     this.applyResolution();
     this.planes = buildRoomPlanes(room, renderer, this.currentResolution);
     this.screenSurface = this.screenSized();
@@ -93,7 +95,7 @@ export class WorldRenderer {
 
   stampDecal(decal: DecalRequested): void {
     this.decals.push(decal);
-    if (decalShown(decal, this.effects)) stampDecal(this.planes, this.clips, this.renderer, decal);
+    if (decalShown(decal, this.effects)) this.stamper.stamp(this.planes, this.clips, decal);
   }
 
   awardScore(event: ScoreAwarded): void {
@@ -144,7 +146,7 @@ export class WorldRenderer {
   private rebuildPlanes(): void {
     this.planes = buildRoomPlanes(this.room, this.renderer, this.currentResolution);
     const effects = this.effects;
-    for (const decal of this.decals) if (decalShown(decal, effects)) stampDecal(this.planes, this.clips, this.renderer, decal);
+    for (const decal of this.decals) if (decalShown(decal, effects)) this.stamper.stamp(this.planes, this.clips, decal);
   }
 
   private applyResolution(): void {

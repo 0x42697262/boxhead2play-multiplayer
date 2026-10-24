@@ -42,7 +42,9 @@ resolution, as Flash scales filters when the stage is zoomed.
 
 A resolution change (window resize, moving to another screen, a new quality) clears the
 bitmap caches. `WorldRenderer` rebuilds its room planes and stamps the decals of the game
-again, so blood stays on the floor.
+again, so blood stays on the floor. `XsiFrameCache` queues the character frames it had
+rendered for idle prewarm again. A window resize takes effect for the resolution only once
+the resize events stop for `RESIZE_SETTLE_DELAY_MS`; the CSS size follows at once.
 
 ## Consequences
 

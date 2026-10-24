@@ -25,6 +25,7 @@ import { loadSettings, readBrowserEnv } from './config/env.ts';
 import { SeededRng } from './domain/math/Rng.ts';
 import { createThingFactory } from './domain/things/factory.ts';
 import { browserLoopClock, GameLoop } from './entry/GameLoop.ts';
+import { debounce } from './entry/debounce.ts';
 import { attachListeners } from './entry/listeners.ts';
 import type { GameStarted } from './net/protocol.ts';
 import { createLogger, type Logger } from './observability/logger.ts';
@@ -48,6 +49,7 @@ import { attachHomeScreenHint, attachRotateHint, setHomeScreenTitle } from './ui
 import { TouchControls } from './ui/touch/TouchControls.ts';
 import { SoftKeyboard } from './ui/mobile/SoftKeyboard.ts';
 import { GameMenuKey } from './ui/screens/gameMenu/tuning.ts';
+import { RESIZE_SETTLE_DELAY_MS } from './ui/shell/tuning.ts';
 import { enterLandscapeFullscreen, isHomeScreenCandidate } from './adapters/display/fullscreen.ts';
 
 const APP_ELEMENT_ID = 'app';
@@ -173,6 +175,10 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     window.requestAnimationFrame(syncTouch);
   };
   syncTouch();
+  const settleResolution = debounce(() => fitShell(shell), RESIZE_SETTLE_DELAY_MS, {
+    start: (run, delayMs) => window.setTimeout(run, delayMs),
+    cancel: (handle) => window.clearTimeout(handle),
+  });
   attachListeners(
     { window, document, canvas: shell.canvas, stageWidth: STAGE_WIDTH_PX, stageHeight: STAGE_HEIGHT_PX },
     {
@@ -191,7 +197,10 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         if (!visible) void webAudio?.suspend();
         else void webAudio?.unlock();
       },
-      onResize: () => fitShell(shell),
+      onResize: () => {
+        shell.layout(visibleViewport());
+        settleResolution();
+      },
     },
   );
   flow.start();
@@ -215,12 +224,16 @@ function browserViewport(view: Window): Viewport {
   return { width: visible?.width ?? view.innerWidth, height: visible?.height ?? view.innerHeight, devicePixelRatio: view.devicePixelRatio };
 }
 
-function fitShell(shell: Shell): void {
+function visibleViewport(): Viewport {
   const viewport = browserViewport(window);
   const root = document.documentElement.style;
   root.setProperty(VISIBLE_TOP_PROPERTY, `${window.visualViewport?.offsetTop ?? 0}px`);
   root.setProperty(VISIBLE_HEIGHT_PROPERTY, `${viewport.height}px`);
-  shell.fit(viewport);
+  return viewport;
+}
+
+function fitShell(shell: Shell): void {
+  shell.fit(visibleViewport());
 }
 
 function main(): void {

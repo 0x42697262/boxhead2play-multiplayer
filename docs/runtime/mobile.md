@@ -97,7 +97,9 @@ with a physical keyboard. Done or Enter confirms, Escape cancels, and closing th
 The canvas `pointerdown` calls `preventDefault`. Without it, the compatibility `mousedown`
 after a tap moves focus to the page, blurs the input and confirms the entry at once.
 
-While the keyboard is open the stage fits the visible area: `fitShell` uses
-`visualViewport` and writes `--visible-top` / `--visible-height` for `#app`, and the
+While the keyboard is open the stage fits the visible area: `visibleViewport` (in
+`src/main.ts`) uses `visualViewport` and writes `--visible-top` / `--visible-height` for
+`#app`, `Shell.layout` resizes the stage at once (the resolution follows when the resize
+settles, see `docs/runtime/rendering.md`), and the
 viewport meta has `interactive-widget=resizes-content` for Android Chrome. So the label
 being edited stays visible above the keyboard.

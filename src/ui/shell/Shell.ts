@@ -44,6 +44,10 @@ export function stageFit(viewport: Viewport, quality: GraphicsQuality): StageFit
   }
 }
 
+export function layoutFit(viewport: Viewport, quality: GraphicsQuality, resolution: number): StageFit {
+  return { ...stageFit(viewport, quality), resolution };
+}
+
 export class Shell {
   private quality: GraphicsQuality = DEFAULT_GRAPHICS_QUALITY;
   private viewport: Viewport = { width: STAGE_WIDTH_PX, height: STAGE_HEIGHT_PX, devicePixelRatio: UNIT_RESOLUTION };
@@ -86,6 +90,12 @@ export class Shell {
     this.refit();
   }
 
+  layout(viewport: Viewport): void {
+    this.viewport = viewport;
+    this.fitted = layoutFit(viewport, this.quality, this.fitted.resolution);
+    this.apply();
+  }
+
   setGraphicsQuality(quality: GraphicsQuality): void {
     if (quality === this.quality) return;
     this.quality = quality;
@@ -94,6 +104,10 @@ export class Shell {
 
   private refit(): void {
     this.fitted = stageFit(this.viewport, this.quality);
+    this.apply();
+  }
+
+  private apply(): void {
     const { cssScale, resolution, pixelated } = this.fitted;
     this.root.style.width = `${STAGE_WIDTH_PX * cssScale}px`;
     this.root.style.height = `${STAGE_HEIGHT_PX * cssScale}px`;

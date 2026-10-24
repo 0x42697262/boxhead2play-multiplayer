@@ -35,15 +35,22 @@ export function collectionFrames(xsi: XsiCatalog, collection: StyleCollection): 
   return keys;
 }
 
+export type FrameRasterizer = Pick<XsiRasterizer, 'resolution' | 'setResolution' | 'rasterize'>;
+
+interface CachedFrame {
+  readonly key: XsiFrameKey;
+  readonly bitmap: BufferedBitmap | null;
+}
+
 export class XsiFrameCache {
-  private readonly frames = new Map<string, BufferedBitmap | null>();
+  private readonly frames = new Map<string, CachedFrame>();
   private readonly sheets = new Map<string, StyleSheet>();
   private readonly index: SetIndex;
   private queue: XsiFrameKey[] = [];
 
   constructor(
     private readonly xsi: XsiCatalog,
-    private readonly rasterizer: XsiRasterizer,
+    private readonly rasterizer: FrameRasterizer,
   ) {
     this.index = indexSets(xsi);
   }
@@ -59,16 +66,18 @@ export class XsiFrameCache {
   setResolution(resolution: number): void {
     if (resolution === this.rasterizer.resolution) return;
     this.rasterizer.setResolution(resolution);
+    const rendered = [...this.frames.values()].map((cached) => cached.key);
     this.frames.clear();
+    this.queue.push(...rendered);
   }
 
   frame(key: XsiFrameKey): BufferedBitmap | undefined {
     const id = frameKey(key);
     const hit = this.frames.get(id);
-    if (hit !== undefined) return hit ?? undefined;
+    if (hit !== undefined) return hit.bitmap ?? undefined;
     const drawing = buildXsiDrawing(this.xsi, this.index, this.sheet(key.style, key.styleScale), key.animation, key.direction, key.sourceFrame);
     const bitmap = drawing ? this.rasterizer.rasterize(drawing) : null;
-    this.frames.set(id, bitmap);
+    this.frames.set(id, { key, bitmap });
     return bitmap ?? undefined;
   }
 

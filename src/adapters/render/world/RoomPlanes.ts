@@ -49,14 +49,33 @@ export function buildRoomPlanes(room: Room, renderer: SymbolRenderer, resolution
   return { floor, decalMask, cover };
 }
 
-export function stampDecal(planes: RoomPlanes, clips: ClipBuffers, renderer: SymbolRenderer, decal: DecalRequested): void {
-  const bitmap = clips.directionalFrame(decal.symbol, decal.rotationCount, decal.rotationIndex, decal.frame, { x: decal.scaleX, y: decal.scaleY });
-  if (!bitmap) return;
-  const x = pixelSnap(decal.xPx * clips.resolution + bitmap.dispX);
-  const y = pixelSnap(decal.yPx * clips.resolution + bitmap.dispY);
-  const stamp = renderer.createSurface(bitmap.surface.width, bitmap.surface.height);
-  stamp.ctx.drawImage(bitmap.surface.canvas, 0, 0);
-  stamp.ctx.globalCompositeOperation = 'destination-in';
-  stamp.ctx.drawImage(planes.decalMask.canvas, -x, -y);
-  planes.floor.ctx.drawImage(stamp.canvas, x, y);
+export class DecalStamper {
+  private scratch: Surface | undefined = undefined;
+
+  constructor(private readonly renderer: SymbolRenderer) {}
+
+  stamp(planes: RoomPlanes, clips: ClipBuffers, decal: DecalRequested): void {
+    const bitmap = clips.directionalFrame(decal.symbol, decal.rotationCount, decal.rotationIndex, decal.frame, { x: decal.scaleX, y: decal.scaleY });
+    if (!bitmap) return;
+    const x = pixelSnap(decal.xPx * clips.resolution + bitmap.dispX);
+    const y = pixelSnap(decal.yPx * clips.resolution + bitmap.dispY);
+    const { width, height } = bitmap.surface;
+    const stamp = this.scratchFor(width, height);
+    const ctx = stamp.ctx;
+    resetContext(ctx);
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(bitmap.surface.canvas, 0, 0);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(planes.decalMask.canvas, -x, -y);
+    resetContext(ctx);
+    planes.floor.ctx.drawImage(stamp.canvas, 0, 0, width, height, x, y, width, height);
+  }
+
+  private scratchFor(width: number, height: number): Surface {
+    const current = this.scratch;
+    if (current && current.width >= width && current.height >= height) return current;
+    const grown = this.renderer.createSurface(Math.max(width, current?.width ?? 0), Math.max(height, current?.height ?? 0));
+    this.scratch = grown;
+    return grown;
+  }
 }

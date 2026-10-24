@@ -35,6 +35,12 @@ qualities, and `fit x devicePixelRatio` (quarter steps, 1..3) for `sharp`.
 | `WorldRenderer` | Screen size, floor source origin; rebuilds planes and replays decals on change |
 | `SymbolRenderer` | `DrawOptions.resolution` scales filter blur and distance |
 
+A window resize (or the soft keyboard) applies the new CSS size at once
+(`Shell.layout`) and the new resolution only when no resize event came for
+`RESIZE_SETTLE_DELAY_MS` (`src/ui/shell/tuning.ts`, `Shell.fit`), so dragging a window
+edge rebuilds the bitmap caches and room planes once, not on every event. Until then the
+canvas keeps its size and the browser scales it.
+
 Positions stay in stage pixels. `blit` multiplies them by the resolution and adds the
 bitmap's displacement, which is already in device pixels. Pointer coordinates are mapped to
 stage pixels from the canvas' CSS box, so hit testing does not change.
@@ -135,6 +141,8 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
 * `XsiFrameCache` renders lazily per `(style, scale, set, direction, sourceFrame)`.
   `prewarm` drains a queue in idle time; a game queues both player styles, the devil and
   the zombie in the order `ProcessBGTasks` did (the stack was popped, so zombies first).
+  A resolution change drops the rendered frames and queues them again, so they render at
+  the new resolution in idle time instead of on first sight.
 
 ## World (`world/`)
 
@@ -142,9 +150,11 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
   room background items, then each piece at its translation), the cover plane (each
   `_Cover` at its position) and the decal mask (opaque everywhere except where pieces
   are, the result of `InvertAlpha`). Bitmap sizes truncate the room size.
-* `stampDecal` ports `QRender_Mask`: the directional buffer frame at
+* `DecalStamper` ports `QRender_Mask`: the directional buffer frame at
   `floor(xPx + mDisp)`, masked by the decal mask at the same position, drawn into the
-  floor.
+  floor. The masking happens in one scratch surface per renderer that only grows (cleared
+  before each stamp), so stamping hundreds of decals again after a resolution change or a
+  blood toggle allocates no canvases.
 * `WorldRenderer.render` ports `CWorld.Draw` for the local player's camera
   (`localCamera`: the frame's `localPlayerIndex`, 0 in single play):
   floor copy at `-round(-(rect + shake))`, things in `drawList` order, overlay lines and
