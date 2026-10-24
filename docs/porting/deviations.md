@@ -46,7 +46,7 @@
 | Intro and loading screens | `Screen_Intro` (logos), `Screen_LoadingWorld` | Boot opens the main menu; `GameScreen` starts the world directly | Not ported yet. |
 | Main menu buttons | SINGLE PLAY, COOPERATIVE, DEATH MATCH, INSTRUCTIONS | SINGLE PLAY (local), COOPERATIVE and DEATH MATCH (online lobby), SETTINGS (graphics quality, sound volume) in the INSTRUCTIONS slot | INSTRUCTIONS was an external link. See ADR 0005 and ADR 0006. |
 | Local two players | One keyboard, two key sets, two character cards, a shared coop camera, a 480 x 480 split screen in deathmatch with a switch-sides button | Removed. Coop and deathmatch are played online, one player per browser, each with a full 640 x 480 camera and the player 1 key set | Owner request. See ADR 0005 and `docs/runtime/online.md`. |
-| Player count | 1 or 2 players | 1 to 4 (`MAX_PLAYERS`), players can join and leave a running online world | Online lobbies. |
+| Player count | 1 or 2 players | 1 to 16 (`MAX_PLAYERS`), coop and death match, players can join and leave a running online world | Online lobbies. |
 | Coop leash | A coop player could not walk more than 19 x 13 cells from the live partner (`keepDistance`) | Removed | It kept both players on one shared screen. |
 | Coop camera | The average of both players (`(previous + p) / 2`) | Each player's camera follows that player | One screen per player. |
 | Weapon number keys and Space fire | Only with one player (`mTotalPlayerCount == 1`) | Always | Every player has a keyboard of their own. |

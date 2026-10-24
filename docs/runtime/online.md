@@ -159,7 +159,7 @@ and the match. A `welcome` with `resumed: false` ends a running online game.
 
 | Limit | Value | Where |
 |---|---|---|
-| Players per lobby and per match | 4 | `MAX_LOBBY_PLAYERS`, `MAX_PLAYERS` |
+| Players per lobby and per match | 16 | `MAX_LOBBY_PLAYERS`, `MAX_PLAYERS` |
 | Lobbies | 32 | `MAX_LOBBIES` |
 | Clients | 256 | `MAX_CLIENTS` |
 | Message size | 4096 bytes | `MAX_MESSAGE_BYTES` (also the socket `maxPayload`) |

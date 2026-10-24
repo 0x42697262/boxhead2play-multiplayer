@@ -1,3 +1,4 @@
+import { MAX_PLAYERS } from '../../src/domain/world/tuning.ts';
 import { describe, expect, it } from 'vitest';
 import type { SampleExtras } from '../../src/adapters/input/TickInputSampler.ts';
 import type { WorldFrame } from '../../src/adapters/render/world/WorldFrame.ts';
@@ -138,6 +139,6 @@ describe('GameSession', () => {
     const { record } = startSession(GameMode.Single);
     expect(record.frames[0]?.cameras.map((camera) => camera.view.playerIndex)).toEqual([0]);
     expect(record.frames[0]?.localPlayerIndex).toBe(0);
-    expect(record.frames[0]?.hud.frags).toHaveLength(4);
+    expect(record.frames[0]?.hud.frags).toHaveLength(MAX_PLAYERS);
   });
 });

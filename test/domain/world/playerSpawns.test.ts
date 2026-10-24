@@ -16,7 +16,7 @@ import { assetRoom } from '../support/rooms.ts';
 
 const ROOMS_DIR = resolve(import.meta.dirname, '../../../public/assets/rooms');
 const MOVES: readonly PlayerControl[] = [PlayerControl.Up, PlayerControl.Down, PlayerControl.Left, PlayerControl.Right];
-const PLAYERS = 4;
+const PLAYERS = 16;
 const TICKS = 600;
 const animations = assetAnimationCatalog();
 

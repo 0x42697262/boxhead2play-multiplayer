@@ -17,6 +17,16 @@ const ONLINE: OnlineState = { status: OnlineStatus.Online, clientId: 'c2', lobbi
 
 const SLOTS = 14;
 
+import { visibleMemberIndices } from '../../../src/ui/screens/online/lobbyModel.ts';
+
+describe('lobby member list', () => {
+  it('shows everyone up to the line limit, else the first players, your own line and a +N MORE line', () => {
+    expect(visibleMemberIndices(3, 2, 12)).toEqual({ shown: [0, 1, 2], hidden: 0 });
+    expect(visibleMemberIndices(16, 3, 12)).toEqual({ shown: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], hidden: 5 });
+    expect(visibleMemberIndices(16, 15, 12)).toEqual({ shown: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15], hidden: 5 });
+  });
+});
+
 describe('online menu and join list', () => {
   it('lists the games of the mode as "<NAME> n/max:" rows with JOIN, FULL or JOINING', () => {
     const state: OnlineState = {
@@ -68,7 +78,7 @@ describe('lobby room on the select-world screen', () => {
   it('shows the host the start prompt and the guest the waiting prompt, with the player list', () => {
     const host = roomPanel(lobby(), { ...ONLINE, clientId: 'c1' }, ROOMS, undefined);
     expect(host).toMatchObject({ host: true, levelIndex: 0, prompt: 'CLICK TO START GAME', canPlay: true });
-    expect(host.members).toEqual(['PLAYERS:', '1. ANN · BAMBO (you, host)', '2. BOB · SWAT']);
+    expect(host.members).toEqual(['PLAYERS: 2/4', '1. ANN · BAMBO (you, host)', '2. BOB · SWAT']);
     const guest = roomPanel(lobby(), ONLINE, ROOMS, undefined);
     expect(guest).toMatchObject({ host: false, prompt: 'WAITING FOR ANN TO START', canPlay: false });
     expect(guest.options).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on');

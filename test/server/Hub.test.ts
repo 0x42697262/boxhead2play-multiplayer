@@ -4,6 +4,7 @@ import { GameMode } from '../../src/domain/world/GameMode.ts';
 import { CompletionState } from '../../src/domain/world/CompletionState.ts';
 import { controlBit } from '../../src/net/controlMask.ts';
 import { ErrorReason, LeaveReason, LobbyState, PROTOCOL_VERSION } from '../../src/net/protocol.ts';
+import { MAX_LOBBY_PLAYERS } from '../../src/net/tuning.ts';
 import { RECONNECT_GRACE_MS } from '../../src/server/tuning.ts';
 import { FakeConnection, OPTIONS, ROOM_ID, testHub, type TestHub } from './support.ts';
 
@@ -65,7 +66,7 @@ describe('Hub lobbies', () => {
     expect(watcher.last('lobbies')?.lobbies).toEqual([]);
     const { lobbyId } = hostAndGuest(setup);
     expect(watcher.last('lobbies')?.lobbies).toEqual([
-      { id: lobbyId, name: "Ann's game", mode: GameMode.Coop, roomId: ROOM_ID, state: LobbyState.Waiting, players: 2, maxPlayers: 4 },
+      { id: lobbyId, name: "Ann's game", mode: GameMode.Coop, roomId: ROOM_ID, state: LobbyState.Waiting, players: 2, maxPlayers: MAX_LOBBY_PLAYERS },
     ]);
     const deathMatch = setup.connect('Other');
     deathMatch.say({ type: 'watchLobbies', mode: GameMode.DeathMatch });
@@ -85,13 +86,14 @@ describe('Hub lobbies', () => {
     expect(lobbyOf(guest).options.difficulty).toBe(2);
   });
 
-  it('refuses a fifth player', () => {
+  it('refuses a seventeenth player', () => {
     const setup = testHub();
     const { lobbyId } = hostAndGuest(setup);
-    for (const name of ['C', 'D']) setup.connect(name).say({ type: 'joinLobby', lobbyId, character: 0 });
-    const fifth = setup.connect('E');
-    fifth.say({ type: 'joinLobby', lobbyId, character: 0 });
-    expect(fifth.last('error')?.reason).toBe(ErrorReason.LobbyFull);
+    for (let index = 2; index < MAX_LOBBY_PLAYERS; index++) setup.connect(`P${index}`).say({ type: 'joinLobby', lobbyId, character: 0 });
+    const extra = setup.connect('Extra');
+    extra.say({ type: 'joinLobby', lobbyId, character: 0 });
+    expect(MAX_LOBBY_PLAYERS).toBe(16);
+    expect(extra.last('error')?.reason).toBe(ErrorReason.LobbyFull);
   });
 
   it('moves the host role to the next member and closes an empty lobby', () => {
@@ -120,6 +122,18 @@ describe('Hub matches', () => {
     expect(Math.max(...host.all('frame').map((frame) => frame.entries.length))).toBeGreaterThan(0);
     expect(host.last('frame')?.hud.players.map((player) => player.playerIndex).sort()).toEqual([0, 1]);
     expect(lobbyOf(host).state).toBe(LobbyState.Playing);
+  });
+
+  it('runs a death match with sixteen players, each at its own index', () => {
+    const setup = testHub();
+    const { host, guest, lobbyId } = hostAndGuest(setup, GameMode.DeathMatch);
+    const others = Array.from({ length: MAX_LOBBY_PLAYERS - 2 }, (_unused, index) => setup.connect(`P${index}`));
+    for (const other of others) other.say({ type: 'joinLobby', lobbyId, character: 0 });
+    host.say({ type: 'startGame' });
+    const indices = [host, guest, ...others].map((connection) => connection.last('gameStarted')?.playerIndex);
+    expect(new Set(indices).size).toBe(MAX_LOBBY_PLAYERS);
+    setup.ticker.tick(2);
+    expect(host.last('frame')?.hud.players).toHaveLength(MAX_LOBBY_PLAYERS);
   });
 
   it('applies held controls from input messages', () => {

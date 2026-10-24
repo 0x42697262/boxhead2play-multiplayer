@@ -1,3 +1,4 @@
+import { ROOM_MEMBER_LINES } from './tuning.ts';
 import type { RoomIndex } from '../../../adapters/assets/schemas.ts';
 import { CompletionState } from '../../../domain/world/CompletionState.ts';
 import { GameMode } from '../../../domain/world/GameMode.ts';
@@ -127,6 +128,22 @@ function memberLine(lobby: LobbyDto, index: number, clientId: string | undefined
   return tags.length === 0 ? line : t('online.room.memberTags', { line, tags: tags.join(', ') });
 }
 
+export function visibleMemberIndices(count: number, selfIndex: number | undefined, lines: number): { readonly shown: readonly number[]; readonly hidden: number } {
+  const all = Array.from({ length: count }, (_unused, index) => index);
+  if (count <= lines) return { shown: all, hidden: 0 };
+  const room = lines - 1;
+  const first = all.slice(0, room);
+  const shown = selfIndex === undefined || selfIndex < room ? first : [...first.slice(0, room - 1), selfIndex];
+  return { shown, hidden: count - shown.length };
+}
+
+function memberLines(lobby: LobbyDto, clientId: string | undefined): string[] {
+  const selfIndex = lobby.members.findIndex((member) => member.id === clientId);
+  const { shown, hidden } = visibleMemberIndices(lobby.members.length, selfIndex < 0 ? undefined : selfIndex, ROOM_MEMBER_LINES);
+  const lines = shown.map((index) => memberLine(lobby, index, clientId));
+  return [t('online.room.players', { count: lobby.members.length, max: lobby.maxPlayers }), ...lines, ...(hidden > 0 ? [t('online.room.more', { count: hidden })] : [])];
+}
+
 function roomPrompt(lobby: LobbyDto, clientId: string | undefined): { readonly prompt: string; readonly canPlay: boolean } {
   const self = lobby.members.find((member) => member.id === clientId);
   if (lobby.state === LobbyState.Playing && self?.playerIndex === null) return { prompt: t('online.room.joinMatch'), canPlay: true };
@@ -143,7 +160,7 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
     host,
     levelIndex: levelIndexOf(rooms, lobby.roomId),
     ...roomPrompt(lobby, clientId),
-    members: [t('online.room.players'), ...lobby.members.map((_, index) => memberLine(lobby, index, clientId))],
+    members: memberLines(lobby, clientId),
     options: optionsSummary(lobby.mode, lobby.options),
     notice: noticeText(state, result),
   };

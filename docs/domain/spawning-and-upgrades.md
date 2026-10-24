@@ -24,7 +24,7 @@ Close and Far skip cells with `Creature`, `Object` or `Player`, and only accept 
 within the player scope (`|dx| <= 19`, `|dy| <= 13` cells, about one screen).
 
 Player 1 starts on the `Player1` marker, or on `pickSpawnPoint` when there is none. One
-player spawns per entry in `settings.playerCharacters` (up to `MAX_PLAYERS` = 4); players
+player spawns per entry in `settings.playerCharacters` (up to `MAX_PLAYERS` = 16); players
 2..4 spawn with Close/Far relative to the players already placed. If the chosen cell holds
 a player or a `Player` collide flag, `openSpawnNear` searches up to 64 cells breadth first
 (straight neighbors, skipping static impassable cells) for an open one. Respawns use

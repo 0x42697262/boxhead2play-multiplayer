@@ -6,7 +6,7 @@ export const SCREEN_HEIGHT_PX = 480;
 
 export const KILLS_TO_WIN = [5, 10, 20, 50] as const;
 
-export const MAX_PLAYERS = 4;
+export const MAX_PLAYERS = 16;
 export const OPEN_SPAWN_SEARCH_CELLS = 64;
 
 export const SPAWN_MIN_DISTANCE_SQUARED = 4;

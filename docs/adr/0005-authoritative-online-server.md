@@ -36,7 +36,7 @@ Option 3.
   (members, host, match lifecycle) and `Match` (one `World`, per-player `RemoteControls`)
   depend only on ports (`Connection`, `Ticker`, `Timers`, `Clock`), so they are tested with
   in-memory fakes. `src/server/node/` adapts them to `ws`, `node:http` and Node timers.
-* The domain supports up to `MAX_PLAYERS` (4) players with one camera each, late join
+* The domain supports up to `MAX_PLAYERS` (16) players with one camera each, late join
   (`World.joinPlayer`) and leave (`World.leavePlayer`), and credits deathmatch frags to
   the last attacking player.
 * The browser keeps single play fully local (`GameScreen`, `GameSession`). Coop and

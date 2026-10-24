@@ -4,7 +4,7 @@ A TypeScript port of the 2007 Flash game *Boxhead: 2Play Rooms* by Sean Cooper. 
 simulation follows the original ActionScript; the art, rooms, characters, sounds and fonts
 are extracted from the original SWF and rendered with canvas.
 
-SINGLE PLAY runs in the browser. COOPERATIVE and DEATH MATCH are online: up to 4 players
+SINGLE PLAY runs in the browser. COOPERATIVE and DEATH MATCH are online: up to 16 players
 HOST or JOIN a game, and a Node server runs the match. There is no local
 two-player mode.
 
