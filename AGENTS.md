@@ -209,6 +209,11 @@ Add one line per behavior change: what to do, and the result you expect.
   -> a resolution change rebuilds the room planes at the new size and stamps all decals again
   through one scratch surface (blood off: only scorch marks), character frames are queued for
   prewarm again, clip and HUD buffers render at the new size, and a resize burst settles once.
+* Single play with a multiplier running, compare the score total at the top with the previous
+  build -> the same digits, `x<n>` and timer ring with their black glow. `npx vitest run
+  test/adapters/render/hudRenderer.test.ts test/adapters/render/lruCache.test.ts` -> a timer
+  frame change renders one bitmap, the texts render only when score or multiplier change, and
+  a full cache evicts the least recently used bitmap.
 * `npm run dev` in a 1920 x 1080 window -> the canvas is 1440 x 1080 device pixels
   (`resolution` 2.25); menu text, character cards, barrels and characters have smooth edges,
   no 2-pixel steps; barrel outlines stay 1 stage pixel thick.

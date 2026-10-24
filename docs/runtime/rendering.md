@@ -188,6 +188,15 @@ Online, each player's name is drawn 14 px below the player with the ammo text's 
 others. Single play has no names and shows none.
 `hitTest` maps clicks on `_Quit` while the list is shown.
 
+HUD clips are buffered per look (text, color, frame) in an LRU cache of `HUD_CACHE_LIMIT`
+bitmaps (`LruCache`, also used by `LayeredStage`): when it is full only the least recently
+drawn bitmap goes, so labels, names and messages on screen stay cached while old scores
+fall out. `Hud.ScoreTotal` is buffered as two bitmaps of the same symbol at the same
+position: the score and multiplier texts with `mcTimer` hidden, and `mcTimer` alone with the
+texts hidden. The timer is the topmost child (depth 3) and every child carries its own glow,
+so drawing the two bitmaps in that order gives the same picture as one, while the timer
+frame (which changes every few ticks) re-renders only the small timer bitmap.
+
 Respawn countdown: in coop and deathmatch the local player's `status.respawnTicks`
 (`Player.respawnTicks`: the dead state's remaining ticks plus the 1 s respawn delay, then the
 respawn state's) is drawn as "RESPAWN IN n" (whole seconds, rounded up) with `Hud.Message`

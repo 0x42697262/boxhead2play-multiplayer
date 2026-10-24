@@ -5,6 +5,7 @@ import { inflate, transformRect, union, type Rect } from '../geometry/Rect.ts';
 import { resetContext, type Surface } from '../surface.ts';
 import { childOverride, withReplacements, type ChildOverride, type Overrides } from '../symbols/SymbolLibrary.ts';
 import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
+import { LruCache } from '../lruCache.ts';
 import { STAGE_BACKGROUND, STAGE_LAYER_CACHE_LIMIT, STAGE_LAYER_PADDING_PX } from '../tuning.ts';
 
 export interface StageScene {
@@ -38,7 +39,7 @@ function layerKey(path: string, items: readonly DisplayItem[], matrix: Matrix, o
 }
 
 export class LayeredStage {
-  private readonly cache = new Map<string, PlacedBitmap | null>();
+  private readonly cache = new LruCache<PlacedBitmap | null>(STAGE_LAYER_CACHE_LIMIT);
   private composedKey: string | undefined = undefined;
   private current: Surface;
   private currentResolution = 1;
@@ -122,16 +123,8 @@ export class LayeredStage {
 
   private bitmap(layer: StageLayer): PlacedBitmap | undefined {
     const cached = this.cache.get(layer.key);
-    if (cached !== undefined) {
-      this.cache.delete(layer.key);
-      this.cache.set(layer.key, cached);
-      return cached ?? undefined;
-    }
+    if (cached !== undefined) return cached ?? undefined;
     const bitmap = this.renderLayer(layer);
-    if (this.cache.size >= STAGE_LAYER_CACHE_LIMIT) {
-      const oldest = this.cache.keys().next().value;
-      if (oldest !== undefined) this.cache.delete(oldest);
-    }
     this.cache.set(layer.key, bitmap ?? null);
     return bitmap;
   }

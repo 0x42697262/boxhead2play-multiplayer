@@ -12,6 +12,7 @@ import { transformRect, type Rect } from '../geometry/Rect.ts';
 import { resetContext, type BufferedBitmap, type Context2D, type Surface } from '../surface.ts';
 import { depthKey, type Overrides } from '../symbols/SymbolLibrary.ts';
 import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
+import { LruCache } from '../lruCache.ts';
 import { HUD_BUFFER_INFLATE_PX, HUD_CACHE_LIMIT } from '../tuning.ts';
 import { blit } from '../world/VisualPainter.ts';
 import type { HudFrame } from '../world/WorldFrame.ts';
@@ -101,7 +102,7 @@ function pointInRect(point: Point2, rect: Rect): boolean {
 }
 
 export class HudRenderer {
-  private readonly cache = new Map<string, BufferedBitmap>();
+  private readonly cache = new LruCache<BufferedBitmap>(HUD_CACHE_LIMIT);
   private readonly popups = new ScorePopups();
   private readonly messages = new MessageTrack(MESSAGE_ORIGIN);
   private labels: readonly PlayerLabel[] = [];
@@ -207,13 +208,23 @@ export class HudRenderer {
   }
 
   private drawScoreTotal(ctx: Context2D, totals: HudFrame): void {
-    const timerFrames = this.childFrameCount(HudSymbol.ScoreTotal, HudChild.Timer);
-    const overrides: Overrides = {
+    const texts: Overrides = {
       [HudChild.ScoreText]: { text: padNumber(totals.totalScore, SCORE_DIGITS) },
       [HudChild.MultiplierText]: { text: t('hud.multiplier', { multiplier: totals.multiplier }) },
-      [HudChild.Timer]: { frame: timerFrameIndex(totals.multiplierTickRatio, timerFrames) },
+      [HudChild.Timer]: { visible: false },
     };
-    const key = `total|${totals.totalScore}|${totals.multiplier}|${overrides[HudChild.Timer]?.frame ?? 0}`;
+    const textsKey = `total|${totals.totalScore}|${totals.multiplier}`;
+    const timerFrame = timerFrameIndex(totals.multiplierTickRatio, this.childFrameCount(HudSymbol.ScoreTotal, HudChild.Timer));
+    const timer: Overrides = {
+      [HudChild.ScoreText]: { visible: false },
+      [HudChild.MultiplierText]: { visible: false },
+      [HudChild.Timer]: { frame: timerFrame },
+    };
+    this.blitScoreTotal(ctx, texts, textsKey);
+    this.blitScoreTotal(ctx, timer, `timer|${timerFrame}`);
+  }
+
+  private blitScoreTotal(ctx: Context2D, overrides: Overrides, key: string): void {
     const bitmap = this.clip(HudSymbol.ScoreTotal, overrides, key, LIVE_CLIP_INFLATE_PX);
     if (bitmap) blit(ctx, bitmap, SCORE_TOTAL_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
   }
@@ -272,7 +283,6 @@ export class HudRenderer {
     const surface = this.renderer.createSurface(layout.width, layout.height);
     this.renderer.drawItems(surface.ctx, [item], layout.matrix, { overrides: { [PLAYER_NAME_CHILD]: { text: name, textColor: color, textBounds, ...(look.rightAligned ? { textAlign: RIGHT } : {}) } }, resolution });
     const bitmap = { surface, dispX: layout.dispX, dispY: layout.dispY };
-    if (this.cache.size >= HUD_CACHE_LIMIT) this.cache.clear();
     this.cache.set(key, bitmap);
     return bitmap;
   }
@@ -294,7 +304,6 @@ export class HudRenderer {
     const surface = this.renderer.createSurface(layout.width, layout.height);
     this.renderer.draw(surface.ctx, id, 0, layout.matrix, { overrides, resolution });
     const bitmap = { surface, dispX: layout.dispX, dispY: layout.dispY };
-    if (this.cache.size >= HUD_CACHE_LIMIT) this.cache.clear();
     this.cache.set(key, bitmap);
     return bitmap;
   }

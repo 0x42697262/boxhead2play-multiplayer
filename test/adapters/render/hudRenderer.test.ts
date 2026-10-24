@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HudRenderer } from '../../../src/adapters/render/hud/HudRenderer.ts';
 import { HudChild, HudSymbol } from '../../../src/adapters/render/hud/tuning.ts';
+import { HUD_CACHE_LIMIT } from '../../../src/adapters/render/tuning.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { hudFrame } from './support/fixtures.ts';
 import { placed, recordingRenderer, RecordingSurfaces, spriteOf, squareShape, symbolsCatalog } from './support/recordingSurfaces.ts';
@@ -36,6 +37,22 @@ describe('HUD bitmap cache', () => {
     const { draw } = hud();
     expect(draw(0)).toBeGreaterThan(0);
     expect(draw(0)).toBe(0);
+  });
+
+  it('renders the score and multiplier texts and the timer as separate bitmaps', () => {
+    const { draw } = hud();
+    expect(draw(0)).toBe(2);
+    expect(draw(1 / TIMER_FRAMES)).toBe(1);
+    expect(draw(2 / TIMER_FRAMES)).toBe(1);
+    expect(draw(0)).toBe(0);
+    expect(draw(0, 100)).toBe(1);
+  });
+
+  it('evicts the least recently used bitmaps instead of dropping the whole cache', () => {
+    const { draw } = hud();
+    draw(0);
+    const rendered = Array.from({ length: HUD_CACHE_LIMIT * 2 }, (_, index) => draw(0, index + 1));
+    expect(rendered.every((count) => count === 1)).toBe(true);
   });
 
   it('renders the score total again at the new size after a resolution change', () => {
