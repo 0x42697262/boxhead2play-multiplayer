@@ -1,7 +1,6 @@
 # Nix flake
 
-The repository is a Nix flake (`flake.nix`, `nix/`). It follows the layout of
-[tanka-maze](https://github.com/0x42697262/tanka-maze).
+The repository is a Nix flake (`flake.nix`, `nix/`).
 
 | Output | What it is |
 |---|---|
@@ -86,12 +85,11 @@ Paste the printed hash into `nix/package.nix`.
 | `caddy.extraConfig` | `""` | Appended inside the Caddy site block. |
 
 The server keeps lobbies in memory and writes nothing, so the service runs as a
-`DynamicUser` under the same systemd sandbox as tanka-maze (`ProtectSystem=strict`,
+`DynamicUser` in a systemd sandbox (`ProtectSystem=strict`,
 `ProtectHome`, `PrivateTmp`, a `@system-service` syscall filter, IPv4/IPv6 sockets only).
 `MemoryDenyWriteExecute` stays off because V8 compiles JIT code.
 
-Unlike tanka-maze there are no abuse-limit options: this server has no environment
-variables for them yet. Add options here once `src/config/serverEnv.ts` reads them.
+There are no abuse-limit options: this server has no environment variables for them yet. Add options here once `src/config/serverEnv.ts` reads them.
 
 ## Verified (2026-10-23, Nix 2.34.7, nixpkgs nixos-unstable 02c087f)
 
