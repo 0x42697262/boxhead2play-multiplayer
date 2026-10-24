@@ -15,6 +15,7 @@ export interface PlayerCapabilities {
   readonly playerIndex: number;
   readonly lastAttackerIndex: number | undefined;
   readonly lastAttackerClass: ThingClass | undefined;
+  readonly deathLogged: boolean;
   life: number;
   maxLife: number;
   newWeapon(name: WeaponName): void;

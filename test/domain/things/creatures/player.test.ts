@@ -249,3 +249,43 @@ describe('Player joining a running world', () => {
     expect(late.inventory.currentName).toBe(WeaponName.Pistol);
   });
 });
+
+describe('Player leaving a running world', () => {
+  it('frees the map cell of the leaving player', () => {
+    const world = makeRealWorld(arena(), { options: { gameMode: GameMode.Coop } });
+    run(world, 2);
+    const leaver = playerOf(world, 1);
+    const cell = world.map.cellAt(leaver.position.x, leaver.position.y);
+    expect((cell?.collide ?? 0) & CollideFlag.Player).toBeTruthy();
+    expect(world.leavePlayer(1)).toBe(true);
+    run(world, 1);
+    expect((cell?.collide ?? 0) & CollideFlag.Player).toBe(0);
+  });
+
+  it('counts a player who leaves while being hit to death as gone exactly once', () => {
+    const world = makeRealWorld(arena(), { options: { gameMode: GameMode.Coop, playerCharacters: [0, 1, 2] } });
+    const leaver = playerOf(world, 1);
+    const shooter = playerOf(world, 0);
+    run(world, 15);
+    leaver.invincible = 0;
+    leaver.affect(new BulletAffect(shooter, shooter, 1000, shooter.angle.clone()));
+    run(world, 1);
+    expect(leaver.life).toBeLessThanOrEqual(0);
+    expect(leaver.state).toBe(CreatureState.BulletHit);
+    expect(leaver.deathLogged).toBe(false);
+    expect(world.leavePlayer(1)).toBe(true);
+    run(world, 1);
+    expect(world.upgrades.playerCount).toBe(2);
+  });
+
+  it('counts a player who leaves after the death was logged as gone exactly once', () => {
+    const world = makeRealWorld(arena(), { options: { gameMode: GameMode.Coop, playerCharacters: [0, 1, 2] } });
+    const leaver = playerOf(world, 1);
+    kill(world, leaver);
+    for (let tick = 0; tick < 100 && !leaver.deathLogged; tick++) world.update();
+    expect(world.upgrades.playerCount).toBe(2);
+    expect(world.leavePlayer(1)).toBe(true);
+    run(world, 1);
+    expect(world.upgrades.playerCount).toBe(2);
+  });
+});

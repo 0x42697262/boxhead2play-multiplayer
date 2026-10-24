@@ -40,9 +40,15 @@ taken cell. `spawnRng` (`WorldDependencies.spawnRng`) defaults to the world rng;
 Online, players can join and leave a running world:
 
 * `World.joinPlayer(index, character)` spawns the player on `playerRespawnPoint()`, at the
-  lowest free index.
+  lowest free index. The kills and deaths stored for that index are reset, so a late joiner
+  never inherits the frags of a player who left.
 * `World.leavePlayer(index)` deletes the player and corrects the live and total player
-  counts.
+  counts. The live count drops unless the player's death was already logged
+  (`Creature.deathLogged`, set by `enterDying` right before `logKill`, cleared on respawn).
+  The `dead` thing flag is not used for this: `tickHit` sets it while the player is still
+  in the hit state, before `logKill` runs.
+* Deleting a creature (`Creature.dispose`) releases its reserved map cell, so a leaving
+  player's `Player` collide flag does not stay behind.
 
 ## Level progression (`Upgrades.process`, every tick except deathmatch)
 

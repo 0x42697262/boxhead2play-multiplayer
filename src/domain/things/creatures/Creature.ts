@@ -63,6 +63,7 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
   lastAttackerIndex: number | undefined = undefined;
   lastAttackerClass: ThingClass | undefined = undefined;
   currentCell: MapCell | undefined = undefined;
+  deathLogged = false;
   protected animator: CharacterAnimator;
   protected readonly sounds: CreatureSounds = {};
   private initialized = false;
@@ -115,6 +116,11 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
 
   setState(next: CreatureState): void {
     this.states.set(next);
+  }
+
+  override dispose(): void {
+    this.clearCollideCell();
+    super.dispose();
   }
 
   protected processInit(): void {
@@ -388,6 +394,7 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
     this.clearAffects();
     this.animator.setAnimation(CreatureAnimation.Dying, 0);
     this.stateCount = 0;
+    this.deathLogged = true;
     this.world.logKill(this);
   }
 

@@ -279,3 +279,7 @@ Add one line per behavior change: what to do, and the result you expect.
   `/assets/manifest.json` and both answer `304`; every other asset comes from the browser
   cache. `curl -H 'accept-encoding: br' -D - http://localhost:8080/assets/characters/xsi.json?v=<16 hex from manifest>`
   -> `content-encoding: br`, `cache-control: public, max-age=31536000, immutable`.
+* `npx vitest run test/domain/world/World.test.ts test/domain/things/creatures/player.test.ts` ->
+  a leaving player frees his map cell, leaving while being shot to death lowers the coop live
+  count once, and a late joiner on a freed index starts with 0 kills and 0 deaths (TAB in a
+  death match shows him with 0 / 0).

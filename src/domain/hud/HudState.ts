@@ -62,6 +62,11 @@ export class HudState {
     this.kills[death.killer] = this.fragsOf(death.killer) + 1;
   }
 
+  resetPlayer(playerIndex: number): void {
+    this.deaths[playerIndex] = 0;
+    this.kills[playerIndex] = 0;
+  }
+
   addMessage(tone: MessageTone, text: TextRef, playerIndex?: number, names?: Readonly<Record<string, number>>): void {
     if (this.silentMessages) return;
     const base = { tone, text, tick: this.clock.tick, ...(names ? { names } : {}) };

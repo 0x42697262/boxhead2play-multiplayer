@@ -259,6 +259,19 @@ describe('World players joining and leaving', () => {
     expect(world.leavePlayer(1)).toBe(false);
   });
 
+  it('starts a late player with no kills or deaths, even on the index of a player who left', () => {
+    const { world } = makeWorld(basicRoom(), { options: { gameMode: GameMode.DeathMatch } });
+    world.hud.recordDeath({ victim: 0, killer: 1 });
+    world.hud.recordDeath({ victim: 1, killer: 0 });
+    expect(world.leavePlayer(1)).toBe(true);
+    world.update();
+    expect(world.joinPlayer(1, 3)).toBe(true);
+    expect(world.hud.fragsOf(1)).toBe(0);
+    expect(world.hud.deathsOf(1)).toBe(0);
+    expect(world.hud.fragsOf(0)).toBe(1);
+    expect(world.hud.deathsOf(0)).toBe(1);
+  });
+
   it('announces a late player in yellow with the name resolved on the client', () => {
     const { world } = makeWorld(basicRoom(), { options: { gameMode: GameMode.Coop } });
     const before = world.hud.messages.length;

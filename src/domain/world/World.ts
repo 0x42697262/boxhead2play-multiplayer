@@ -176,6 +176,7 @@ export class World implements WorldContext, UpgradesHost {
   joinPlayer(playerIndex: number, character: PlayerCharacter): boolean {
     if (this.things.playerByIndex(playerIndex) || playerIndex >= MAX_PLAYERS) return false;
     if (!this.spawnPlayer(playerIndex, character, this.unoccupied(this.playerRespawnPoint()))) return false;
+    this.hud.resetPlayer(playerIndex);
     this.hud.addMessage(MessageTone.Joined, { key: 'hud.joined' }, undefined, { player: playerIndex });
     return true;
   }
@@ -183,7 +184,7 @@ export class World implements WorldContext, UpgradesHost {
   leavePlayer(playerIndex: number): boolean {
     const player = this.things.playerByIndex(playerIndex);
     if (!player) return false;
-    if (!player.hasFlag(ThingFlag.Dead)) this.upgrades.playerCount--;
+    if (!player.deathLogged) this.upgrades.playerCount--;
     this.upgrades.totalPlayerCount--;
     player.delete();
     this.trackTargets.delete(playerIndex);

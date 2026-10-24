@@ -204,6 +204,7 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     this.alpha = OPAQUE_ALPHA;
     this.lastAttackerIndex = undefined;
     this.lastAttackerClass = undefined;
+    this.deathLogged = false;
     this.animator = Player.createAnimator(this.world, this.character);
     this.affectSetup(PLAYER_AFFECTS);
     this.flags = ThingFlag.Collidable;
