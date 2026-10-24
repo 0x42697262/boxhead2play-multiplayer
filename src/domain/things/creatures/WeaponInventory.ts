@@ -4,6 +4,7 @@ import { GameMode } from '../../world/GameMode.ts';
 import { createWeapon } from '../weapons/createWeapon.ts';
 import type { Weapon, WeaponHolder } from '../weapons/Weapon.ts';
 import { WEAPON_TEXT } from '../weapons/weaponText.ts';
+import { PICKUP_AMMO_WEIGHT, PICKUP_BASE_WEIGHT, SELECT_KEY_COUNT } from './tuning.ts';
 
 export interface WeaponSlot {
   readonly index: number;
@@ -19,10 +20,7 @@ export interface InventoryOwner extends WeaponHolder {
   maxLife: number;
 }
 
-const SELECT_KEY_COUNT = 10;
 const LIFE_PICKUP = 'life';
-const PICKUP_AMMO_WEIGHT = 0.75;
-const PICKUP_BASE_WEIGHT = 0.25;
 
 interface PickupChance {
   readonly name: WeaponName | typeof LIFE_PICKUP;

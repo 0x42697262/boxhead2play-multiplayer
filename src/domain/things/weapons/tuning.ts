@@ -37,4 +37,4 @@ export const SHOTGUN_SPREAD_DEGREES = 1.25;
 export const SHOTGUN_WIDE_PAIRS = 1;
 export const DEGREES_PER_HALF_TURN = 180;
 export const MAX_OBJECTS_IN_PLACEMENT_CELL = 1;
-export const SMART_BOMB_LIFE = 3;
+export const SMART_BOMB_WEAPON_EFFECT_LIFE = 3;

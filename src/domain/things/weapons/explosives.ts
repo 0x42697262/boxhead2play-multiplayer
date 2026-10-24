@@ -12,7 +12,7 @@ import { GrenadeShot } from '../shots/GrenadeShot.ts';
 import { RocketShot } from '../shots/Missile.ts';
 import { GRENADE as GRENADE_THROW } from '../shots/tuning.ts';
 import type { Thing } from '../Thing.ts';
-import { BARREL, CHARGE_PACK, FAKE_WALL, GRENADE, MAX_OBJECTS_IN_PLACEMENT_CELL, MINE, ROCKET, SMART_BOMB, SMART_BOMB_LIFE } from './tuning.ts';
+import { BARREL, CHARGE_PACK, FAKE_WALL, GRENADE, MAX_OBJECTS_IN_PLACEMENT_CELL, MINE, ROCKET, SMART_BOMB, SMART_BOMB_WEAPON_EFFECT_LIFE } from './tuning.ts';
 import { Weapon, type WeaponHolder } from './Weapon.ts';
 
 function armExplosion(weapon: Weapon, position: Position, angle: Angle): Explosion {
@@ -161,7 +161,7 @@ export class SmartBombWeapon extends Weapon {
   }
 
   protected fire(): void {
-    this.world.things.add(new SmartBombEffect(this.world, this.holder.position, this.holder, SMART_BOMB_LIFE));
+    this.world.things.add(new SmartBombEffect(this.world, this.holder.position, this.holder, SMART_BOMB_WEAPON_EFFECT_LIFE));
     this.decrementAmmo();
   }
 }

@@ -65,4 +65,6 @@ export const PLAYER = {
 } as const;
 
 export const HAND_MIDPOINT = 0.5;
-export const HIT_SOUND_VARIANTS = 4;
+export const SELECT_KEY_COUNT = 10;
+export const PICKUP_AMMO_WEIGHT = 0.75;
+export const PICKUP_BASE_WEIGHT = 0.25;

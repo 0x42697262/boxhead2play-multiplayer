@@ -18,4 +18,4 @@ export const EFFECT_ANIMATION_SPEED = 1;
 export const SMOKE_DRIFT_SPEED = 0.5;
 export const SMOKE_DRIFT_ACCELERATION = 1.2;
 export const MUZZLE_FLASH_DIRECTIONS = 8;
-export const SMART_BOMB_LIFE = 10;
+export const SMART_BOMB_EFFECT_DEFAULT_LIFE = 10;

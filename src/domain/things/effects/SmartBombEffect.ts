@@ -3,7 +3,7 @@ import type { WorldContext } from '../../world/WorldContext.ts';
 import type { Thing } from '../Thing.ts';
 import { ThingClass } from '../ThingClass.ts';
 import { Effect } from './Effect.ts';
-import { SMART_BOMB_LIFE } from './tuning.ts';
+import { SMART_BOMB_EFFECT_DEFAULT_LIFE } from './tuning.ts';
 
 export class SmartBombEffect extends Effect {
   readonly classId = ThingClass.EffectSmartBomb;
@@ -13,7 +13,7 @@ export class SmartBombEffect extends Effect {
     world: WorldContext,
     position: Position,
     parent: Thing,
-    readonly life: number = SMART_BOMB_LIFE,
+    readonly life: number = SMART_BOMB_EFFECT_DEFAULT_LIFE,
   ) {
     super(world, position, undefined, parent);
   }
