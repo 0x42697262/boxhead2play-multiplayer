@@ -1,0 +1,12 @@
+export const STICK_BASE_PX = 132;
+export const STICK_KNOB_PX = 56;
+export const STICK_TRAVEL_PX = 44;
+export const STICK_DEAD_ZONE = 0.22;
+export const STICK_AXIS_THRESHOLD = Math.sin(Math.PI / 8);
+export const STICK_GRAB_RADIUS_FACTOR = 1.25;
+export const FIRE_BUTTON_PX = 88;
+export const WEAPON_BUTTON_PX = 52;
+export const SYSTEM_BUTTON_PX = 44;
+export const CONTROL_MARGIN_PX = 20;
+export const CONTROL_GAP_PX = 14;
+export const HAPTIC_TAP_MS = 8;

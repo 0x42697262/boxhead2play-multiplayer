@@ -10,6 +10,14 @@ export interface StagePoint {
   readonly y: number;
 }
 
+export const TouchLayout = {
+  Hidden: 'hidden',
+  Play: 'play',
+  Menu: 'menu',
+} as const;
+
+export type TouchLayout = (typeof TouchLayout)[keyof typeof TouchLayout];
+
 export const PointerPhase = {
   Down: 'down',
   Up: 'up',
@@ -35,6 +43,7 @@ export interface Screen {
   readonly name: string;
   readonly ticksPerSecond: number;
   readonly cursor: Cursor;
+  readonly touchLayout?: TouchLayout;
   tick(): void;
   present(): void;
   idle(hasTime: () => boolean): void;

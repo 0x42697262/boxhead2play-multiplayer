@@ -1,5 +1,6 @@
 import './ui/shell/shell.css';
 import './ui/mobile/mobile.css';
+import './ui/touch/touch.css';
 import { browserFetcher, loadCatalogs } from './adapters/assets/AssetLoader.ts';
 import { fontFamily, loadFonts } from './adapters/assets/FontLoader.ts';
 import { decodeBrowserImage, GraphicImages } from './adapters/assets/GraphicImages.ts';
@@ -29,7 +30,7 @@ import type { GameStarted } from './net/protocol.ts';
 import { createLogger, type Logger } from './observability/logger.ts';
 import { LobbyInvite } from './services/online/LobbyInvite.ts';
 import { OnlineClient } from './services/online/OnlineClient.ts';
-import { ScreenFlow, type ScreenFactory } from './services/ScreenFlow.ts';
+import { ScreenFlow, TouchLayout, type ScreenFactory } from './services/ScreenFlow.ts';
 import { SettingsService } from './services/SettingsService.ts';
 import { soundGain } from './services/menuSettings.ts';
 import { AppError, ErrorCode } from './text/errors.ts';
@@ -44,9 +45,12 @@ import { OnlineMenuScreen } from './ui/screens/online/OnlineMenuScreen.ts';
 import { OnlineGameScreen } from './ui/screens/online/OnlineGameScreen.ts';
 import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX, type Viewport } from './ui/shell/Shell.ts';
 import { attachHomeScreenHint, attachRotateHint, setHomeScreenTitle } from './ui/mobile/MobileChrome.ts';
+import { TouchControls } from './ui/touch/TouchControls.ts';
+import { GameMenuKey } from './ui/screens/gameMenu/tuning.ts';
 import { enterLandscapeFullscreen, isHomeScreenCandidate } from './adapters/display/fullscreen.ts';
 
 const APP_ELEMENT_ID = 'app';
+const COARSE_POINTER_QUERY = '(pointer: coarse)';
 const PERCENT = 100;
 const SEED_WORDS = 1;
 
@@ -155,6 +159,15 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   const gameKeys = (): ReadonlySet<string> => boundCodes(buildBindings(userSettings.settings.keys));
   let keys = gameKeys();
   userSettings.subscribe(() => (keys = gameKeys()));
+  const touch = new TouchControls(
+    { document, keyboard, toggleMenu: () => flow.key(GameMenuKey.Toggle), vibrate: (durationMs) => navigator.vibrate?.(durationMs) },
+    window.matchMedia(COARSE_POINTER_QUERY).matches,
+  );
+  const syncTouch = (): void => {
+    touch.show(flow.screen?.touchLayout ?? TouchLayout.Hidden);
+    window.requestAnimationFrame(syncTouch);
+  };
+  syncTouch();
   attachListeners(
     { window, document, canvas: shell.canvas, stageWidth: STAGE_WIDTH_PX, stageHeight: STAGE_HEIGHT_PX },
     {
@@ -162,9 +175,10 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
       flow,
       loop,
       isGameKey: (code) => keys.has(code),
-      onGesture: (touch) => {
+      onGesture: (touchInput) => {
+        touch.setTouchInput(touchInput);
         if (webAudio && !webAudio.unlocked) void webAudio.unlock().then(() => logger.info(LogEvent.AudioUnlocked));
-        if (touch) void enterLandscapeFullscreen(document, window.screen.orientation).then((entered) => entered && logger.info(LogEvent.FullscreenEntered));
+        if (touchInput) void enterLandscapeFullscreen(document, window.screen.orientation).then((entered) => entered && logger.info(LogEvent.FullscreenEntered));
       },
       onVisibility: (visible) => {
         logger.info(LogEvent.VisibilityChanged, { visible });

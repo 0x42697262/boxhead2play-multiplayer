@@ -1,6 +1,13 @@
 {
   "app.title": "Boxhead: 2Play Rooms",
   "app.shortTitle": "Boxhead 2Play",
+  "touch.menu": "Menu",
+  "touch.close": "Close menu",
+  "touch.list": "Upgrades and scores",
+  "touch.move": "Move",
+  "touch.fire": "Fire",
+  "touch.prevWeapon": "Previous weapon",
+  "touch.nextWeapon": "Next weapon",
   "mobile.rotate": "Turn your device sideways to play.",
   "mobile.homeScreen.title": "Play in full screen",
   "mobile.homeScreen.body": "Tap Share, then Add to Home Screen.",

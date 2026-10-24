@@ -1,6 +1,7 @@
 import { PlayerControl, type ControlState, type PlayerInput, type TickInput } from '../../domain/world/input.ts';
 import { asciiKeyCode, codeForKeyCode, TAB_KEY_CODE } from './keyCodes.ts';
 import type { KeyboardState } from './KeyboardState.ts';
+import { TouchCode } from './touchCodes.ts';
 
 export interface PlayerKeyCodes {
   readonly up: number;
@@ -55,13 +56,13 @@ function playerBindings(keys: PlayerKeyCodes, extraFire: readonly number[]): Pla
     PlayerControl,
     readonly string[]
   >;
-  bindings.up = codes(keys.up);
-  bindings.down = codes(keys.down);
-  bindings.left = codes(keys.left);
-  bindings.right = codes(keys.right);
-  bindings.fire = codes(keys.fire, ...extraFire);
-  bindings.nextWeapon = codes(keys.nextWeapon);
-  bindings.prevWeapon = codes(keys.prevWeapon);
+  bindings.up = [...codes(keys.up), TouchCode.Up];
+  bindings.down = [...codes(keys.down), TouchCode.Down];
+  bindings.left = [...codes(keys.left), TouchCode.Left];
+  bindings.right = [...codes(keys.right), TouchCode.Right];
+  bindings.fire = [...codes(keys.fire, ...extraFire), TouchCode.Fire];
+  bindings.nextWeapon = [...codes(keys.nextWeapon), TouchCode.NextWeapon];
+  bindings.prevWeapon = [...codes(keys.prevWeapon), TouchCode.PrevWeapon];
   SELECT_CONTROLS.forEach((control, index) => {
     bindings[control] = codes(asciiKeyCode(SELECT_KEYS[index] ?? ''));
   });
@@ -71,7 +72,7 @@ function playerBindings(keys: PlayerKeyCodes, extraFire: readonly number[]): Pla
 export function buildBindings(keys: PlayerKeyCodes): InputBindings {
   return {
     player: playerBindings(keys, [asciiKeyCode(EXTRA_FIRE_KEY)]),
-    upgradeList: codes(UPGRADE_LIST_KEY_CODE),
+    upgradeList: [...codes(UPGRADE_LIST_KEY_CODE), TouchCode.UpgradeList],
   };
 }
 

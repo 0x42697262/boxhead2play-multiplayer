@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { codeForKeyCode } from '../../../src/adapters/input/keyCodes.ts';
 import { KeyboardState } from '../../../src/adapters/input/KeyboardState.ts';
+import { TouchCode } from '../../../src/adapters/input/touchCodes.ts';
 import { boundCodes, buildBindings, TickInputSampler } from '../../../src/adapters/input/TickInputSampler.ts';
 import { DEFAULT_KEYS, ORIGINAL_KEYS } from '../../../src/services/SettingsService.ts';
 
@@ -25,17 +26,30 @@ describe('legacy key codes', () => {
 
   it('bind WASD, SPACE, E and Q by default', () => {
     const bindings = buildBindings(DEFAULT_KEYS);
-    expect(bindings.player.left).toEqual(['KeyA']);
-    expect(bindings.player.nextWeapon).toEqual(['KeyE']);
-    expect(bindings.player.prevWeapon).toEqual(['KeyQ']);
+    expect(bindings.player.left).toEqual(['KeyA', TouchCode.Left]);
+    expect(bindings.player.nextWeapon).toEqual(['KeyE', TouchCode.NextWeapon]);
+    expect(bindings.player.prevWeapon).toEqual(['KeyQ', TouchCode.PrevWeapon]);
     expect(bindings.player.select3).toEqual(['Digit3']);
-    expect(bindings.upgradeList).toEqual(['Tab']);
+    expect(bindings.upgradeList).toEqual(['Tab', TouchCode.UpgradeList]);
     expect(boundCodes(bindings).has('ArrowLeft')).toBe(false);
-    expect(bindings.player.fire).toEqual(['Space']);
+    expect(bindings.player.fire).toEqual(['Space', TouchCode.Fire]);
   });
 
   it('add space as a second fire key', () => {
-    expect(buildBindings(ORIGINAL_KEYS).player.fire).toEqual(['Slash', 'Space']);
+    expect(buildBindings(ORIGINAL_KEYS).player.fire).toEqual(['Slash', 'Space', TouchCode.Fire]);
+  });
+
+  it('let the touch controls drive every control a key drives, also with rebound keys', () => {
+    const keyboard = new KeyboardState();
+    const input = new TickInputSampler(buildBindings(ORIGINAL_KEYS));
+    keyboard.keyDown(TouchCode.Right);
+    keyboard.keyDown(TouchCode.Up);
+    keyboard.keyDown(TouchCode.Fire);
+    keyboard.keyDown(TouchCode.NextWeapon);
+    keyboard.keyDown(TouchCode.UpgradeList);
+    const sampled = input.sample(keyboard, EXTRAS);
+    const player = sampled.tick.players[0];
+    expect([player?.right.down, player?.up.down, player?.fire.pressed, player?.nextWeapon.pressed, sampled.upgradeListPressed]).toEqual([true, true, true, true, true]);
   });
 });
 

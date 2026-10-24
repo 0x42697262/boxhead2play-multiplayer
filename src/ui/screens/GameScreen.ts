@@ -17,7 +17,7 @@ import type { ThingFactory } from '../../domain/things/ThingFactory.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { GameSession } from '../../services/GameSession.ts';
 import type { Cursor} from '../../services/ScreenFlow.ts';
-import { PointerPhase, type FlowControls, type GameSelection, type PointerInput, type Screen } from '../../services/ScreenFlow.ts';
+import { PointerPhase, TouchLayout, type FlowControls, type GameSelection, type PointerInput, type Screen } from '../../services/ScreenFlow.ts';
 import { toGameOptions, type SettingsService } from '../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../text/errors.ts';
 import type { Shell } from '../shell/Shell.ts';
@@ -81,6 +81,10 @@ export class GameScreen implements Screen {
 
   get cursor(): Cursor {
     return this.menu.cursor;
+  }
+
+  get touchLayout(): TouchLayout {
+    return this.menu.open ? TouchLayout.Menu : TouchLayout.Play;
   }
 
   get ticksPerSecond(): number {

@@ -16,7 +16,7 @@ import type { InviteView } from '../../../services/online/LobbyInvite.ts';
 import type { OnlineClient } from '../../../services/online/OnlineClient.ts';
 import { OnlineGameSession } from '../../../services/online/OnlineGameSession.ts';
 import type { Cursor} from '../../../services/ScreenFlow.ts';
-import { PointerPhase, type FlowControls, type PointerInput, type Screen } from '../../../services/ScreenFlow.ts';
+import { PointerPhase, TouchLayout, type FlowControls, type PointerInput, type Screen } from '../../../services/ScreenFlow.ts';
 import type { SettingsService } from '../../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../../text/errors.ts';
 import type { Shell } from '../../shell/Shell.ts';
@@ -84,6 +84,10 @@ export class OnlineGameScreen implements Screen {
 
   get cursor(): Cursor {
     return this.menu.cursor;
+  }
+
+  get touchLayout(): TouchLayout {
+    return this.menu.open ? TouchLayout.Menu : TouchLayout.Play;
   }
 
   get ticksPerSecond(): number {
