@@ -46,6 +46,7 @@ Decides it: monitor showing memory or upload growth while a player's connection 
 
 ## Accepted for now
 
-* Encoder CPU cost (ADR 0007, "Update: encoder CPU cost accepted"). Revisit if the monitor's
-  LOOP row shows a server near its tick budget.
+* Encoder CPU cost after the writer reuse (ADR 0007, "Update: encoder CPU cost"). Revisit if
+  the monitor's LOOP row stays high with 4 or more players: fewer temporary objects per frame
+  in the encoder, or a paid Render plan with more CPU.
 * A host cannot replace its own lobby while the server is at `MAX_LOBBIES`.

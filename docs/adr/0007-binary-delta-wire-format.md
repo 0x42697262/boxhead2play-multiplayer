@@ -88,11 +88,24 @@ Rejected: leaving `thingKey` out of the table (costs bytes in every frame from t
 and least-recently-used eviction (both sides must evict the same slot; more code and test
 surface for little gain in a game of fixed scope).
 
-## Update: encoder CPU cost accepted
+## Update: encoder CPU cost
 
-Measured in review: with 16 players, encoding every player's frame takes about 6.5 ms per
-tick against about 1 ms for the simulation, so one core runs about 6 full 16-player
-lobbies; smaller lobbies cost proportionally less. The owner chose to keep the generic
-encoder as it is: the game is the stock original and will not grow, a hand-written frame
-codec would need codec changes for every new visual field, and the monitor's LOOP row shows
-when a server gets close to its tick budget.
+Measured in review: with 16 players, encoding every player's frame took about 6.5 ms per
+tick against about 1 ms for the simulation. The owner first accepted that (the game is the
+stock original and will not grow; a hand-written frame codec would need codec changes for
+every new visual field).
+
+Then the Render free service (0.1 CPU) showed event-loop delays of 44 ms mean and 300 to
+700 ms spikes in a coop match with many zombies: the process used more than its CPU quota
+and was throttled, which froze every lobby at once. A local benchmark (4 players,
+Nightmare, about 80 zombies) put encoding at 4.0 to 4.6 ms per tick against 0.65 ms for the
+simulation, and a CPU profile showed 28 % of all server time in the `ByteWriter`
+constructor: `object()` allocated a fresh 1 KiB buffer for every object node and copied it
+into its parent with `slice`.
+
+The encoder now keeps one body writer per object nesting depth and reuses it (rewound for
+each object, appended to the parent without a copy). Output bytes are identical. Same
+benchmark: encoding 1.4 to 1.8 ms, simulation 0.33 ms (less garbage collection), worst tick
+6.5 ms instead of 17 ms. Encoding still grows with players times visible things; if the
+monitor's LOOP row stays high with more players, the next steps are fewer temporary
+objects per frame or more CPU (a paid Render plan).

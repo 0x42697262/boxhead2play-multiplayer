@@ -121,6 +121,10 @@ class ByteWriter {
     return this.bytes.slice(0, this.length);
   }
 
+  appendWriter(other: ByteWriter): void {
+    this.append(other.bytes.subarray(0, other.length));
+  }
+
   private reserve(extra: number): void {
     if (this.length + extra <= this.bytes.length) return;
     let capacity = this.bytes.length * 2;
@@ -189,6 +193,8 @@ export class WireEncoder {
   private readonly strings = new Map<string, number>();
   private readonly baselines = new Map<string, Json>();
   private writer = new ByteWriter();
+  private readonly bodies: ByteWriter[] = [];
+  private depth = 0;
 
   constructor(private readonly stringResetTypes: ReadonlySet<string> = new Set()) {}
 
@@ -198,6 +204,7 @@ export class WireEncoder {
 
   encode(message: { readonly type: string }): Uint8Array {
     this.writer = new ByteWriter();
+    this.depth = 0;
     if (this.stringResetTypes.has(message.type)) {
       this.strings.clear();
       this.baselines.clear();
@@ -304,7 +311,10 @@ export class WireEncoder {
     const countAt = this.writer.length;
     const values: Record<string, Json> = {};
     let changes = 0;
-    const body = new ByteWriter();
+    const body = this.bodies[this.depth] ?? new ByteWriter();
+    this.bodies[this.depth] = body;
+    body.rewind(0);
+    this.depth++;
     const outer = this.writer;
     this.writer = body;
     for (const [key, item] of entries) {
@@ -316,12 +326,13 @@ export class WireEncoder {
       else changes++;
     }
     this.writer = outer;
+    this.depth--;
     if (changes === 0 && removed.length === 0 && previous && entries.length === Object.keys(previous).length) {
       this.writer.rewind(countAt);
       return { value: previous, same: true };
     }
     this.writer.varint(changes);
-    this.writer.append(body.result());
+    this.writer.appendWriter(body);
     this.writer.varint(removed.length);
     for (const key of removed) this.string(key);
     return { value: values, same: false };
