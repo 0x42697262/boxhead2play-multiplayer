@@ -41,7 +41,7 @@ Option 3.
   `GameSession` drains it after each tick and routes events to audio, renderer and HUD
   adapters.
 * Things expose `visual(): Visual | undefined`, a plain data descriptor
-  (`src/domain/visuals.ts`). The world exposes `presentation` (cameras, shake, brightness)
+  (`src/domain/visuals.ts`). The world exposes `presentation` (cameras, and shake and brightness per camera)
   and `drawList(camera)` in the original draw order. The render adapter only reads.
 * Presentation state that affects gameplay stays in the domain. The camera position is
   used for score popup positions, and the visible zombie count drives the ambience. The

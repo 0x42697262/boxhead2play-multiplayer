@@ -36,7 +36,7 @@ export function netFrameFor(world: World, playerIndex: number, events: readonly 
   return {
     type: ServerMessageType.Frame,
     tick: world.tick,
-    brightness: world.presentation.brightness,
+    brightness: world.effectsFor(playerIndex).brightness,
     camera,
     entries: world.drawList(camera),
     hud: {

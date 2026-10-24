@@ -164,23 +164,23 @@ describe('World completion', () => {
 describe('World screen effects', () => {
   it('halves and flips the shake every tick until it rests', () => {
     const { world } = makeWorld(basicRoom());
-    world.shake(0, 30);
+    world.shake(at(2.5, 2.5), 0, 30);
     world.update();
-    expect(world.presentation.shake.y).toBeCloseTo(-15);
+    expect(world.effectsFor(0).shake.y).toBeCloseTo(-15);
     world.update();
-    expect(world.presentation.shake.y).toBeCloseTo(7.5);
+    expect(world.effectsFor(0).shake.y).toBeCloseTo(7.5);
     for (let i = 0; i < 10; i++) world.update();
-    expect(world.presentation.shake.y).toBe(0);
+    expect(world.effectsFor(0).shake.y).toBe(0);
   });
 
   it('fades the start flash and explosion flashes in 0.2 steps', () => {
     const { world } = makeWorld(basicRoom());
-    expect(world.presentation.brightness).toBeCloseTo(0.8);
+    expect(world.effectsFor(0).brightness).toBeCloseTo(0.8);
     world.update();
-    expect(world.presentation.brightness).toBeCloseTo(0.6);
-    world.flashBrightness(1);
+    expect(world.effectsFor(0).brightness).toBeCloseTo(0.6);
+    world.flashBrightness(at(2.5, 2.5), 1);
     world.update();
-    expect(world.presentation.brightness).toBeCloseTo(0.8);
+    expect(world.effectsFor(0).brightness).toBeCloseTo(0.8);
   });
 
   it('centres the camera on the tracked player, clamped one cell inside the room', () => {
@@ -206,6 +206,64 @@ describe('World screen effects', () => {
     world.update();
     expect(world.cameraFor(1)?.rect.x).toBe(336);
     expect(world.cameraFor(0)?.rect.x).toBe(32);
+  });
+});
+
+describe('World screen effects per camera', () => {
+  const farApart = () => {
+    const { world } = makeWorld(room(60, 40, [cellObject(InitKind.Player1, 5, 5), cellObject(InitKind.Player2, 45, 30)]), {
+      options: { gameMode: GameMode.DeathMatch },
+    });
+    world.things.playerByIndex(0)?.move(at(5.5, 5.5));
+    world.things.playerByIndex(1)?.move(at(45.5, 30.5));
+    for (let i = 0; i < 5; i++) world.update();
+    return world;
+  };
+  const shakes = (world: World): number[] => world.presentation.cameras.map((camera) => camera.drawOrigin.y - camera.rect.y);
+  const brightness = (world: World): number[] => world.presentation.cameras.map((camera) => world.effectsFor(camera.playerIndex).brightness);
+
+  it('shakes and flashes only the camera that sees the source', () => {
+    const world = farApart();
+    expect(world.cameraFor(0)?.rect).toEqual({ x: 32, y: 32, width: 640, height: 480 });
+    expect(world.cameraFor(1)?.rect).toEqual({ x: 1136, y: 736, width: 640, height: 480 });
+    world.shake(at(10.5, 10.5), 0, 30);
+    world.flashBrightness(at(10.5, 10.5), 1);
+    world.update();
+    expect(shakes(world)).toEqual([-15, 0]);
+    expect(brightness(world)).toEqual([0.8, 0]);
+  });
+
+  it('shakes and flashes no camera for a source outside every view and its margin', () => {
+    const world = farApart();
+    world.shake(at(30.5, 30.5), 0, 30);
+    world.flashBrightness(at(30.5, 30.5), 1);
+    world.update();
+    expect(shakes(world)).toEqual([0, 0]);
+    expect(brightness(world)).toEqual([0, 0]);
+  });
+
+  it('counts a source just past the view edge as visible, within the margin', () => {
+    const world = farApart();
+    world.shake(at(23, 10), 0, 30);
+    world.update();
+    expect(shakes(world)).toEqual([-15, 0]);
+    for (let i = 0; i < 10; i++) world.update();
+    world.shake(at(25, 10), 0, 30);
+    world.update();
+    expect(shakes(world)).toEqual([0, 0]);
+  });
+
+  it('starts a late joiner without effects and forgets a leaving player', () => {
+    const world = farApart();
+    world.shake(at(10.5, 10.5), 0, 30);
+    world.flashBrightness(at(10.5, 10.5), 1);
+    expect(world.joinPlayer(2, 0)).toBe(true);
+    world.update();
+    expect(world.effectsFor(2)).toEqual({ shake: { x: 0, y: 0 }, brightness: 0 });
+    expect(world.leavePlayer(0)).toBe(true);
+    world.update();
+    expect(world.presentation.effects.has(0)).toBe(false);
+    expect(world.effectsFor(0)).toEqual({ shake: { x: 0, y: 0 }, brightness: 0 });
   });
 });
 

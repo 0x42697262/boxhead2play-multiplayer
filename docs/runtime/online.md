@@ -232,7 +232,9 @@ Each tick the server drains the world's events once and builds one frame per pla
 (`src/net/frames.ts`): the player's camera, `drawList(camera)`, the HUD state (score,
 multiplier, frags and deaths, the player's messages, every player's label data) and the events the
 client needs: sounds, decals and score popups (screen position recomputed for that
-player's camera). Shake is part of `camera.drawOrigin`.
+player's camera). Shake is part of `camera.drawOrigin`, and `brightness` is that player's
+camera flash: each camera has its own shake and brightness, set only by explosions that
+camera can see (`docs/domain/world-lifecycle.md`).
 
 `OnlineGameSession` plays frames at the server's tick rate through an adaptive
 `FrameBuffer` (constants in `src/services/online/tuning.ts`). Every queued frame is

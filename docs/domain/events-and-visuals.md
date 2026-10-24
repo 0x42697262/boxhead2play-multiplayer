@@ -78,7 +78,8 @@ Projection: `screen = (round(x * 32), round((y + z * pFactor) * 32)) - drawOrigi
 
 Rendering order per camera, from `CWorld.Draw_PlayerPlane`: floor bitmap (with decals),
 then `drawList` entries, then overlay lines, then the room cover bitmap. After that comes
-the brightness filter (`presentation.brightness * 255` added to RGB) and the HUD.
+the brightness filter (the camera's `brightness * 255` added to RGB, from
+`World.effectsFor(playerIndex)`) and the HUD.
 
 ## Animation metadata (`AnimationCatalog`)
 

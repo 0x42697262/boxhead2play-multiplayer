@@ -212,6 +212,11 @@ Add one line per behavior change: what to do, and the result you expect.
   just across a cell border.
 * Shoot a barrel next to another barrel -> two explosions two ticks apart, both
   barrels gone, scorch decals and a `(0, 30)` shake.
+* Online deathmatch in two tabs, players far apart, tab 1 shoots a barrel on its screen -> only
+  tab 1 shakes and flashes white; tab 2 stays still. Single play, a barrel explodes off screen
+  (more than 3.5 cells past the edge) -> no shake, no flash. `npx vitest run
+  test/domain/world/World.test.ts test/net/frames.test.ts` -> an explosion inside camera A
+  shakes and flashes only A, outside every camera none, and a late joiner starts without effects.
 * Multiplier x5 -> every player gets the UZI (key 2, 100 rounds). Weapon out of ammo ->
   red `hud.outOfAmmo.<id>` message and the pistol.
 * Coop death -> respawn after 10 s (4 s corpse + 6 s) on a random free floor cell with 200 life, empty

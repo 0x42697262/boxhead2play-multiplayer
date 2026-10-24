@@ -39,8 +39,9 @@ One full tick runs, which calls every thing's first `process()`. Then
    * `things.process()`: flush deferred deletes (dispose, remove), process every thing
      **newest first**, then update the navigation flow field.
    * `upgrades.process()`, `tick++`.
-   * `present()` (the logic half of `CWorld.Draw`): decay the shake, compute the cameras,
-     decay the brightness, prune HUD messages, count visible zombies, step the ambience.
+   * `present()` (the logic half of `CWorld.Draw`): drop the screen effects of players
+     that are gone, decay each camera's shake, compute the cameras, decay each camera's
+     brightness, prune HUD messages, count visible zombies, step the ambience.
      The last two run only when `settings.presentAmbience` is on. The online server builds
      its settings with `SERVER_SIMULATION_HOST`, which turns them off: it would only throw
      the ambience events away, because clients step the ambience from their own frames.
@@ -61,16 +62,39 @@ frame (`CMain.mFrameCap = 1`), and renders `presentation` and `drawList(camera)`
 * The view rectangle is centred on the projected target and clamped with `CMath.Range` to
   `[32, roomSize - (view + 32)]`. If the room is smaller than the view, `Range` returns the
   max bound.
-* `drawOrigin = rect + shake`. Local score popups use the first camera's origin; online,
+* `drawOrigin = rect + shake`, with the shake of that camera. Local score popups use the first camera's origin; online,
   the server recomputes the popup position per player camera.
 
 ## Shake and brightness
 
-* `shake(dx, dy)` adds to the offset if its length is below 32 px. Each tick the offset
+Each camera (player index) has its own `ScreenEffects` (`CameraEffects.ts`). The original
+had one world-wide shake and brightness for its one shared screen; with up to 16 cameras
+an explosion would otherwise shake and flash every player's view.
+
+* `shake(source, dx, dy)` and `flashBrightness(source, level)` take the world position of
+  the source. They project it with `cellToScreen` and apply only to cameras whose view
+  rectangle from the previous `present()` (the one on screen while things process)
+  contains that point, widened by `SCREEN_EFFECT_SOURCE_MARGIN_PX` (112 px, 3.5 cells) on
+  every side. The margin covers an explosion centered just off screen whose clip still
+  shows: `Effect.Explosion` draws a 192 x 96 px fireball sprite (`-96..96`, `-96..0`
+  around the explosion) at up to 1.128 scale, so it reaches about 108 px from its center;
+  that rounds up to 3.5 cells. It is also wider than the 2-cell (64 px) blast radius of a
+  normal explosion, so a player hurt by a blast at the edge of the view feels it.
+* The domain events `cameraShaken` and `brightnessFlashed` are still emitted once per
+  call, whether or not a camera sees the source.
+* Players placed when the world is created start with brightness 1 (the original start
+  flash). A late joiner (`joinPlayer`) starts with no shake and brightness 0. A leaving
+  player's effects are removed in `leavePlayer`, and `present()` drops the effects of any
+  index that no longer has a player.
+* `presentation.effects` maps each camera's player index to `{ shake, brightness }`;
+  `effectsFor(index)` returns no shake and brightness 0 for an index without a camera.
+  Online frames send `effectsFor(playerIndex).brightness`; local play uses player 0.
+
+* `shake` adds to the camera's offset if its length is below 32 px. Each tick the offset
   becomes `-0.5 *` itself and snaps to 0 below 0.1 px. Explosions shake `(0, 30)`, so the
   first drawn offset is `(0, -15)`.
-* `flashBrightness(1)` (explosions). The world starts at 1. At high detail, each tick
-  subtracts 0.2 toward 0 (snapping below 0.2), and `presentation.brightness` is the value
+* `flashBrightness(1)` (explosions). A camera of a player placed at world creation starts at 1. At high detail, each tick
+  subtracts 0.2 toward 0 (snapping below 0.2), and the camera's `brightness` is the value
   to add (times 255) to RGB.
 
 ## Processing order

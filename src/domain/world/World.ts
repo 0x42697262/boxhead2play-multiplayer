@@ -20,15 +20,17 @@ import { Upgrades, type UpgradesHost } from '../upgrades/Upgrades.ts';
 import type { DrawEntry } from '../visuals.ts';
 import { INITIAL_AMBIENCE, stepAmbience, type AmbienceState } from './ambience.ts';
 import { cellToScreen, trackCamera, type CameraRect } from './camera.ts';
+import { CameraEffects, NO_CAMERA_EFFECTS, type CameraEffectsView } from './CameraEffects.ts';
+import type { ScreenEffects } from './ScreenEffects.ts';
 import { CompletionState } from './CompletionState.ts';
 import { GameMode } from './GameMode.ts';
 import { IDLE_PLAYER_INPUT, IDLE_TICK_INPUT, type PlayerInput, type TickInput } from './input.ts';
 import { initObjectsInOrder, InitKind, screenToCell, type RoomDefinition, type RoomInitObject } from './RoomDefinition.ts';
-import { ScreenEffects } from './ScreenEffects.ts';
 import type { PlayerCharacter, SimulationSettings } from './SimulationSettings.ts';
 import { openSpawnNear, pickPlayerSpawnCell, pickSpawnPoint, pickSpawnPointNonStrict, reachableFloor, standablePlayerPoints, type SpawnPoint, validateSpawnPoints } from './spawning.ts';
 import {
   DROPPED_PICKUP_SECONDS,
+  INITIAL_BRIGHTNESS,
   KILLS_TO_WIN,
   MAX_PLAYERS,
   OPEN_SPAWN_SEARCH_CELLS,
@@ -56,8 +58,7 @@ export interface CameraView {
 
 export interface Presentation {
   readonly cameras: readonly CameraView[];
-  readonly shake: Point2;
-  readonly brightness: number;
+  readonly effects: ReadonlyMap<number, CameraEffectsView>;
 }
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
@@ -75,7 +76,6 @@ export class World implements WorldContext, UpgradesHost {
   readonly hud: HudState;
   readonly upgrades: Upgrades;
   readonly things: ThingCollection;
-  readonly screen = new ScreenEffects();
   tick = 0;
   private currentTicksPerSecond: number;
   private completionState: CompletionState | undefined = undefined;
@@ -90,7 +90,8 @@ export class World implements WorldContext, UpgradesHost {
   private readonly trackTargets = new Map<number, Point3>();
   private readonly lastTracked = new Map<number, Point3>();
   private ambience: AmbienceState = INITIAL_AMBIENCE;
-  private view: Presentation = { cameras: [], shake: { x: 0, y: 0 }, brightness: 0 };
+  private readonly screens = new CameraEffects();
+  private view: Presentation = { cameras: [], effects: new Map() };
   private drawOrigin: Point2 = { x: 0, y: 0 };
 
   constructor(
@@ -168,6 +169,10 @@ export class World implements WorldContext, UpgradesHost {
     return this.view.cameras.find((camera) => camera.playerIndex === playerIndex);
   }
 
+  effectsFor(playerIndex: number): CameraEffectsView {
+    return this.view.effects.get(playerIndex) ?? NO_CAMERA_EFFECTS;
+  }
+
   freePlayerIndex(): number | undefined {
     const taken = new Set(this.things.players().map((player) => player.playerIndex));
     return Array.from({ length: MAX_PLAYERS }, (_unused, index) => index).find((index) => !taken.has(index));
@@ -175,7 +180,7 @@ export class World implements WorldContext, UpgradesHost {
 
   joinPlayer(playerIndex: number, character: PlayerCharacter): boolean {
     if (this.things.playerByIndex(playerIndex) || playerIndex >= MAX_PLAYERS) return false;
-    if (!this.spawnPlayer(playerIndex, character, this.unoccupied(this.playerRespawnPoint()))) return false;
+    if (!this.spawnPlayer(playerIndex, character, this.unoccupied(this.playerRespawnPoint()), 0)) return false;
     this.hud.resetPlayer(playerIndex);
     this.hud.addMessage(MessageTone.Joined, { key: 'hud.joined' }, undefined, { player: playerIndex });
     return true;
@@ -189,6 +194,7 @@ export class World implements WorldContext, UpgradesHost {
     player.delete();
     this.trackTargets.delete(playerIndex);
     this.lastTracked.delete(playerIndex);
+    this.screens.close(playerIndex);
     return true;
   }
 
@@ -283,13 +289,13 @@ export class World implements WorldContext, UpgradesHost {
     this.trackTargets.set(player.playerIndex, { x, y, z });
   }
 
-  shake(dx: number, dy: number): void {
-    this.screen.shake(dx, dy);
+  shake(source: Point3, dx: number, dy: number): void {
+    for (const effects of this.screensSeeing(source)) effects.shake(dx, dy);
     this.events.emit({ type: DomainEventType.CameraShaken, dx, dy });
   }
 
-  flashBrightness(level: number): void {
-    this.screen.flash(level);
+  flashBrightness(source: Point3, level: number): void {
+    for (const effects of this.screensSeeing(source)) effects.flash(level);
     this.events.emit({ type: DomainEventType.BrightnessFlashed, brightness: level });
   }
 
@@ -309,16 +315,35 @@ export class World implements WorldContext, UpgradesHost {
     this.present();
   }
 
+  private screensSeeing(source: Point3): ScreenEffects[] {
+    return this.screens.seeing(this.view.cameras, cellToScreen(source, this.projectionFactor));
+  }
+
   private present(): void {
-    this.screen.decayShake();
-    const cameras = this.playerCameras();
+    const indexes = this.playerIndexes();
+    this.screens.keepOnly(indexes);
+    for (const index of indexes) this.screens.of(index).decayShake();
+    const cameras = this.playerCameras(indexes);
     const first = cameras[0];
     if (first) this.drawOrigin = first.drawOrigin;
-    const brightness = this.settings.detail ? this.screen.decayBrightness() : 0;
+    const effects = new Map(cameras.map((camera) => [camera.playerIndex, this.presentEffects(camera.playerIndex)] as const));
     this.hud.pruneMessages();
     if (this.settings.presentAmbience) this.presentAmbience(cameras);
-    this.view = { cameras, shake: { x: this.screen.shakeX, y: this.screen.shakeY }, brightness };
+    this.view = { cameras, effects };
     this.trackTargets.clear();
+  }
+
+  private presentEffects(playerIndex: number): CameraEffectsView {
+    const screen = this.screens.of(playerIndex);
+    const brightness = this.settings.detail ? screen.decayBrightness() : 0;
+    return { shake: { x: screen.shakeX, y: screen.shakeY }, brightness };
+  }
+
+  private playerIndexes(): number[] {
+    return this.things
+      .players()
+      .map((player) => player.playerIndex)
+      .sort((first, second) => first - second);
   }
 
   private presentAmbience(cameras: readonly CameraView[]): void {
@@ -331,11 +356,7 @@ export class World implements WorldContext, UpgradesHost {
     for (const event of ambience.events) this.events.emit(event);
   }
 
-  private playerCameras(): CameraView[] {
-    const indexes = this.things
-      .players()
-      .map((player) => player.playerIndex)
-      .sort((first, second) => first - second);
+  private playerCameras(indexes: readonly number[]): CameraView[] {
     const smooth = this.settings.gameMode !== GameMode.DeathMatch;
     return indexes.map((index) => {
       const result = trackCamera({
@@ -361,10 +382,11 @@ export class World implements WorldContext, UpgradesHost {
   }
 
   private cameraView(playerIndex: number, rect: CameraRect): CameraView {
+    const screen = this.screens.of(playerIndex);
     return {
       playerIndex,
       rect,
-      drawOrigin: { x: rect.x + this.screen.shakeX, y: rect.y + this.screen.shakeY },
+      drawOrigin: { x: rect.x + screen.shakeX, y: rect.y + screen.shakeY },
     };
   }
 
@@ -384,7 +406,7 @@ export class World implements WorldContext, UpgradesHost {
     const markers = this.playerStart ? [this.playerStart, ...this.playerPoints.filter((point) => point !== this.playerStart)] : this.playerPoints;
     this.playerFloor = reachableFloor(markers.map((point) => point.cell));
     this.settings.playerCharacters.forEach((character, index) => {
-      this.spawnPlayer(index, character, this.unoccupied(this.playerRespawnPoint()));
+      this.spawnPlayer(index, character, this.unoccupied(this.playerRespawnPoint()), INITIAL_BRIGHTNESS);
     });
   }
 
@@ -457,8 +479,9 @@ export class World implements WorldContext, UpgradesHost {
     return point;
   }
 
-  private spawnPlayer(playerIndex: number, character: PlayerCharacter, point: SpawnPoint | undefined): boolean {
+  private spawnPlayer(playerIndex: number, character: PlayerCharacter, point: SpawnPoint | undefined, brightness: number): boolean {
     if (!point) return false;
+    this.screens.open(playerIndex, brightness);
     this.upgrades.totalPlayerCount++;
     this.upgrades.playerCount++;
     this.things.addPlayer(this.factory.player(this, point.position.clone(), playerIndex, point.angle.clone(), character));

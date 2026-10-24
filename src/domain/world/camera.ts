@@ -30,6 +30,15 @@ export function flashRange(value: number, min: number, max: number): number {
   return value >= min ? value : min;
 }
 
+export function rectSees(rect: CameraRect, point: Point2, marginPx: number): boolean {
+  return (
+    point.x >= rect.x - marginPx &&
+    point.x <= rect.x + rect.width + marginPx &&
+    point.y >= rect.y - marginPx &&
+    point.y <= rect.y + rect.height + marginPx
+  );
+}
+
 export function cellToScreen(point: Point3, projectionFactor: number): Point2 {
   return {
     x: Math.round(point.x * CELL_SIZE_PX),

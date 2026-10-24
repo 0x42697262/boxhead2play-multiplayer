@@ -1,10 +1,11 @@
 import { sign } from '../math/scalar.ts';
-import { BRIGHTNESS_STEP, INITIAL_BRIGHTNESS, SHAKE_DAMPING, SHAKE_LIMIT_PX, SHAKE_REST_PX } from './tuning.ts';
+import { BRIGHTNESS_STEP, SHAKE_DAMPING, SHAKE_LIMIT_PX, SHAKE_REST_PX } from './tuning.ts';
 
 export class ScreenEffects {
   shakeX = 0;
   shakeY = 0;
-  brightness: number = INITIAL_BRIGHTNESS;
+
+  constructor(public brightness = 0) {}
 
   get shakeLength(): number {
     return Math.sqrt(this.shakeX * this.shakeX + this.shakeY * this.shakeY);

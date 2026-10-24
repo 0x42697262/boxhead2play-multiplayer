@@ -21,6 +21,7 @@ export const SHAKE_REST_PX = 0.1;
 
 export const INITIAL_BRIGHTNESS = 1;
 export const BRIGHTNESS_STEP = 0.2;
+export const SCREEN_EFFECT_SOURCE_MARGIN_PX = 112;
 
 export const CAMERA_FOLLOW_SPEED_CELLS = 0.16;
 export const CAMERA_CATCH_UP_DIVISOR = 5;

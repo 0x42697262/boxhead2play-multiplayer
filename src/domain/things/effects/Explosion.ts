@@ -91,8 +91,8 @@ export class Explosion extends Effect {
 
   private processDelay(): void {
     if (--this.delay >= 0) return;
-    this.world.shake(EXPLOSION.shakeX, EXPLOSION.shakeY);
-    this.world.flashBrightness(EXPLOSION.brightness);
+    this.world.shake(this.position, EXPLOSION.shakeX, EXPLOSION.shakeY);
+    this.world.flashBrightness(this.position, EXPLOSION.brightness);
     const area = CellRect.around(this.position.x, this.position.y, this.range);
     this.world.map.affects.affectArea(area, new ExplosionAffect(this.parent, this, this.damage, this.range));
     this.world.map.decals.scorchMark(this.position);

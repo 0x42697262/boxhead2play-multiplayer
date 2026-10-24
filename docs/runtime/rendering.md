@@ -163,7 +163,7 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
   `ConvertCellToScreen`.
 * Every mode draws one full 640 x 480 view. The original deathmatch split screen (two
   480 x 480 views scaled side by side) is gone with local two-player play (ADR 0005).
-* Brightness: `presentation.brightness * 255` added to RGB with `lighter` over the whole
+* Brightness: the frame's `brightness` (the local camera's, `World.effectsFor`) `* 255` added to RGB with `lighter` over the whole
   stage, before the HUD.
 
 ## HUD (`hud/`)

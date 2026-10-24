@@ -26,7 +26,7 @@
 | `Thing.Affect.CThing_Affect_DevilAttack` | `src/domain/things/affects/DevilAttackAffect.ts` |
 | `Thing.Affect.CThing_Affect_ZombieAttack` | `src/domain/things/affects/ZombieAttackAffect.ts` |
 | `CThing_Creature.ProcessAffects` (switch only) | `src/domain/things/affects/hitReaction.ts` |
-| `World.CWorld` (simulation) | `src/domain/world/World.ts`, `spawning.ts`, `camera.ts`, `ambience.ts`, `ScreenEffects.ts` |
+| `World.CWorld` (simulation) | `src/domain/world/World.ts`, `spawning.ts`, `camera.ts`, `ambience.ts`, `ScreenEffects.ts`, `CameraEffects.ts` |
 | `World.CWorld.mGameMode` | `src/domain/world/GameMode.ts` |
 | `CWorld_Init_*` kinds | `src/domain/world/RoomDefinition.ts` (`InitKind`) |
 | `World.CUpgrades` | `src/domain/upgrades/Upgrades.ts`, `tables.ts`, `UpgradeProp.ts`, `contracts.ts` |

@@ -1,5 +1,5 @@
 import type { AnimationCatalog } from '../animation/AnimationCatalog.ts';
-import type { EventSink } from '../events.ts';
+import type { EventSink, Point3 } from '../events.ts';
 import type { HudState } from '../hud/HudState.ts';
 import type { Rng } from '../math/Rng.ts';
 import type { GameMap } from '../map/GameMap.ts';
@@ -31,7 +31,7 @@ export interface WorldContext {
   logKill(thing: Thing): void;
   playerDead(): void;
   trackPlayer(player: PlayerThing): void;
-  shake(dx: number, dy: number): void;
-  flashBrightness(level: number): void;
+  shake(source: Point3, dx: number, dy: number): void;
+  flashBrightness(source: Point3, level: number): void;
   playerRespawnPoint(): SpawnPoint | undefined;
 }

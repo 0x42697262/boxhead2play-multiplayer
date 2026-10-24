@@ -18,7 +18,7 @@ Source: `Thing/Object/*.as`, `Thing/Effect/*.as`. Port: `src/domain/things/objec
 
 | Effect | Visual | Behavior |
 |---|---|---|
-| `Explosion` | `Effect.Explosion` animation at 2.5 frames per tick | Unique id, range `2 + max(damage - 100, 0) * 0.005`. Init: cluster shells (4, at 90° ± 22.5° random) and bigger-bang fragments (`2π / (bang * 1.5)` apart, delay 2..5 ticks). After its delay: shake `(0, 30)`, brightness flash, `ExplosionAffect` on the square area, scorch mark, explosion sound. |
+| `Explosion` | `Effect.Explosion` animation at 2.5 frames per tick | Unique id, range `2 + max(damage - 100, 0) * 0.005`. Init: cluster shells (4, at 90° ± 22.5° random) and bigger-bang fragments (`2π / (bang * 1.5)` apart, delay 2..5 ticks). After its delay: shake `(0, 30)` and brightness flash for the cameras that see it, `ExplosionAffect` on the square area, scorch mark, explosion sound. |
 | `BulletHit` | `Effect.BulletHit` | plays once |
 | `SmokeCloud` | `Effect.SmokeCloud` | plays once |
 | `RocketSmoke` | `Effect.RocketSmoke` | drifts backwards, 1.2 times faster each tick, plays once |

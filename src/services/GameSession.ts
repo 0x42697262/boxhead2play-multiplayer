@@ -72,7 +72,7 @@ export function worldFrame(world: World): WorldFrame {
     gameMode: world.settings.gameMode,
     localPlayerIndex: LOCAL_PLAYER_INDEX,
     cameras: presentation.cameras.map((view) => ({ view, entries: world.drawList(view) })),
-    brightness: presentation.brightness,
+    brightness: world.effectsFor(LOCAL_PLAYER_INDEX).brightness,
     projectionFactor: world.projectionFactor,
     tick: world.tick,
     ticksPerSecond: world.ticksPerSecond,
