@@ -47,6 +47,8 @@ Option 3.
   `image-rendering: pixelated` when the window is at least 640 x 480, smooth fractional
   downscaling below that. The original stage was bitmap based (`copyPixels`), so crisp
   integer scaling matches it best; the smooth fallback keeps small windows usable.
+  Superseded by [ADR 0006](0006-render-resolution.md): this is now the `pixelated` graphics
+  quality, and the default renders at the screen's resolution.
 
 ## Consequences
 

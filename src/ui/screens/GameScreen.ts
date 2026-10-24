@@ -5,7 +5,6 @@ import type { KeyboardState } from '../../adapters/input/KeyboardState.ts';
 import { buildBindings, TickInputSampler } from '../../adapters/input/TickInputSampler.ts';
 import type { ClipBuffers } from '../../adapters/render/clips/ClipBuffers.ts';
 import { HudAction, HudRenderer } from '../../adapters/render/hud/HudRenderer.ts';
-import type { Surface } from '../../adapters/render/surface.ts';
 import type { SymbolRenderer } from '../../adapters/render/symbols/SymbolRenderer.ts';
 import type { VisualPainter } from '../../adapters/render/world/VisualPainter.ts';
 import { WorldRenderer } from '../../adapters/render/world/WorldRenderer.ts';
@@ -26,7 +25,6 @@ export interface RenderKit {
   readonly clips: ClipBuffers;
   readonly characters: XsiFrameCache;
   readonly painter: VisualPainter;
-  readonly stage: Surface;
 }
 
 export interface GameScreenDependencies {
@@ -56,7 +54,7 @@ export class GameScreen implements Screen {
     const settings = deps.settings.settings;
     const options = toGameOptions(settings, deps.selection.mode);
     const hud = new HudRenderer(deps.kit.renderer, options.gameMode);
-    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: options.detail });
+    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: options.detail, resolution: () => deps.shell.resolution });
     for (const collection of prewarmCollections(options)) deps.kit.characters.enqueue(collection);
     deps.keyboard.releaseAll();
     deps.keyboard.clearEdges();
@@ -85,11 +83,10 @@ export class GameScreen implements Screen {
   }
 
   present(): void {
-    const { stage } = this.deps.kit;
-    this.renderer.composite(stage.ctx);
-    const ctx = this.deps.shell.ctx;
+    const composed = this.renderer.composite();
+    const { ctx, canvas } = this.deps.shell;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(stage.canvas, 0, 0);
+    ctx.drawImage(composed.canvas, 0, 0, canvas.width, canvas.height);
   }
 
   idle(hasTime: () => boolean): void {

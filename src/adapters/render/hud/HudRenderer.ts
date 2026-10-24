@@ -6,7 +6,7 @@ import { SCREEN_HEIGHT_PX, SCREEN_WIDTH_PX } from '../../../domain/world/tuning.
 import { t } from '../../../text/i18n.ts';
 import { bufferLayout } from '../clips/bufferLayout.ts';
 import { alphaOnly } from '../color/colorTransform.ts';
-import { flashTranslate, IDENTITY, type Matrix } from '../geometry/Matrix.ts';
+import { flashTranslate, multiply, scaling, type Matrix } from '../geometry/Matrix.ts';
 import { transformRect, type Rect } from '../geometry/Rect.ts';
 import { resetContext, type BufferedBitmap, type Context2D, type Surface } from '../surface.ts';
 import { depthKey, type Overrides } from '../symbols/SymbolLibrary.ts';
@@ -78,6 +78,8 @@ export class HudRenderer {
   private totals: HudFrame | undefined = undefined;
   private upgradeList: Surface | undefined = undefined;
   private upgradeListKey: string | undefined = undefined;
+  private upgradeEntries: readonly MultiplierListEntry[] | undefined = undefined;
+  private currentResolution = 1;
 
   constructor(
     private readonly renderer: SymbolRenderer,
@@ -86,6 +88,17 @@ export class HudRenderer {
 
   get popupCount(): number {
     return this.popups.count;
+  }
+
+  get resolution(): number {
+    return this.currentResolution;
+  }
+
+  setResolution(resolution: number): void {
+    if (resolution === this.currentResolution) return;
+    this.currentResolution = resolution;
+    this.cache.clear();
+    this.upgradeList = this.upgradeEntries ? this.renderUpgradeList(this.upgradeEntries) : undefined;
   }
 
   addScore(event: ScoreAwarded): void {
@@ -97,14 +110,14 @@ export class HudRenderer {
     for (const { popup, alpha } of this.popups.step()) {
       const text = t('hud.scorePopup', { points: popup.points });
       const bitmap = this.clip(HudSymbol.Score, { [HudChild.PopupText]: { text } }, `score|${text}`, HUD_BUFFER_INFLATE_PX);
-      if (bitmap) blit(ctx, bitmap, { x: popup.x, y: popup.y }, 1, alpha);
+      if (bitmap) blit(ctx, bitmap, { x: popup.x, y: popup.y }, 1, alpha, this.currentResolution);
     }
     this.messages.sync(hud.messages);
     for (const draw of this.messages.step(tick, ticksPerSecond)) {
       const text = t(draw.entry.text.key, draw.entry.text.params ?? {});
       const color = MESSAGE_COLORS[draw.entry.tone];
       const bitmap = this.clip(HudSymbol.Message, { [HudChild.MessageText]: { text, textColor: color } }, `message|${color}|${text}`, HUD_BUFFER_INFLATE_PX);
-      if (bitmap) blit(ctx, bitmap, { x: draw.x, y: draw.y }, 1, draw.alpha);
+      if (bitmap) blit(ctx, bitmap, { x: draw.x, y: draw.y }, 1, draw.alpha, this.currentResolution);
     }
     resetContext(ctx);
     this.totals = hud;
@@ -118,6 +131,7 @@ export class HudRenderer {
     const key = upgrades ? JSON.stringify(upgrades) : undefined;
     if (key === this.upgradeListKey) return;
     this.upgradeListKey = key;
+    this.upgradeEntries = upgrades;
     this.upgradeList = upgrades ? this.renderUpgradeList(upgrades) : undefined;
   }
 
@@ -130,7 +144,7 @@ export class HudRenderer {
     for (const label of this.labels) {
       if (!label.visible) continue;
       const bitmap = this.playerClip(label);
-      if (bitmap) blit(ctx, bitmap, label.screen, 1, OPAQUE_ALPHA);
+      if (bitmap) blit(ctx, bitmap, label.screen, 1, OPAQUE_ALPHA, this.currentResolution);
     }
     if (this.upgradeList) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -162,7 +176,7 @@ export class HudRenderer {
     };
     const key = `total|${totals.totalScore}|${totals.multiplier}|${overrides[HudChild.Timer]?.frame ?? 0}`;
     const bitmap = this.clip(HudSymbol.ScoreTotal, overrides, key, LIVE_CLIP_INFLATE_PX);
-    if (bitmap) blit(ctx, bitmap, SCORE_TOTAL_POSITION, 1, OPAQUE_ALPHA);
+    if (bitmap) blit(ctx, bitmap, SCORE_TOTAL_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
   }
 
   private drawFrags(ctx: Context2D, totals: HudFrame): void {
@@ -179,7 +193,7 @@ export class HudRenderer {
     const names = [own, opponent].map((index) => (index === undefined ? '' : playerDisplayName(totals, index))).join(',');
     const key = `frags|${own}|${opponent ?? ''}|${names}|${totals.frags.join(',')}`;
     const bitmap = this.clip(HudSymbol.PlayerFrags, overrides, key, LIVE_CLIP_INFLATE_PX);
-    if (bitmap) blit(ctx, bitmap, { x: 0, y: 0 }, 1, OPAQUE_ALPHA);
+    if (bitmap) blit(ctx, bitmap, { x: 0, y: 0 }, 1, OPAQUE_ALPHA, this.currentResolution);
   }
 
   private playerClip(label: PlayerLabel): BufferedBitmap | undefined {
@@ -203,9 +217,10 @@ export class HudRenderer {
     if (hit) return hit;
     const id = this.renderer.library.characterId(symbol);
     if (id === undefined) return undefined;
-    const layout = bufferLayout(this.renderer.library.localBounds(id, 0, overrides), 1, 1, inflatePx);
+    const resolution = this.currentResolution;
+    const layout = bufferLayout(this.renderer.library.localBounds(id, 0, overrides), 1, 1, inflatePx, resolution);
     const surface = this.renderer.createSurface(layout.width, layout.height);
-    this.renderer.draw(surface.ctx, id, 0, layout.matrix, { overrides });
+    this.renderer.draw(surface.ctx, id, 0, layout.matrix, { overrides, resolution });
     const bitmap = { surface, dispX: layout.dispX, dispY: layout.dispY };
     if (this.cache.size >= HUD_CACHE_LIMIT) this.cache.clear();
     this.cache.set(key, bitmap);
@@ -216,19 +231,21 @@ export class HudRenderer {
     const library = this.renderer.library;
     const id = library.characterId(HudSymbol.UpgradeList);
     if (id === undefined) return undefined;
-    const surface = this.renderer.createSurface(SCREEN_WIDTH_PX, SCREEN_HEIGHT_PX);
+    const resolution = this.currentResolution;
+    const toDevice = scaling(resolution, resolution);
+    const surface = this.renderer.createSurface(SCREEN_WIDTH_PX * resolution, SCREEN_HEIGHT_PX * resolution);
     const hidden: Overrides = Object.fromEntries([...UPGRADE_COLUMNS, depthKey(PAUSED_TITLE_DEPTH)].map((key) => [key, { visible: false }]));
-    this.renderer.draw(surface.ctx, id, 0, IDENTITY, { overrides: hidden });
+    this.renderer.draw(surface.ctx, id, 0, toDevice, { overrides: hidden, resolution });
     for (const { entry, column, row } of upgradeRows(upgrades)) {
       const template = library.findChild(id, column);
       if (!template) continue;
-      const matrix: Matrix = flashTranslate(template.matrix, 0, row * UPGRADE_ROW_SPACING_PX);
+      const matrix: Matrix = multiply(toDevice, flashTranslate(template.matrix, 0, row * UPGRADE_ROW_SPACING_PX));
       const overrides: Overrides = {
         [HudChild.UpgradeText]: { text: t(entry.name), textColor: entry.newWeapon ? NEW_WEAPON_UPGRADE_COLOR : UPGRADE_COLOR },
         [HudChild.UpgradeIndex]: { text: String(entry.index) },
       };
       const alpha = entry.active ? OPAQUE : INACTIVE_UPGRADE_ALPHA;
-      this.renderer.draw(surface.ctx, template.characterId, 0, matrix, { overrides, colorTransform: alphaOnly(alpha) });
+      this.renderer.draw(surface.ctx, template.characterId, 0, matrix, { overrides, colorTransform: alphaOnly(alpha), resolution });
     }
     return surface;
   }

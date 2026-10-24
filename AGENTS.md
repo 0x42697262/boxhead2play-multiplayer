@@ -125,6 +125,9 @@ Add one line per behavior change: what to do, and the result you expect.
   far side, no arms or feet showing through the body (like the SWF).
 * Fire the rocket launcher (key 8 after unlocking) -> one yellow-white glowing projectile, not
   three separate white dots.
+* `npm run dev` in a 1920 x 1080 window -> the canvas is 1440 x 1080 device pixels
+  (`resolution` 2.25); menu text, character cards, barrels and characters have smooth edges,
+  no 2-pixel steps; barrel outlines stay 1 stage pixel thick.
 * Hold two arrow keys (for example Down + Right) -> player 1 walks diagonally at the same speed
   as straight (0.16 cells per tick).
 * `npm run dev` -> after loading, a fade from black to the main menu: background, BOXHEAD 2PLAY

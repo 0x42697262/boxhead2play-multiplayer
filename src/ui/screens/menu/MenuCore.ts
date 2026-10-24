@@ -3,7 +3,7 @@ import type { LayeredStage, StageScene } from '../../../adapters/render/menu/Lay
 import { hitAreaContains, instanceHitArea } from '../../../adapters/render/symbols/hitTest.ts';
 import type { SymbolRenderer } from '../../../adapters/render/symbols/SymbolRenderer.ts';
 import { Cursor, type PointerInput, type StagePoint } from '../../../services/ScreenFlow.ts';
-import { STAGE_HEIGHT_PX, STAGE_WIDTH_PX, type Shell } from '../../shell/Shell.ts';
+import type { Shell } from '../../shell/Shell.ts';
 import { MenuPointer, type MenuTarget } from './MenuPointer.ts';
 import { ScreenTransition } from './ScreenTransition.ts';
 
@@ -15,7 +15,7 @@ export interface MenuKit {
 }
 
 function snapshot(kit: MenuKit): ScreenTransition {
-  const surface = kit.renderer.createSurface(STAGE_WIDTH_PX, STAGE_HEIGHT_PX);
+  const surface = kit.renderer.createSurface(kit.shell.canvas.width, kit.shell.canvas.height);
   surface.ctx.drawImage(kit.shell.canvas, 0, 0);
   return new ScreenTransition(surface);
 }
@@ -56,8 +56,10 @@ export class MenuCore<Action> {
   }
 
   present(scene: StageScene): void {
+    const { shell } = this.kit;
+    this.kit.stage.setResolution(shell.resolution);
     const stage = this.kit.stage.render(scene);
-    this.transition.draw(this.kit.shell.ctx, stage.canvas);
+    this.transition.draw(shell.ctx, stage.canvas, shell.canvas);
   }
 
   hitTest(scene: StageScene, targets: readonly MenuTarget<Action>[]): (point: StagePoint) => MenuTarget<Action> | undefined {

@@ -1,5 +1,5 @@
 import { applyGlow, rgbFromNumber } from '../color/pixelFilters.ts';
-import { IDENTITY, type Matrix } from '../geometry/Matrix.ts';
+import { multiply, scaling, type Matrix } from '../geometry/Matrix.ts';
 import { bufferLayout } from '../clips/bufferLayout.ts';
 import { cssColor, readPixels, resetContext, type BufferedBitmap, type Context2D, type Surface, type SurfaceFactory } from '../surface.ts';
 import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
@@ -18,8 +18,19 @@ function tracePath(ctx: Context2D, points: readonly number[]): void {
 
 export class XsiTextures {
   private readonly textures = new Map<string, Surface | null>();
+  private currentResolution = 1;
 
   constructor(private readonly renderer: SymbolRenderer) {}
+
+  get resolution(): number {
+    return this.currentResolution;
+  }
+
+  setResolution(resolution: number): void {
+    if (resolution === this.currentResolution) return;
+    this.currentResolution = resolution;
+    this.textures.clear();
+  }
 
   surface(fill: TextureFill): Surface | undefined {
     const cached = this.textures.get(fill.linkage);
@@ -27,8 +38,9 @@ export class XsiTextures {
     const characterId = this.renderer.library.characterId(fill.linkage);
     let surface: Surface | null = null;
     if (characterId !== undefined) {
-      surface = this.renderer.createSurface(fill.size.x, fill.size.y);
-      this.renderer.draw(surface.ctx, characterId, 0, IDENTITY);
+      const resolution = this.currentResolution;
+      surface = this.renderer.createSurface(fill.size.x * resolution, fill.size.y * resolution);
+      this.renderer.draw(surface.ctx, characterId, 0, scaling(resolution, resolution), { resolution });
     }
     this.textures.set(fill.linkage, surface);
     return surface ?? undefined;
@@ -41,8 +53,17 @@ export class XsiRasterizer {
     private readonly textures: XsiTextures,
   ) {}
 
+  get resolution(): number {
+    return this.textures.resolution;
+  }
+
+  setResolution(resolution: number): void {
+    this.textures.setResolution(resolution);
+  }
+
   rasterize(drawing: XsiDrawing): BufferedBitmap {
-    const layout = bufferLayout(drawingBounds(drawing), drawing.scale, drawing.scale, XSI_BUFFER_INFLATE_PX);
+    const resolution = this.resolution;
+    const layout = bufferLayout(drawingBounds(drawing), drawing.scale, drawing.scale, XSI_BUFFER_INFLATE_PX, resolution);
     const target = this.surfaces.create(layout.width, layout.height);
     this.drawShadow(target, drawing, layout.matrix);
     const { ctx } = target;
@@ -56,8 +77,8 @@ export class XsiRasterizer {
       applyGlow(image.data, target.width, target.height, {
         color: rgbFromNumber(XSI_OUTLINE_GLOW.color),
         colorAlpha: 1,
-        blurX: XSI_OUTLINE_GLOW.blurX,
-        blurY: XSI_OUTLINE_GLOW.blurY,
+        blurX: XSI_OUTLINE_GLOW.blurX * resolution,
+        blurY: XSI_OUTLINE_GLOW.blurY * resolution,
         strength: XSI_OUTLINE_GLOW.strength,
         passes: XSI_OUTLINE_GLOW.passes,
       });
@@ -82,8 +103,8 @@ export class XsiRasterizer {
     applyGlow(image.data, shadow.width, shadow.height, {
       color: rgbFromNumber(XSI_SHADOW_FILTER.color),
       colorAlpha: 1,
-      blurX: XSI_SHADOW_FILTER.blurX,
-      blurY: XSI_SHADOW_FILTER.blurY,
+      blurX: XSI_SHADOW_FILTER.blurX * this.resolution,
+      blurY: XSI_SHADOW_FILTER.blurY * this.resolution,
       strength: XSI_SHADOW_FILTER.strength,
       passes: XSI_SHADOW_FILTER.passes,
       hideObject: true,
@@ -124,7 +145,7 @@ export class XsiRasterizer {
     const texture = this.textures.surface(fill);
     const pattern = texture ? ctx.createPattern(texture.canvas, 'repeat') : null;
     if (!pattern) return TRANSPARENT;
-    pattern.setTransform(new DOMMatrix([...fill.matrix]));
+    pattern.setTransform(new DOMMatrix([...multiply(fill.matrix, scaling(1 / this.resolution, 1 / this.resolution))]));
     return pattern;
   }
 }

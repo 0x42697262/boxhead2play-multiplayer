@@ -17,7 +17,27 @@ Source: `DrawPrimitive/**`, `World/CWorld.as` (`InitDrawPlanes`, `Draw`, `Draw_P
 | `hud/` | `CHud` drawing: score popups, messages, player labels, score total, frags, upgrade list. |
 
 Everything draws into `OffscreenCanvas` surfaces (`surface.ts`). The visible canvas only
-receives the finished 640 x 480 stage.
+receives the finished stage.
+
+## Resolution
+
+Decision record: [ADR 0006](../adr/0006-render-resolution.md). `Shell.resolution` is the
+number of canvas pixels per stage pixel: 1 for the `smooth` and `pixelated` graphics
+qualities, and `fit x devicePixelRatio` (quarter steps, 1..3) for `sharp`.
+
+| Producer | Uses the resolution for |
+|---|---|
+| `LayeredStage` | Stage surface size, root matrix, layer padding and filters |
+| `ClipBuffers` / `bufferLayout` | Buffer scale and inflation, like the original `pGlobalScale` |
+| `XsiRasterizer`, `XsiTextures` | Frame scale, outline glow and shadow blur, texture size |
+| `RoomPlanes` | Floor, cover and decal mask size; decal positions |
+| `HudRenderer` | HUD clip buffers and the upgrade list surface |
+| `WorldRenderer` | Screen size, floor source origin; rebuilds planes and replays decals on change |
+| `SymbolRenderer` | `DrawOptions.resolution` scales filter blur and distance |
+
+Positions stay in stage pixels. `blit` multiplies them by the resolution and adds the
+bitmap's displacement, which is already in device pixels. Pointer coordinates are mapped to
+stage pixels from the canvas' CSS box, so hit testing does not change.
 
 ## Display-list replay (`SymbolRenderer`)
 

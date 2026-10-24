@@ -10,7 +10,10 @@ export interface BufferLayout {
   readonly matrix: Matrix;
 }
 
-export function bufferLayout(bounds: Rect | null, scaleX: number, scaleY: number, inflatePx: number): BufferLayout {
+export function bufferLayout(bounds: Rect | null, clipScaleX: number, clipScaleY: number, clipInflatePx: number, resolution = 1): BufferLayout {
+  const scaleX = clipScaleX * resolution;
+  const scaleY = clipScaleY * resolution;
+  const inflatePx = clipInflatePx * resolution;
   if (!bounds) return { width: SURFACE_MIN_SIZE, height: SURFACE_MIN_SIZE, dispX: 0, dispY: 0, matrix: [scaleX, 0, 0, scaleY, 0, 0] };
   let x = Math.floor(bounds.xMin);
   let y = Math.floor(bounds.yMin);

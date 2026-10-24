@@ -17,6 +17,7 @@ export const BACKGROUND_COLOR = 0x000000;
 
 export interface WorldRendererOptions {
   readonly detail: boolean;
+  readonly resolution: () => number;
 }
 
 export function playerLabelText(player: PlayerHudFrame): string {
@@ -38,27 +39,42 @@ export function localCamera(frame: WorldFrame): CameraFrame | undefined {
 }
 
 export class WorldRenderer {
-  readonly screen: Surface;
-  private readonly planes: RoomPlanes;
+  private screenSurface: Surface;
+  private composed: Surface;
+  private planes: RoomPlanes;
+  private currentResolution: number;
+  private readonly decals: DecalRequested[] = [];
   private lastDrawOrigin: CameraFrame['view']['drawOrigin'] | undefined = undefined;
 
   constructor(
-    room: Room,
+    private readonly room: Room,
     private readonly renderer: SymbolRenderer,
     private readonly clips: ClipBuffers,
     private readonly painter: VisualPainter,
     readonly hud: HudRenderer,
     private readonly options: WorldRendererOptions,
   ) {
-    this.planes = buildRoomPlanes(room, renderer);
-    this.screen = renderer.createSurface(SCREEN_WIDTH_PX, SCREEN_HEIGHT_PX);
+    this.currentResolution = options.resolution();
+    this.applyResolution();
+    this.planes = buildRoomPlanes(room, renderer, this.currentResolution);
+    this.screenSurface = this.screenSized();
+    this.composed = this.screenSized();
+  }
+
+  get screen(): Surface {
+    return this.screenSurface;
   }
 
   get floor(): Surface {
     return this.planes.floor;
   }
 
+  get resolution(): number {
+    return this.currentResolution;
+  }
+
   stampDecal(decal: DecalRequested): void {
+    this.decals.push(decal);
     stampDecal(this.planes, this.clips, this.renderer, decal);
   }
 
@@ -71,15 +87,38 @@ export class WorldRenderer {
   }
 
   render(frame: WorldFrame): void {
+    this.syncResolution();
     this.hud.updatePlayers(this.renderCamera(frame));
     this.applyBrightness(frame.brightness);
     this.hud.drawBitmapLayer(this.screen.ctx, frame.hud, frame.tick, frame.ticksPerSecond);
   }
 
-  composite(target: Context2D): void {
+  composite(): Surface {
+    const target = this.composed.ctx;
     resetContext(target);
     target.drawImage(this.screen.canvas, 0, 0);
     this.hud.drawLive(target);
+    return this.composed;
+  }
+
+  private syncResolution(): void {
+    const resolution = this.options.resolution();
+    if (resolution === this.currentResolution) return;
+    this.currentResolution = resolution;
+    this.applyResolution();
+    this.planes = buildRoomPlanes(this.room, this.renderer, resolution);
+    for (const decal of this.decals) stampDecal(this.planes, this.clips, this.renderer, decal);
+    this.screenSurface = this.screenSized();
+    this.composed = this.screenSized();
+  }
+
+  private applyResolution(): void {
+    this.painter.setResolution(this.currentResolution);
+    this.hud.setResolution(this.currentResolution);
+  }
+
+  private screenSized(): Surface {
+    return this.renderer.createSurface(SCREEN_WIDTH_PX * this.currentResolution, SCREEN_HEIGHT_PX * this.currentResolution);
   }
 
   private renderCamera(frame: WorldFrame): PlayerLabel[] {
@@ -101,7 +140,7 @@ export class WorldRenderer {
     resetContext(ctx);
     ctx.fillStyle = cssColor(BACKGROUND_COLOR);
     ctx.fillRect(0, 0, target.width, target.height);
-    const source = floorSourceOrigin(camera.view.drawOrigin);
+    const source = floorSourceOrigin(camera.view.drawOrigin, this.currentResolution);
     copyClipped(ctx, this.planes.floor, source.x, source.y, target.width, target.height);
     this.painter.paint(ctx, camera.entries, { drawOrigin: camera.view.drawOrigin, projectionFactor });
     copyClipped(ctx, this.planes.cover, source.x, source.y, target.width, target.height);

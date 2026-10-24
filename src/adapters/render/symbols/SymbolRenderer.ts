@@ -14,11 +14,19 @@ export interface DrawOptions {
   readonly overrides?: Overrides;
   readonly hidden?: ReadonlySet<number>;
   readonly ratio?: number;
+  readonly resolution?: number;
 }
 
 interface DrawState {
   readonly ct: ColorTransform;
   readonly hidden: ReadonlySet<number>;
+  readonly resolution: number;
+}
+
+const UNIT_RESOLUTION = 1;
+
+function drawState(options: DrawOptions): DrawState {
+  return { ct: options.colorTransform ?? IDENTITY_COLOR, hidden: options.hidden ?? NO_HIDDEN, resolution: options.resolution ?? UNIT_RESOLUTION };
 }
 
 type LayerPainter = (target: Context2D, toLayer: Matrix) => void;
@@ -56,13 +64,13 @@ export class SymbolRenderer {
   ) {}
 
   draw(ctx: Context2D, characterId: number, frame: number, matrix: Matrix, options: DrawOptions = {}): void {
-    const state = { ct: options.colorTransform ?? IDENTITY_COLOR, hidden: options.hidden ?? NO_HIDDEN };
+    const state = drawState(options);
     this.character(ctx, characterId, frame, matrix, state, options.overrides, options.ratio ?? 0, undefined);
     resetContext(ctx);
   }
 
   drawItems(ctx: Context2D, items: readonly DisplayItem[], matrix: Matrix, options: DrawOptions = {}): void {
-    const state = { ct: options.colorTransform ?? IDENTITY_COLOR, hidden: options.hidden ?? NO_HIDDEN };
+    const state = drawState(options);
     this.itemList(ctx, withReplacements(items, options.overrides), matrix, state, options.overrides);
     resetContext(ctx);
   }
@@ -145,7 +153,7 @@ export class SymbolRenderer {
       this.character(target, item.characterId, own?.frame ?? 0, m, childState, own?.children, item.ratio ?? 0, own);
     const clip = own?.clip;
     const paint = clip === undefined ? draw : (target: Context2D, m: Matrix): void => clipped(target, m, clip, () => draw(target, m));
-    const effects = pixelEffects(own?.filters ?? item.filters);
+    const effects = pixelEffects(own?.filters ?? item.filters, state.resolution);
     if (effects.length === 0) {
       paint(ctx, matrix);
       return;

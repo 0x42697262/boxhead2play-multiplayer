@@ -2,16 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { prewarmCollections } from '../../src/adapters/render/xsi/collections.ts';
 import { CharacterStyle } from '../../src/domain/visuals.ts';
 import { DEFAULT_GAME_OPTIONS } from '../../src/domain/world/SimulationSettings.ts';
-import { stageScale } from '../../src/ui/shell/Shell.ts';
+import { GraphicsQuality } from '../../src/services/graphicsQuality.ts';
+import { sharpResolution, stageFit } from '../../src/ui/shell/Shell.ts';
 
-describe('stage scaling', () => {
-  it('uses whole multiples with pixelated rendering when the window is large enough', () => {
-    expect(stageScale(1920, 1080)).toEqual({ scale: 2, pixelated: true });
-    expect(stageScale(700, 500)).toEqual({ scale: 1, pixelated: true });
+const viewport = (width: number, height: number, devicePixelRatio = 1) => ({ width, height, devicePixelRatio });
+
+describe('stage fit per graphics quality', () => {
+  it('sharp fills the window and renders at the device pixels per stage pixel, in quarter steps up to 3', () => {
+    expect(stageFit(viewport(1920, 1080), GraphicsQuality.Sharp)).toEqual({ cssScale: 2.25, resolution: 2.25, pixelated: false });
+    expect(stageFit(viewport(1280, 720, 2), GraphicsQuality.Sharp)).toEqual({ cssScale: 1.5, resolution: 3, pixelated: false });
+    expect(sharpResolution(1.3)).toBe(1.5);
+    expect(sharpResolution(0.5)).toBe(1);
+    expect(sharpResolution(9)).toBe(3);
   });
 
-  it('shrinks smoothly below 640 x 480', () => {
-    expect(stageScale(320, 480)).toEqual({ scale: 0.5, pixelated: false });
+  it('smooth fills the window from a 640 x 480 canvas', () => {
+    expect(stageFit(viewport(1920, 1080, 2), GraphicsQuality.Smooth)).toEqual({ cssScale: 2.25, resolution: 1, pixelated: false });
+  });
+
+  it('pixelated uses whole multiples with hard pixels, and shrinks smoothly below 640 x 480', () => {
+    expect(stageFit(viewport(1920, 1080), GraphicsQuality.Pixelated)).toEqual({ cssScale: 2, resolution: 1, pixelated: true });
+    expect(stageFit(viewport(700, 500), GraphicsQuality.Pixelated)).toEqual({ cssScale: 1, resolution: 1, pixelated: true });
+    expect(stageFit(viewport(320, 480), GraphicsQuality.Pixelated)).toEqual({ cssScale: 0.5, resolution: 1, pixelated: false });
   });
 });
 

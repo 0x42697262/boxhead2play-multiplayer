@@ -47,7 +47,7 @@ export class OnlineGameScreen implements Screen {
     const room = deps.catalogs.rooms.get(start.roomId);
     if (!room) throw new AppError(ErrorCode.RoomUnknown, start.roomId);
     const hud = new HudRenderer(deps.kit.renderer, start.mode);
-    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: start.options.detail });
+    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: start.options.detail, resolution: () => deps.shell.resolution });
     const characters = (client.lobby?.members ?? []).map((member) => member.character);
     for (const collection of prewarmCollections(gameOptionsFor(start.mode, start.options, characters))) deps.kit.characters.enqueue(collection);
     keyboard.releaseAll();
@@ -83,11 +83,10 @@ export class OnlineGameScreen implements Screen {
 
   present(): void {
     this.session.pollInput();
-    const { stage } = this.deps.kit;
-    this.renderer.composite(stage.ctx);
-    const ctx = this.deps.shell.ctx;
+    const composed = this.renderer.composite();
+    const { ctx, canvas } = this.deps.shell;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(stage.canvas, 0, 0);
+    ctx.drawImage(composed.canvas, 0, 0, canvas.width, canvas.height);
   }
 
   idle(hasTime: () => boolean): void {

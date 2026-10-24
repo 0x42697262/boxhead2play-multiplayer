@@ -80,7 +80,7 @@ so reconnects resume); the server persists nothing.
 The browser side is described in `docs/runtime/`: `rendering.md` (display-list replay,
 buffered clips, XSI characters, world planes, HUD), `audio.md`, `input.md`, `loop.md` and
 `online.md`.
-The caching strategy is [ADR 0004](adr/0004-canvas-rendering-and-caching.md).
+The caching strategy is [ADR 0004](adr/0004-canvas-rendering-and-caching.md). Rendering at the screen's resolution is [ADR 0006](adr/0006-render-resolution.md).
 `src/main.ts` loads the catalogs, images, fonts and sounds with a progress display, builds
 the adapters and services, and starts `ScreenFlow` with the main menu. The menu screens
 are described in `docs/runtime/screens.md`.

@@ -12,6 +12,7 @@ export interface BufferPlan {
   readonly frame: number;
   readonly overrides?: Overrides;
   readonly layout: BufferLayout;
+  readonly resolution: number;
 }
 
 export interface BufferScale {
@@ -21,10 +22,10 @@ export interface BufferScale {
 
 export const UNIT_BUFFER_SCALE: BufferScale = { x: 1, y: 1 };
 
-function plan(library: SymbolLibrary, characterId: number, frame: number, overrides: Overrides | undefined, scale: BufferScale): BufferPlan {
+function plan(library: SymbolLibrary, characterId: number, frame: number, overrides: Overrides | undefined, scale: BufferScale, resolution: number): BufferPlan {
   const bounds = library.localBounds(characterId, frame, overrides);
-  const layout = bufferLayout(bounds, scale.x, scale.y, CLIP_BUFFER_INFLATE_PX);
-  return overrides ? { characterId, frame, overrides, layout } : { characterId, frame, layout };
+  const layout = bufferLayout(bounds, scale.x, scale.y, CLIP_BUFFER_INFLATE_PX, resolution);
+  return overrides ? { characterId, frame, overrides, layout, resolution } : { characterId, frame, layout, resolution };
 }
 
 function contentsFrameCount(library: SymbolLibrary, characterId: number): { readonly contentsId: number; readonly frames: number } | undefined {
@@ -33,14 +34,14 @@ function contentsFrameCount(library: SymbolLibrary, characterId: number): { read
   return contents && sprite ? { contentsId: contents.characterId, frames: sprite.frameCount } : undefined;
 }
 
-export function planStatic(library: SymbolLibrary, characterId: number): BufferPlan {
-  return plan(library, characterId, 0, undefined, UNIT_BUFFER_SCALE);
+export function planStatic(library: SymbolLibrary, characterId: number, resolution = 1): BufferPlan {
+  return plan(library, characterId, 0, undefined, UNIT_BUFFER_SCALE, resolution);
 }
 
-export function planAnimationFrame(library: SymbolLibrary, characterId: number, frame: number): BufferPlan {
+export function planAnimationFrame(library: SymbolLibrary, characterId: number, frame: number, resolution = 1): BufferPlan {
   const contents = contentsFrameCount(library, characterId);
-  if (contents) return plan(library, characterId, 0, { [CONTENTS_CHILD]: { frame } }, UNIT_BUFFER_SCALE);
-  return plan(library, characterId, frame, undefined, UNIT_BUFFER_SCALE);
+  if (contents) return plan(library, characterId, 0, { [CONTENTS_CHILD]: { frame } }, UNIT_BUFFER_SCALE, resolution);
+  return plan(library, characterId, frame, undefined, UNIT_BUFFER_SCALE, resolution);
 }
 
 export function animationFrameCount(library: SymbolLibrary, characterId: number): number {
@@ -58,11 +59,12 @@ export function planDirectionalFrame(
   direction: number,
   frame: number,
   scale: BufferScale,
+  resolution = 1,
 ): BufferPlan {
   const contents = library.findChild(characterId, CONTENTS_CHILD);
-  if (!contents) return plan(library, characterId, frame, undefined, scale);
+  if (!contents) return plan(library, characterId, frame, undefined, scale, resolution);
   const matrix = withRotationDegrees(contents.matrix, directionalRotationDegrees(direction, directions));
-  return plan(library, characterId, 0, { [CONTENTS_CHILD]: { frame, matrix } }, scale);
+  return plan(library, characterId, 0, { [CONTENTS_CHILD]: { frame, matrix } }, scale, resolution);
 }
 
 export function omniAngles(directions: number): number[] {
@@ -89,8 +91,8 @@ export function omniMatrices(angle: number): OmniMatrices {
   return { top, front };
 }
 
-export function planOmni(library: SymbolLibrary, characterId: number, angle: number): BufferPlan {
+export function planOmni(library: SymbolLibrary, characterId: number, angle: number, resolution = 1): BufferPlan {
   const { top, front } = omniMatrices(angle);
   const overrides: Overrides = { [TOP_CHILD]: { matrix: top }, [FRONT_CHILD]: { matrix: front } };
-  return plan(library, characterId, 0, overrides, UNIT_BUFFER_SCALE);
+  return plan(library, characterId, 0, overrides, UNIT_BUFFER_SCALE, resolution);
 }

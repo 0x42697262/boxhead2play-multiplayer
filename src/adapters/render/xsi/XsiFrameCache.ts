@@ -56,6 +56,12 @@ export class XsiFrameCache {
     return this.frames.size;
   }
 
+  setResolution(resolution: number): void {
+    if (resolution === this.rasterizer.resolution) return;
+    this.rasterizer.setResolution(resolution);
+    this.frames.clear();
+  }
+
   frame(key: XsiFrameKey): BufferedBitmap | undefined {
     const id = frameKey(key);
     const hit = this.frames.get(id);

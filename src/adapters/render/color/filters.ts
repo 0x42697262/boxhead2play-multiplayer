@@ -47,7 +47,7 @@ function colorField(filter: Filter, key: string): FilterColor {
   return BLACK;
 }
 
-function glowEffect(filter: Filter, colorKey: string, offsetX: number, offsetY: number): PixelEffect | undefined {
+function glowEffect(filter: Filter, colorKey: string, offsetX: number, offsetY: number, resolution: number): PixelEffect | undefined {
   if (booleanField(filter, 'innerGlow', false) || booleanField(filter, 'innerShadow', false)) return undefined;
   const color = colorField(filter, colorKey);
   return {
@@ -55,12 +55,12 @@ function glowEffect(filter: Filter, colorKey: string, offsetX: number, offsetY: 
     options: {
       color,
       colorAlpha: color.a / CHANNEL_MAX,
-      blurX: numberField(filter, 'blurX', 0),
-      blurY: numberField(filter, 'blurY', 0),
+      blurX: numberField(filter, 'blurX', 0) * resolution,
+      blurY: numberField(filter, 'blurY', 0) * resolution,
       strength: numberField(filter, 'strength', 1),
       passes: numberField(filter, 'passes', DEFAULT_PASSES),
-      offsetX,
-      offsetY,
+      offsetX: offsetX * resolution,
+      offsetY: offsetY * resolution,
       knockout: booleanField(filter, 'knockout', false),
       hideObject: !booleanField(filter, 'compositeSource', true),
     },
@@ -79,18 +79,18 @@ function gradientStops(filter: Filter): GradientStop[] {
   });
 }
 
-function gradientGlowEffect(filter: Filter): PixelEffect | undefined {
+function gradientGlowEffect(filter: Filter, resolution: number): PixelEffect | undefined {
   if (booleanField(filter, 'innerShadow', false) || booleanField(filter, 'onTop', false)) return undefined;
   const stops = gradientStops(filter);
   if (stops.length === 0) return undefined;
-  const distance = numberField(filter, 'distance', 0);
+  const distance = numberField(filter, 'distance', 0) * resolution;
   const angle = numberField(filter, 'angle', 0);
   return {
     kind: 'gradientGlow',
     options: {
       gradient: gradientLookup(stops),
-      blurX: numberField(filter, 'blurX', 0),
-      blurY: numberField(filter, 'blurY', 0),
+      blurX: numberField(filter, 'blurX', 0) * resolution,
+      blurY: numberField(filter, 'blurY', 0) * resolution,
       strength: numberField(filter, 'strength', 1),
       passes: numberField(filter, 'passes', DEFAULT_PASSES),
       offsetX: Math.cos(angle) * distance,
@@ -101,20 +101,20 @@ function gradientGlowEffect(filter: Filter): PixelEffect | undefined {
   };
 }
 
-export function toPixelEffect(filter: Filter): PixelEffect | undefined {
+export function toPixelEffect(filter: Filter, resolution = 1): PixelEffect | undefined {
   switch (filter.type) {
     case 'glow':
-      return glowEffect(filter, 'glowColor', 0, 0);
+      return glowEffect(filter, 'glowColor', 0, 0, resolution);
     case 'gradientGlow':
-      return gradientGlowEffect(filter);
+      return gradientGlowEffect(filter, resolution);
     case 'dropShadow': {
       const distance = numberField(filter, 'distance', 0);
       const angle = numberField(filter, 'angle', 0);
-      return glowEffect(filter, 'dropShadowColor', Math.cos(angle) * distance, Math.sin(angle) * distance);
+      return glowEffect(filter, 'dropShadowColor', Math.cos(angle) * distance, Math.sin(angle) * distance, resolution);
     }
     case 'blur': {
-      const blurX = numberField(filter, 'blurX', 0);
-      const blurY = numberField(filter, 'blurY', 0);
+      const blurX = numberField(filter, 'blurX', 0) * resolution;
+      const blurY = numberField(filter, 'blurY', 0) * resolution;
       if (boxRadius(blurX) === 0 && boxRadius(blurY) === 0) return undefined;
       return { kind: 'blur', blurX, blurY, passes: numberField(filter, 'passes', DEFAULT_PASSES) };
     }
@@ -127,8 +127,8 @@ export function toPixelEffect(filter: Filter): PixelEffect | undefined {
   }
 }
 
-export function pixelEffects(filters: readonly Filter[] | undefined): PixelEffect[] {
-  return (filters ?? []).map(toPixelEffect).filter((effect): effect is PixelEffect => effect !== undefined);
+export function pixelEffects(filters: readonly Filter[] | undefined, resolution = 1): PixelEffect[] {
+  return (filters ?? []).map((filter) => toPixelEffect(filter, resolution)).filter((effect): effect is PixelEffect => effect !== undefined);
 }
 
 export function effectPadding(effects: readonly PixelEffect[]): number {

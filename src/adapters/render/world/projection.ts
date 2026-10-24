@@ -20,8 +20,8 @@ export function pixelSnap(value: number): number {
   return Math.floor(value);
 }
 
-export function floorSourceOrigin(drawOrigin: Point2): Point2 {
-  return { x: -Math.round(-drawOrigin.x), y: -Math.round(-drawOrigin.y) };
+export function floorSourceOrigin(drawOrigin: Point2, resolution = 1): Point2 {
+  return { x: -Math.round(-drawOrigin.x * resolution), y: -Math.round(-drawOrigin.y * resolution) };
 }
 
 export function omniIndex(angleRadians: number, directions: number): number {

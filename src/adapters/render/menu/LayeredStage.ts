@@ -39,36 +39,53 @@ function layerKey(path: string, items: readonly DisplayItem[], matrix: Matrix, o
 export class LayeredStage {
   private readonly cache = new Map<string, PlacedBitmap | null>();
   private composedKey: string | undefined = undefined;
-  readonly surface: Surface;
+  private current: Surface;
+  private currentResolution = 1;
 
   constructor(
     private readonly renderer: SymbolRenderer,
     private readonly width: number,
     private readonly height: number,
   ) {
-    this.surface = renderer.createSurface(width, height);
+    this.current = renderer.createSurface(width, height);
+  }
+
+  get surface(): Surface {
+    return this.current;
+  }
+
+  get resolution(): number {
+    return this.currentResolution;
+  }
+
+  setResolution(resolution: number): void {
+    if (resolution === this.currentResolution) return;
+    this.currentResolution = resolution;
+    this.current = this.renderer.createSurface(this.width * resolution, this.height * resolution);
+    this.cache.clear();
+    this.composedKey = undefined;
   }
 
   layers(scene: StageScene): StageLayer[] {
     const layers: StageLayer[] = [];
-    this.collect(withReplacements(scene.items, scene.overrides), scene.overrides, [1, 0, 0, 1, 0, 0], scene.expand, '', layers);
+    this.collect(withReplacements(scene.items, scene.overrides), scene.overrides, [this.currentResolution, 0, 0, this.currentResolution, 0, 0], scene.expand, '', layers);
     return layers;
   }
 
   render(scene: StageScene): Surface {
     const layers = this.layers(scene);
     const key = layers.map((layer) => layer.key).join('\n');
-    if (key === this.composedKey) return this.surface;
-    const ctx = this.surface.ctx;
+    if (key === this.composedKey) return this.current;
+    const ctx = this.current.ctx;
     resetContext(ctx);
     ctx.fillStyle = STAGE_BACKGROUND;
-    ctx.fillRect(0, 0, this.width, this.height);
+    ctx.fillRect(0, 0, this.current.width, this.current.height);
     for (const layer of layers) {
       const bitmap = this.bitmap(layer);
       if (bitmap) ctx.drawImage(bitmap.surface.canvas, bitmap.x, bitmap.y);
     }
     this.composedKey = key;
-    return this.surface;
+    return this.current;
   }
 
   private collect(items: readonly DisplayItem[], overrides: Overrides | undefined, matrix: Matrix, expand: ReadonlySet<string>, path: string, out: StageLayer[]): void {
@@ -117,22 +134,22 @@ export class LayeredStage {
   private renderLayer(layer: StageLayer): PlacedBitmap | undefined {
     const library = this.renderer.library;
     let bounds: Rect | null = null;
-    let padding = STAGE_LAYER_PADDING_PX;
+    let padding = STAGE_LAYER_PADDING_PX * this.currentResolution;
     for (const item of layer.items) {
       const own = childOverride(layer.overrides, item);
       const local = library.instanceBounds(item.characterId, own, item.ratio ?? 0);
       if (local) bounds = union(bounds, transformRect(local, multiply(layer.matrix, own?.matrix ?? item.matrix)));
-      padding += effectPadding(pixelEffects(own?.filters ?? item.filters));
+      padding += effectPadding(pixelEffects(own?.filters ?? item.filters, this.currentResolution));
     }
     if (!bounds) return undefined;
     const area = inflate(bounds, padding, padding);
     const x = Math.max(0, Math.floor(area.xMin));
     const y = Math.max(0, Math.floor(area.yMin));
-    const xMax = Math.min(this.width, Math.ceil(area.xMax));
-    const yMax = Math.min(this.height, Math.ceil(area.yMax));
+    const xMax = Math.min(this.current.width, Math.ceil(area.xMax));
+    const yMax = Math.min(this.current.height, Math.ceil(area.yMax));
     if (xMax <= x || yMax <= y) return undefined;
     const surface = this.renderer.createSurface(xMax - x, yMax - y);
-    this.renderer.drawItems(surface.ctx, layer.items, multiply(translation(-x, -y), layer.matrix), { overrides: layer.overrides ?? {} });
+    this.renderer.drawItems(surface.ctx, layer.items, multiply(translation(-x, -y), layer.matrix), { overrides: layer.overrides ?? {}, resolution: this.currentResolution });
     return { surface, x, y };
   }
 }

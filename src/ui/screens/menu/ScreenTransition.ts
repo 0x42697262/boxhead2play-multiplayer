@@ -1,5 +1,4 @@
 import { STAGE_BACKGROUND } from '../../../adapters/render/tuning.ts';
-import { STAGE_HEIGHT_PX, STAGE_WIDTH_PX } from '../../shell/Shell.ts';
 import { SCREEN_PROCESS_TICKS, TRANSITION_STEPS } from './tuning.ts';
 
 export interface TransitionTarget {
@@ -7,6 +6,11 @@ export interface TransitionTarget {
 }
 
 export type TransitionContext = Pick<CanvasRenderingContext2D, 'globalAlpha' | 'fillStyle' | 'setTransform' | 'fillRect' | 'drawImage'>;
+
+export interface TransitionSize {
+  readonly width: number;
+  readonly height: number;
+}
 
 export class ScreenTransition {
   private ticks = 0;
@@ -29,17 +33,18 @@ export class ScreenTransition {
     if (!this.done) this.ticks++;
   }
 
-  draw(ctx: TransitionContext, incoming: CanvasImageSource): void {
+  draw(ctx: TransitionContext, incoming: CanvasImageSource, size: TransitionSize): void {
+    const { width, height } = size;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.fillStyle = STAGE_BACKGROUND;
-    ctx.fillRect(0, 0, STAGE_WIDTH_PX, STAGE_HEIGHT_PX);
+    ctx.fillRect(0, 0, width, height);
     if (this.outgoing && !this.done) {
       ctx.globalAlpha = 1 - this.incomingAlpha;
-      ctx.drawImage(this.outgoing.canvas, 0, 0);
+      ctx.drawImage(this.outgoing.canvas, 0, 0, width, height);
     }
     ctx.globalAlpha = this.done ? 1 : this.incomingAlpha;
-    ctx.drawImage(incoming, 0, 0);
+    ctx.drawImage(incoming, 0, 0, width, height);
     ctx.globalAlpha = 1;
   }
 }

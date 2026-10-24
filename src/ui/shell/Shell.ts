@@ -1,6 +1,8 @@
 import { SCREEN_HEIGHT_PX, SCREEN_WIDTH_PX } from '../../domain/world/tuning.ts';
 import { AppError, ErrorCode } from '../../text/errors.ts';
 import { t } from '../../text/i18n.ts';
+import { DEFAULT_GRAPHICS_QUALITY, GraphicsQuality } from '../../services/graphicsQuality.ts';
+import { MAX_SHARP_RESOLUTION, MIN_SHARP_RESOLUTION, SHARP_RESOLUTION_STEP, UNIT_RESOLUTION } from './tuning.ts';
 
 export const STAGE_WIDTH_PX = SCREEN_WIDTH_PX;
 export const STAGE_HEIGHT_PX = SCREEN_HEIGHT_PX;
@@ -13,18 +15,40 @@ export const ShellClass = {
   Pixelated: 'shell-pixelated',
 } as const;
 
-export interface StageScale {
-  readonly scale: number;
+export interface StageFit {
+  readonly cssScale: number;
+  readonly resolution: number;
   readonly pixelated: boolean;
 }
 
-export function stageScale(viewportWidth: number, viewportHeight: number): StageScale {
-  const fit = Math.min(viewportWidth / STAGE_WIDTH_PX, viewportHeight / STAGE_HEIGHT_PX);
-  if (fit >= 1) return { scale: Math.floor(fit), pixelated: true };
-  return { scale: Math.max(fit, Number.EPSILON), pixelated: false };
+export interface Viewport {
+  readonly width: number;
+  readonly height: number;
+  readonly devicePixelRatio: number;
+}
+
+export function sharpResolution(devicePixelsPerStagePixel: number): number {
+  const stepped = Math.ceil(devicePixelsPerStagePixel / SHARP_RESOLUTION_STEP) * SHARP_RESOLUTION_STEP;
+  return Math.min(MAX_SHARP_RESOLUTION, Math.max(MIN_SHARP_RESOLUTION, stepped));
+}
+
+export function stageFit(viewport: Viewport, quality: GraphicsQuality): StageFit {
+  const fit = Math.max(Math.min(viewport.width / STAGE_WIDTH_PX, viewport.height / STAGE_HEIGHT_PX), Number.EPSILON);
+  switch (quality) {
+    case GraphicsQuality.Sharp:
+      return { cssScale: fit, resolution: sharpResolution(fit * viewport.devicePixelRatio), pixelated: false };
+    case GraphicsQuality.Smooth:
+      return { cssScale: fit, resolution: UNIT_RESOLUTION, pixelated: false };
+    case GraphicsQuality.Pixelated:
+      return fit >= 1 ? { cssScale: Math.floor(fit), resolution: UNIT_RESOLUTION, pixelated: true } : { cssScale: fit, resolution: UNIT_RESOLUTION, pixelated: false };
+  }
 }
 
 export class Shell {
+  private quality: GraphicsQuality = DEFAULT_GRAPHICS_QUALITY;
+  private viewport: Viewport = { width: STAGE_WIDTH_PX, height: STAGE_HEIGHT_PX, devicePixelRatio: UNIT_RESOLUTION };
+  private fitted: StageFit = { cssScale: UNIT_RESOLUTION, resolution: UNIT_RESOLUTION, pixelated: false };
+
   private constructor(
     readonly root: HTMLElement,
     readonly canvas: HTMLCanvasElement,
@@ -49,10 +73,34 @@ export class Shell {
     return new Shell(root, canvas, ctx, overlay);
   }
 
-  fit(viewportWidth: number, viewportHeight: number): void {
-    const { scale, pixelated } = stageScale(viewportWidth, viewportHeight);
-    this.root.style.width = `${STAGE_WIDTH_PX * scale}px`;
-    this.root.style.height = `${STAGE_HEIGHT_PX * scale}px`;
+  get resolution(): number {
+    return this.fitted.resolution;
+  }
+
+  get graphicsQuality(): GraphicsQuality {
+    return this.quality;
+  }
+
+  fit(viewport: Viewport): void {
+    this.viewport = viewport;
+    this.refit();
+  }
+
+  setGraphicsQuality(quality: GraphicsQuality): void {
+    if (quality === this.quality) return;
+    this.quality = quality;
+    this.refit();
+  }
+
+  private refit(): void {
+    this.fitted = stageFit(this.viewport, this.quality);
+    const { cssScale, resolution, pixelated } = this.fitted;
+    this.root.style.width = `${STAGE_WIDTH_PX * cssScale}px`;
+    this.root.style.height = `${STAGE_HEIGHT_PX * cssScale}px`;
+    const width = Math.round(STAGE_WIDTH_PX * resolution);
+    const height = Math.round(STAGE_HEIGHT_PX * resolution);
+    if (this.canvas.width !== width) this.canvas.width = width;
+    if (this.canvas.height !== height) this.canvas.height = height;
     this.canvas.classList.toggle(ShellClass.Pixelated, pixelated);
   }
 

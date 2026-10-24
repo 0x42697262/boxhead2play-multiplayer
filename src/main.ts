@@ -38,7 +38,7 @@ import { SelectWorldScreen } from './ui/screens/menu/SelectWorldScreen.ts';
 import { LobbyRoom } from './ui/screens/online/LobbyRoom.ts';
 import { OnlineMenuScreen } from './ui/screens/online/OnlineMenuScreen.ts';
 import { OnlineGameScreen } from './ui/screens/online/OnlineGameScreen.ts';
-import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX } from './ui/shell/Shell.ts';
+import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX, type Viewport } from './ui/shell/Shell.ts';
 
 const APP_ELEMENT_ID = 'app';
 const PERCENT = 100;
@@ -78,7 +78,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   const renderer = new SymbolRenderer(new SymbolLibrary(catalogs.symbols), images, offscreenSurfaces, { fontFamily });
   const clips = new ClipBuffers(renderer);
   const characters = new XsiFrameCache(catalogs.xsi, new XsiRasterizer(offscreenSurfaces, new XsiTextures(renderer)));
-  const kit = { renderer, clips, characters, painter: new VisualPainter(clips, characters), stage: offscreenSurfaces.create(STAGE_WIDTH_PX, STAGE_HEIGHT_PX) };
+  const kit = { renderer, clips, characters, painter: new VisualPainter(clips, characters) };
   const animations = toAnimationCatalog(catalogs.animMeta, catalogs.symbols);
   const factory = createThingFactory();
   const keyboard = new KeyboardState();
@@ -154,7 +154,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         if (!visible) void webAudio?.suspend();
         else void webAudio?.unlock();
       },
-      onResize: () => shell.fit(window.innerWidth, window.innerHeight),
+      onResize: () => shell.fit(browserViewport(window)),
     },
   );
   flow.start();
@@ -172,11 +172,15 @@ function bootFailureText(error: unknown): string {
   return key ? t(key) : t('boot.failed', { reason: error instanceof Error ? error.message : String(error) });
 }
 
+function browserViewport(view: Window): Viewport {
+  return { width: view.innerWidth, height: view.innerHeight, devicePixelRatio: view.devicePixelRatio };
+}
+
 function main(): void {
   const host = document.getElementById(APP_ELEMENT_ID);
   if (!host) return;
   const shell = Shell.create(document, host);
-  shell.fit(window.innerWidth, window.innerHeight);
+  shell.fit(browserViewport(window));
   let logger: Logger = createLogger(loadSettings({}).logLevel, crypto.randomUUID());
   try {
     logger = createLogger(loadSettings(readBrowserEnv()).logLevel, crypto.randomUUID());
