@@ -4,6 +4,7 @@ import { GameMode } from '../../src/domain/world/GameMode.ts';
 import { Difficulty, PlayerCharacter } from '../../src/domain/world/SimulationSettings.ts';
 import { silentLogger } from '../../src/observability/logger.ts';
 import { GraphicsQuality } from '../../src/services/graphicsQuality.ts';
+import { RoomDetail } from '../../src/services/roomDetail.ts';
 import {
   DEFAULT_KEYS,
   DEFAULT_SETTINGS,
@@ -96,6 +97,20 @@ describe('settings reading', () => {
     const result = readSettings(JSON.stringify(v6));
     expect(result.migratedFrom).toBe(6);
     expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, blood: false, showPing: true });
+  });
+
+  it('migrates version 7 to the AUTO room detail and rejects unknown details', () => {
+    const v7: Record<string, unknown> = { ...DEFAULT_SETTINGS, version: 7, graphics: GraphicsQuality.Smooth };
+    delete v7.roomDetail;
+    const result = readSettings(JSON.stringify(v7));
+    expect(result.migratedFrom).toBe(7);
+    expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, graphics: GraphicsQuality.Smooth, roomDetail: RoomDetail.Auto });
+    expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, roomDetail: 'ultra' })).rejected).toBeDefined();
+  });
+
+  it('keeps a stored room detail', () => {
+    expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, roomDetail: RoomDetail.Low })).settings.roomDetail).toBe(RoomDetail.Low);
+    expect(SETTINGS_VERSION).toBe(8);
   });
 
   it('rejects invalid JSON, invalid values and future versions', () => {

@@ -30,9 +30,9 @@ qualities, and `fit x devicePixelRatio` (quarter steps, 1..3) for `sharp`.
 | `LayeredStage` | Stage surface size, root matrix, layer padding and filters |
 | `ClipBuffers` / `bufferLayout` | Buffer scale and inflation, like the original `pGlobalScale` |
 | `XsiRasterizer`, `XsiTextures` | Frame scale, outline glow and shadow blur, texture size |
-| `RoomPlanes` | Floor, cover and decal mask size; decal positions |
+| `RoomPlanes` | Nothing directly: planes use the plane resolution (below) |
 | `HudRenderer` | HUD clip buffers and the upgrade list surface |
-| `WorldRenderer` | Screen size, floor source origin; rebuilds planes and replays decals on change |
+| `WorldRenderer` | Screen size, floor source origin, the scale from plane to screen; rebuilds planes and replays decals on change |
 | `SymbolRenderer` | `DrawOptions.resolution` scales filter blur and distance |
 
 A window resize (or the soft keyboard) applies the new CSS size at once
@@ -40,6 +40,16 @@ A window resize (or the soft keyboard) applies the new CSS size at once
 `RESIZE_SETTLE_DELAY_MS` (`src/ui/shell/tuning.ts`, `Shell.fit`), so dragging a window
 edge rebuilds the bitmap caches and room planes once, not on every event. Until then the
 canvas keeps its size and the browser scales it.
+
+The room planes have their own **plane resolution** ([ADR 0008](../adr/0008-room-plane-resolution.md)):
+`planeResolution(roomDetail, screenResolution, roomSize, limits)` gives 1 for LOW, the
+screen resolution for HIGH and, for AUTO, the screen resolution limited to a per-plane pixel
+budget for the device (never below 1). Every choice is limited to the largest canvas the
+browser draws (`CanvasAreaLimit`, probed on demand and cached). `main.ts` logs the budget as
+`display.plane_budget`. `WorldRenderer` checks the plane resolution every frame and rebuilds
+the planes only when it changes: a plane resolution change alone keeps the screen surfaces,
+and a screen resolution change that leaves the plane resolution (for example room 18 held at
+1.25 by the budget) keeps the planes and their decals.
 
 Positions stay in stage pixels. `blit` multiplies them by the resolution and adds the
 bitmap's displacement, which is already in device pixels. Pointer coordinates are mapped to
@@ -149,15 +159,22 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
 * `RoomPlanes` ports `InitDrawPlanes` and `CWorld_Init_Piece.Draw`: the floor (red fill,
   room background items, then each piece at its translation), the cover plane (each
   `_Cover` at its position) and the decal mask (opaque everywhere except where pieces
-  are, the result of `InvertAlpha`). Bitmap sizes truncate the room size.
+  are, the result of `InvertAlpha`). Bitmap sizes truncate the room size, times the plane
+  resolution. The temporary pieces surface (the mask source) is released as soon as the
+  mask is built, before the cover plane is created; `releaseRoomPlanes` frees the old
+  planes before a rebuild.
 * `DecalStamper` ports `QRender_Mask`: the directional buffer frame at
   `floor(xPx + mDisp)`, masked by the decal mask at the same position, drawn into the
-  floor. The masking happens in one scratch surface per renderer that only grows (cleared
+  floor. The buffer frame is rendered at the screen resolution; below it, the stamper
+  scales the frame by `plane / screen` and places it at
+  `floor(xPx * plane + mDisp * plane / screen)`. The masking happens in one scratch surface per renderer that only grows (cleared
   before each stamp), so stamping hundreds of decals again after a resolution change or a
   blood toggle allocates no canvases.
 * `WorldRenderer.render` ports `CWorld.Draw` for the local player's camera
   (`localCamera`: the frame's `localPlayerIndex`, 0 in single play):
-  floor copy at `-round(-(rect + shake))`, things in `drawList` order, overlay lines and
+  floor copy at `-round(-(rect + shake))` in screen pixels, divided by `screen / plane`
+  for the plane source (`planeSourceOrigin`, fractional when the plane is smaller) and
+  drawn scaled by `screen / plane` (`copyClipped`), things in `drawList` order, overlay lines and
   squares after all things (the `mcScratch` clip), then the cover plane. Positions are
   `x * 32 - drawOrigin.x`, `(y + z * pFactor) * 32 - drawOrigin.y`; lines use the rounded
   `ConvertCellToScreen`.

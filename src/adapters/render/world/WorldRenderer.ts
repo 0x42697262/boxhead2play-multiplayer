@@ -8,8 +8,8 @@ import type { HudRenderer, PlayerLabel } from '../hud/HudRenderer.ts';
 import { cssColor, resetContext, type Context2D, type Surface } from '../surface.ts';
 import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
 import { CHANNEL_MAX } from '../tuning.ts';
-import { floorSourceOrigin, roundedScreenPoint } from './projection.ts';
-import { buildRoomPlanes, DecalStamper, type RoomPlanes } from './RoomPlanes.ts';
+import { planeSourceOrigin, roundedScreenPoint } from './projection.ts';
+import { buildRoomPlanes, DecalStamper, releaseRoomPlanes, type RoomPlanes } from './RoomPlanes.ts';
 import type { VisualPainter } from './VisualPainter.ts';
 import type { CameraFrame, PlayerHudFrame, WorldFrame } from './WorldFrame.ts';
 
@@ -25,6 +25,7 @@ export const ALL_EFFECTS: EffectPreferences = { screenShake: true, blood: true }
 export interface WorldRendererOptions {
   readonly detail: boolean;
   readonly resolution: () => number;
+  readonly planeResolution?: (screenResolution: number) => number;
   readonly effects?: () => EffectPreferences;
 }
 
@@ -41,13 +42,13 @@ export function playerLabelText(player: PlayerHudFrame): string {
   return player.status.ammo === undefined ? weapon : t('hud.ammo', { weapon, ammo: player.status.ammo });
 }
 
-export function copyClipped(ctx: Context2D, source: Surface, sourceX: number, sourceY: number, width: number, height: number): void {
+export function copyClipped(ctx: Context2D, source: Surface, sourceX: number, sourceY: number, width: number, height: number, scale = 1): void {
   const left = Math.max(0, sourceX);
   const top = Math.max(0, sourceY);
   const right = Math.min(source.width, sourceX + width);
   const bottom = Math.min(source.height, sourceY + height);
   if (right <= left || bottom <= top) return;
-  ctx.drawImage(source.canvas, left, top, right - left, bottom - top, left - sourceX, top - sourceY, right - left, bottom - top);
+  ctx.drawImage(source.canvas, left, top, right - left, bottom - top, (left - sourceX) * scale, (top - sourceY) * scale, (right - left) * scale, (bottom - top) * scale);
 }
 
 export function localCamera(frame: WorldFrame): CameraFrame | undefined {
@@ -76,7 +77,7 @@ export class WorldRenderer {
     this.bloodShown = this.effects.blood;
     this.stamper = new DecalStamper(renderer);
     this.applyResolution();
-    this.planes = buildRoomPlanes(room, renderer, this.currentResolution);
+    this.planes = buildRoomPlanes(room, renderer, this.planeResolutionFor(this.currentResolution));
     this.screenSurface = this.screenSized();
     this.composed = this.screenSized();
   }
@@ -91,6 +92,10 @@ export class WorldRenderer {
 
   get resolution(): number {
     return this.currentResolution;
+  }
+
+  get planeResolution(): number {
+    return this.planes.resolution;
   }
 
   stampDecal(decal: DecalRequested): void {
@@ -124,12 +129,18 @@ export class WorldRenderer {
 
   private syncResolution(): void {
     const resolution = this.options.resolution();
-    if (resolution === this.currentResolution) return;
-    this.currentResolution = resolution;
-    this.applyResolution();
-    this.rebuildPlanes();
-    this.screenSurface = this.screenSized();
-    this.composed = this.screenSized();
+    const planeResolution = this.planeResolutionFor(resolution);
+    if (resolution !== this.currentResolution) {
+      this.currentResolution = resolution;
+      this.applyResolution();
+      this.screenSurface = this.screenSized();
+      this.composed = this.screenSized();
+    }
+    if (planeResolution !== this.planes.resolution) this.rebuildPlanes(planeResolution);
+  }
+
+  private planeResolutionFor(screenResolution: number): number {
+    return this.options.planeResolution?.(screenResolution) ?? screenResolution;
   }
 
   private get effects(): EffectPreferences {
@@ -140,11 +151,12 @@ export class WorldRenderer {
     const { blood } = this.effects;
     if (blood === this.bloodShown) return;
     this.bloodShown = blood;
-    this.rebuildPlanes();
+    this.rebuildPlanes(this.planes.resolution);
   }
 
-  private rebuildPlanes(): void {
-    this.planes = buildRoomPlanes(this.room, this.renderer, this.currentResolution);
+  private rebuildPlanes(planeResolution: number): void {
+    releaseRoomPlanes(this.planes);
+    this.planes = buildRoomPlanes(this.room, this.renderer, planeResolution);
     const effects = this.effects;
     for (const decal of this.decals) if (decalShown(decal, effects)) this.stamper.stamp(this.planes, this.clips, decal);
   }
@@ -186,10 +198,13 @@ export class WorldRenderer {
     resetContext(ctx);
     ctx.fillStyle = cssColor(BACKGROUND_COLOR);
     ctx.fillRect(0, 0, target.width, target.height);
-    const source = floorSourceOrigin(origin, this.currentResolution);
-    copyClipped(ctx, this.planes.floor, source.x, source.y, target.width, target.height);
+    const scale = this.currentResolution / this.planes.resolution;
+    const source = planeSourceOrigin(origin, this.currentResolution, this.planes.resolution);
+    const width = target.width / scale;
+    const height = target.height / scale;
+    copyClipped(ctx, this.planes.floor, source.x, source.y, width, height, scale);
     this.painter.paint(ctx, camera.entries, { drawOrigin: origin, projectionFactor });
-    copyClipped(ctx, this.planes.cover, source.x, source.y, target.width, target.height);
+    copyClipped(ctx, this.planes.cover, source.x, source.y, width, height, scale);
   }
 
   private applyBrightness(brightness: number): void {

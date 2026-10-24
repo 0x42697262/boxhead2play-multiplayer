@@ -1,5 +1,6 @@
 import { effectPreferences } from '../../services/menuSettings.ts';
 import type { GameCatalogs } from '../../adapters/assets/AssetLoader.ts';
+import type { Room } from '../../adapters/assets/schemas.ts';
 import { toRoomDefinition } from '../../adapters/assets/mapping.ts';
 import type { SoundMixer } from '../../adapters/audio/SoundMixer.ts';
 import type { KeyboardState } from '../../adapters/input/KeyboardState.ts';
@@ -8,7 +9,9 @@ import type { ClipBuffers } from '../../adapters/render/clips/ClipBuffers.ts';
 import { HudAction, HudRenderer } from '../../adapters/render/hud/HudRenderer.ts';
 import type { SymbolRenderer } from '../../adapters/render/symbols/SymbolRenderer.ts';
 import type { VisualPainter } from '../../adapters/render/world/VisualPainter.ts';
-import { WorldRenderer } from '../../adapters/render/world/WorldRenderer.ts';
+import type { RoomPlaneResolution } from '../../adapters/render/world/planeResolution.ts';
+import { roomBitmapSize } from '../../adapters/render/world/RoomPlanes.ts';
+import { WorldRenderer, type WorldRendererOptions } from '../../adapters/render/world/WorldRenderer.ts';
 import { prewarmCollections } from '../../adapters/render/xsi/collections.ts';
 import type { XsiFrameCache } from '../../adapters/render/xsi/XsiFrameCache.ts';
 import type { AnimationCatalog } from '../../domain/animation/AnimationCatalog.ts';
@@ -28,6 +31,23 @@ export interface RenderKit {
   readonly clips: ClipBuffers;
   readonly characters: XsiFrameCache;
   readonly painter: VisualPainter;
+  readonly planeResolution: RoomPlaneResolution;
+}
+
+export interface WorldViewDependencies {
+  readonly shell: Shell;
+  readonly kit: RenderKit;
+  readonly settings: SettingsService;
+}
+
+export function worldViewOptions(deps: WorldViewDependencies, room: Room, detail: boolean): WorldRendererOptions {
+  const size = roomBitmapSize(room);
+  return {
+    detail,
+    resolution: () => deps.shell.resolution,
+    planeResolution: (screenResolution) => deps.kit.planeResolution(size, screenResolution, deps.settings.settings.roomDetail),
+    effects: () => effectPreferences(deps.settings.settings),
+  };
 }
 
 export interface GameScreenDependencies {
@@ -59,7 +79,7 @@ export class GameScreen implements Screen {
     const settings = deps.settings.settings;
     const options = toGameOptions(settings, deps.selection.mode);
     const hud = new HudRenderer(deps.kit.renderer, options.gameMode);
-    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: options.detail, resolution: () => deps.shell.resolution, effects: () => effectPreferences(deps.settings.settings) });
+    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, worldViewOptions(deps, room, options.detail));
     for (const collection of prewarmCollections(options)) deps.kit.characters.enqueue(collection);
     deps.keyboard.releaseAll();
     deps.keyboard.clearEdges();

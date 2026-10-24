@@ -13,10 +13,11 @@ import type { LobbyOptions } from '../net/protocol.ts';
 import { PLAYER_NAME_MAX_LENGTH } from '../net/tuning.ts';
 import type { Logger } from '../observability/logger.ts';
 import { DEFAULT_GRAPHICS_QUALITY, GraphicsQuality } from './graphicsQuality.ts';
+import { DEFAULT_ROOM_DETAIL, RoomDetail } from './roomDetail.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 7;
+export const SETTINGS_VERSION = 8;
 export const FRAME_RATES = [0, 30, 60, 120] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 export const UNCAPPED_FRAME_RATE: FrameRate = 0;
@@ -27,6 +28,7 @@ const ORIGINAL_KEYS_VERSION = 3;
 const EFFECT_SWITCHES_VERSION = 4;
 const FRAME_RATE_VERSION = 5;
 const PING_DISPLAY_VERSION = 6;
+const ROOM_DETAIL_VERSION = 7;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -56,6 +58,7 @@ export const UserSettingsSchema = z.object({
   version: z.literal(SETTINGS_VERSION),
   soundVolume: z.number().int().min(SOUND_VOLUME_OFF).max(SOUND_VOLUME_MAX),
   graphics: z.enum(Object.values(GraphicsQuality) as [GraphicsQuality, ...GraphicsQuality[]]),
+  roomDetail: z.enum(Object.values(RoomDetail) as [RoomDetail, ...RoomDetail[]]),
   screenShake: z.boolean(),
   blood: z.boolean(),
   frameRate: z.number().refine((value): value is FrameRate => (FRAME_RATES as readonly number[]).includes(value)),
@@ -118,6 +121,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   version: SETTINGS_VERSION,
   soundVolume: SOUND_VOLUME_MAX,
   graphics: DEFAULT_GRAPHICS_QUALITY,
+  roomDetail: DEFAULT_ROOM_DETAIL,
   screenShake: true,
   blood: true,
   frameRate: UNCAPPED_FRAME_RATE,
@@ -229,7 +233,11 @@ export function migrateFrameRate(raw: Raw): Raw {
 }
 
 export function migratePingDisplay(raw: Raw): Raw {
-  return { ...raw, version: SETTINGS_VERSION, showPing: DEFAULT_SETTINGS.showPing };
+  return { ...raw, version: ROOM_DETAIL_VERSION, showPing: DEFAULT_SETTINGS.showPing };
+}
+
+export function migrateRoomDetail(raw: Raw): Raw {
+  return { ...raw, version: SETTINGS_VERSION, roomDetail: DEFAULT_SETTINGS.roomDetail };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
@@ -240,6 +248,7 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [EFFECT_SWITCHES_VERSION]: migrateEffectSwitches,
   [FRAME_RATE_VERSION]: migrateFrameRate,
   [PING_DISPLAY_VERSION]: migratePingDisplay,
+  [ROOM_DETAIL_VERSION]: migrateRoomDetail,
 };
 
 function versionOf(raw: Raw): number {

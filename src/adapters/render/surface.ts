@@ -30,6 +30,11 @@ export interface BufferedBitmap {
   readonly dispY: number;
 }
 
+export function releaseSurface(surface: Surface): void {
+  surface.canvas.width = 0;
+  surface.canvas.height = 0;
+}
+
 export function resetContext(ctx: Context2D): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;

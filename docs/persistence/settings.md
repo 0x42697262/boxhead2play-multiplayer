@@ -10,13 +10,14 @@ validated with Zod and written back on every change (`CSaveData` flushed on ever
 Unreadable storage or a failed write is logged (`save.rejected`, `save.write_failed`) and
 the game continues with the values in memory.
 
-## Version 6
+## Version 8
 
 | Field | Type | Default | Original |
 |---|---|---|---|
-| `version` | `7` | | |
+| `version` | `8` | | |
 | `soundVolume` | 0..100 | 100 | `mSoundActive` (on/off) |
 | `graphics` | `sharp`, `smooth`, `pixelated` | `sharp` | none (ADR 0006) |
+| `roomDetail` | `auto`, `high`, `low` | `auto` | none (ADR 0008) |
 | `screenShake` | boolean | true | none (explosions always shake) |
 | `blood` | boolean | true | none (blood splats always drawn) |
 | `frameRate` | 0 (display), 30, 60, 120 | 0 | none (Flash drew at 25 fps) |
@@ -59,10 +60,12 @@ current version, then validates.
 * Version 5 had no frame rate. `migrateFrameRate` adds `frameRate: 0` (draw every display
   frame).
 * Version 6 had no ping display. `migratePingDisplay` adds `showPing: true`.
- A migrated blob is written
+* Version 7 had no room detail. `migrateRoomDetail` adds `roomDetail: auto`.
+
+A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 8: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[7]`
-that turns a version 7 object into a version 8 object.
+To add version 9: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[8]`
+that turns a version 8 object into a version 9 object.

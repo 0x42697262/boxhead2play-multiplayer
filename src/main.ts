@@ -59,6 +59,9 @@ import { GameMenuKey } from './ui/screens/gameMenu/tuning.ts';
 import { RESIZE_SETTLE_DELAY_MS } from './ui/shell/tuning.ts';
 import { PORTRAIT_TOUCH_QUERY } from './ui/mobile/tuning.ts';
 import { enterLandscapeFullscreen, isHomeScreenCandidate } from './adapters/display/fullscreen.ts';
+import { CanvasAreaLimit, offscreenAreaProbe, readDeviceHint } from './adapters/display/canvasArea.ts';
+import { planeBudgetArea, planeResolution, type PlaneLimits, type PlaneSize } from './adapters/render/world/planeResolution.ts';
+import type { RoomDetail } from './services/roomDetail.ts';
 
 const APP_ELEMENT_ID = 'app';
 const COARSE_POINTER_QUERY = '(pointer: coarse)';
@@ -107,7 +110,14 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   const renderer = new SymbolRenderer(new SymbolLibrary(catalogs.symbols), images, offscreenSurfaces, { fontFamily });
   const clips = new ClipBuffers(renderer);
   const characters = new XsiFrameCache(catalogs.xsi, new XsiRasterizer(offscreenSurfaces, new XsiTextures(renderer)));
-  const kit = { renderer, clips, characters, painter: new VisualPainter(clips, characters) };
+  const planeLimits = roomPlaneLimits(logger);
+  const kit = {
+    renderer,
+    clips,
+    characters,
+    painter: new VisualPainter(clips, characters),
+    planeResolution: (size: PlaneSize, screenResolution: number, detail: RoomDetail) => planeResolution(detail, screenResolution, size, planeLimits),
+  };
   const animations = toAnimationCatalog(catalogs.animMeta, catalogs.symbols);
   const factory = createThingFactory();
   const keyboard = new KeyboardState();
@@ -243,6 +253,14 @@ const BOOT_FAILURE_TEXT: Partial<Record<ErrorCode, TextKey>> = {
 function bootFailureText(error: unknown): string {
   const key = error instanceof AppError ? BOOT_FAILURE_TEXT[error.code] : undefined;
   return key ? t(key) : t('boot.failed', { reason: error instanceof Error ? error.message : String(error) });
+}
+
+function roomPlaneLimits(logger: Logger): PlaneLimits {
+  const hint = readDeviceHint({ navigator, coarsePointer: window.matchMedia(COARSE_POINTER_QUERY).matches });
+  const budgetArea = planeBudgetArea(hint);
+  logger.info(LogEvent.PlaneBudget, { budgetArea, memoryGiB: hint.memoryGiB, touch: hint.touch });
+  const canvasArea = new CanvasAreaLimit(offscreenAreaProbe);
+  return { budgetArea, usableArea: (wanted) => canvasArea.usableArea(wanted) };
 }
 
 function registerAssetWorker(assetBaseUrl: string, logger: Logger): void {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { hitAreaContains, instanceHitArea } from '../../../src/adapters/render/symbols/hitTest.ts';
-import { SymbolLibrary } from '../../../src/adapters/render/symbols/SymbolLibrary.ts';
+import { ButtonState, SymbolLibrary } from '../../../src/adapters/render/symbols/SymbolLibrary.ts';
+import { DEFAULT_SETTINGS } from '../../../src/services/SettingsService.ts';
+import { OverrideTree } from '../../../src/ui/screens/menu/overrideTree.ts';
+import { SetupWindow } from '../../../src/ui/screens/menu/SetupWindow.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { mainMenuLayout } from '../../../src/ui/screens/menu/MainMenuScreen.ts';
 import { selectWorldLayout } from '../../../src/ui/screens/menu/SelectWorldScreen.ts';
@@ -15,11 +18,15 @@ describe('menu layouts from the real library', () => {
     const layout = mainMenuLayout(library);
     expect(layout.items.map((item) => item.depth)).toEqual([1, 8, 10, 12, 14, 82, 90, 91, 207]);
     expect(layout.settingsLabel).toBeDefined();
-    const { graphics, volume, ping, hidden } = layout.setup;
+    const { graphics, roomDetail, volume, ping, hidden } = layout.setup;
     expect(graphics.buttons.map((button) => button.spec.instance)).toEqual(['_Level_Beginner', '_Level_Intermediate', '_Level_Expert']);
     for (const button of graphics.buttons) expect(button.matrix?.[5]).toBeCloseTo(-100, 0);
-    for (const button of volume.buttons) expect(button.matrix?.[5]).toBeCloseTo(-62, 0);
-    for (const button of ping.buttons) expect(button.matrix?.[5]).toBeCloseTo(90, 0);
+    for (const button of roomDetail.buttons) expect(button.matrix?.[5]).toBeCloseTo(-64, 0);
+    for (const button of volume.buttons) expect(button.matrix?.[5]).toBeCloseTo(-28, 0);
+    for (const button of ping.buttons) expect(button.matrix?.[5]).toBeCloseTo(116, 0);
+    expect(roomDetail.buttons.map((button) => button.attached?.name)).toEqual(['setupRoomDetailAuto', 'setupRoomDetailHigh', 'setupRoomDetailLow']);
+    expect(roomDetail.title && roomDetail.info).toBeDefined();
+    expect(layout.setup.bottomButtons.map((button) => button.matrix[5])).toEqual([152, 152]);
     expect(ping.buttons.map((button) => button.spec.instance)).toEqual(['_Devils_Off', '_Devils_On']);
     expect(ping.title && ping.info).toBeDefined();
     expect(graphics.buttons.every((button) => button.label !== undefined)).toBe(true);
@@ -34,6 +41,18 @@ describe('menu layouts from the real library', () => {
     expect(coopArea && hitAreaContains(coopArea, { x: 320, y: 259 })).toBe(true);
     expect(deathArea && hitAreaContains(deathArea, { x: 320, y: 292 })).toBe(true);
     expect(deathArea && hitAreaContains(deathArea, { x: 320, y: 259 })).toBe(false);
+  });
+
+  it.skipIf(assetsMissing)('SETTINGS window answers clicks on the attached ROOM DETAIL buttons', () => {
+    const library = new SymbolLibrary(assetSymbols());
+    const layout = mainMenuLayout(library);
+    const tree = new OverrideTree();
+    new SetupWindow(library, layout.setup).scene(tree, true, DEFAULT_SETTINGS, () => ButtonState.Up);
+    const auto = instanceHitArea(library, layout.items, [MainMenuChild.OptionsWindow, 'setupRoomDetailAuto', '_Button'], tree.overrides);
+    const low = instanceHitArea(library, layout.items, [MainMenuChild.OptionsWindow, 'setupRoomDetailLow', '_Button'], tree.overrides);
+    expect(auto && hitAreaContains(auto, { x: 247, y: 176 })).toBe(true);
+    expect(low && hitAreaContains(low, { x: 407, y: 176 })).toBe(true);
+    expect(low && hitAreaContains(low, { x: 247, y: 176 })).toBe(false);
   });
 
   it.skipIf(assetsMissing)('main menu puts the player NAME in the bottom-left corner and JOIN BY CODE in the bottom-right corner', () => {

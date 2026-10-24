@@ -1,4 +1,3 @@
-import { effectPreferences } from '../../../services/menuSettings.ts';
 import type { GameCatalogs } from '../../../adapters/assets/AssetLoader.ts';
 import type { SoundMixer } from '../../../adapters/audio/SoundMixer.ts';
 import type { KeyboardState } from '../../../adapters/input/KeyboardState.ts';
@@ -22,7 +21,7 @@ import { PointerPhase, Simulation, TouchLayout, type FlowControls, type PointerI
 import type { SettingsService } from '../../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../../text/errors.ts';
 import type { Shell } from '../../shell/Shell.ts';
-import type { RenderKit } from '../GameScreen.ts';
+import { worldViewOptions, type RenderKit } from '../GameScreen.ts';
 
 export interface OnlineGameScreenDependencies {
   readonly shell: Shell;
@@ -57,7 +56,7 @@ export class OnlineGameScreen implements Screen {
     const room = deps.catalogs.rooms.get(start.roomId);
     if (!room) throw new AppError(ErrorCode.RoomUnknown, start.roomId);
     const hud = new HudRenderer(deps.kit.renderer, start.mode);
-    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: start.options.detail, resolution: () => deps.shell.resolution, effects: () => effectPreferences(deps.settings.settings) });
+    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, worldViewOptions(deps, room, start.options.detail));
     const characters = (client.lobby?.members ?? []).map((member) => member.character);
     for (const collection of prewarmCollections(gameOptionsFor(start.mode, start.options, characters))) deps.kit.characters.enqueue(collection);
     keyboard.releaseAll();

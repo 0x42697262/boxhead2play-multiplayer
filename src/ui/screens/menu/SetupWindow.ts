@@ -2,7 +2,8 @@ import type { DisplayItem, Filter } from '../../../adapters/assets/schemas.ts';
 import type { Matrix } from '../../../adapters/render/geometry/Matrix.ts';
 import { depthKey, type ButtonState, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import type { GraphicsQuality } from '../../../services/graphicsQuality.ts';
-import { resetSetup, withBlood, withFrameRate, withGraphics, withScreenShake, withShowPing, withSoundVolume } from '../../../services/menuSettings.ts';
+import { resetSetup, withBlood, withFrameRate, withGraphics, withRoomDetail, withScreenShake, withShowPing, withSoundVolume } from '../../../services/menuSettings.ts';
+import type { RoomDetail } from '../../../services/roomDetail.ts';
 import type { FrameRate } from '../../../services/SettingsService.ts';
 import type { SettingsService, UserSettings } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
@@ -17,10 +18,14 @@ import {
   PING_ROW,
   GRAPHICS_ROW,
   MainMenuChild,
+  ROOM_DETAIL_ROW,
   SETUP_ATTACHED_DEPTH,
   SETUP_ATTACHED_LABEL_DEPTH,
+  SETUP_BOTTOM_BUTTONS_Y,
   SETUP_BUTTON_LABEL_DEPTH,
+  SETUP_FIRST_ROW_Y,
   SETUP_INFO_WIDTH_PX,
+  SETUP_ROW_SPACING_PX,
   SETUP_TITLE_CENTER_X,
   SETUP_TITLE_DEPTH,
   SETUP_WINDOW_BACKGROUND_DEPTH,
@@ -35,6 +40,7 @@ export const SetupAction = {
   Close: 'close',
   Reset: 'reset',
   Graphics: 'graphics',
+  RoomDetail: 'roomDetail',
   Volume: 'volume',
   ScreenShake: 'screenShake',
   Blood: 'blood',
@@ -46,6 +52,7 @@ export type SetupAction =
   | { readonly kind: typeof SetupAction.Close }
   | { readonly kind: typeof SetupAction.Reset }
   | { readonly kind: typeof SetupAction.Graphics; readonly value: GraphicsQuality }
+  | { readonly kind: typeof SetupAction.RoomDetail; readonly value: RoomDetail }
   | { readonly kind: typeof SetupAction.Volume; readonly value: number }
   | { readonly kind: typeof SetupAction.ScreenShake; readonly value: boolean }
   | { readonly kind: typeof SetupAction.Blood; readonly value: boolean }
@@ -57,6 +64,7 @@ export interface SetupButtonLayout<Value> {
   readonly matrix: Matrix | undefined;
   readonly label: StaticTextFrame | undefined;
   readonly labelFilters: readonly Filter[] | undefined;
+  readonly attached: DisplayItem | undefined;
 }
 
 export interface SetupRowLayout<Value> {
@@ -70,11 +78,13 @@ export interface SetupWindowLayout {
   readonly window: DisplayItem | undefined;
   readonly title: StaticTextFrame | undefined;
   readonly graphics: SetupRowLayout<GraphicsQuality>;
+  readonly roomDetail: SetupRowLayout<RoomDetail>;
   readonly volume: SetupRowLayout<number>;
   readonly shake: SetupRowLayout<boolean>;
   readonly blood: SetupRowLayout<boolean>;
   readonly frameRate: SetupRowLayout<FrameRate>;
   readonly ping: SetupRowLayout<boolean>;
+  readonly bottomButtons: readonly { readonly name: string; readonly matrix: Matrix }[];
   readonly hidden: readonly string[];
 }
 
@@ -98,6 +108,9 @@ export function applySetupAction(settings: SettingsService, action: SetupAction)
       return SetupOutcome.Open;
     case SetupAction.Graphics:
       settings.update((current) => withGraphics(current, action.value));
+      return SetupOutcome.Open;
+    case SetupAction.RoomDetail:
+      settings.update((current) => withRoomDetail(current, action.value));
       return SetupOutcome.Open;
     case SetupAction.Volume:
       settings.update((current) => withSoundVolume(current, action.value));
@@ -126,31 +139,44 @@ function shifted(frame: StaticTextFrame | undefined, shiftY: number): StaticText
   return frame ? { ...frame, top: frame.top + shiftY } : undefined;
 }
 
-function rowLayout<Value>(library: SymbolLibrary, children: readonly DisplayItem[], spec: SetupRowSpec<Value>): SetupRowLayout<Value> {
+function rowLayout<Value>(library: SymbolLibrary, children: readonly DisplayItem[], spec: SetupRowSpec<Value>, index: number): SetupRowLayout<Value> {
   const byDepth = (depth: number): DisplayItem | undefined => children.find((item) => item.depth === depth);
   const rowY = children.find((item) => item.name === spec.rowOf)?.matrix[5];
+  const shiftY = rowY === undefined ? 0 : SETUP_FIRST_ROW_Y + index * SETUP_ROW_SPACING_PX - rowY;
   const buttons = spec.buttons.map((button) => {
-    const item = children.find((child) => child.name === button.instance);
+    const item = children.find((child) => child.name === (button.clone?.of ?? button.instance));
     const text = item ? library.frameItems(item.characterId, 0).find((child) => child.depth === SETUP_BUTTON_LABEL_DEPTH) : undefined;
     const [a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0] = item?.matrix ?? [];
+    const matrix = item ? itemMatrix([a, b, c, d, button.x ?? tx, (rowY ?? ty) + shiftY]) : undefined;
     return {
       spec: button,
-      matrix: item ? itemMatrix([a, b, c, d, button.x ?? tx, (rowY ?? ty) + spec.shiftY]) : undefined,
+      matrix,
       label: staticTextFrame(library, text),
       labelFilters: text?.filters,
+      attached: item && matrix && button.clone ? { ...item, name: button.instance, depth: button.clone.depth, matrix } : undefined,
     };
   });
-  return { spec, title: shifted(staticTextFrame(library, byDepth(spec.titleDepth)), spec.shiftY), info: shifted(staticTextFrame(library, byDepth(spec.infoDepth)), spec.shiftY), buttons };
+  return { spec, title: shifted(staticTextFrame(library, byDepth(spec.titleDepth)), shiftY), info: shifted(staticTextFrame(library, byDepth(spec.infoDepth)), shiftY), buttons };
+}
+
+function bottomButton(children: readonly DisplayItem[], name: string): { readonly name: string; readonly matrix: Matrix } | undefined {
+  const item = children.find((child) => child.name === name);
+  if (!item) return undefined;
+  const [a, b, c, d, tx] = item.matrix;
+  return { name, matrix: itemMatrix([a, b, c, d, tx, SETUP_BOTTOM_BUTTONS_Y]) };
 }
 
 export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | undefined): SetupWindowLayout {
   const children = window ? library.frameItems(window.characterId, 0) : [];
-  const graphics = rowLayout(library, children, GRAPHICS_ROW);
-  const volume = rowLayout(library, children, VOLUME_ROW);
-  const shake = rowLayout(library, children, SHAKE_ROW);
-  const blood = rowLayout(library, children, BLOOD_ROW);
-  const frameRate = rowLayout(library, children, FRAME_RATE_ROW);
-  const ping = rowLayout(library, children, PING_ROW);
+  let index = 0;
+  const row = <Value>(spec: SetupRowSpec<Value>): SetupRowLayout<Value> => rowLayout(library, children, spec, index++);
+  const graphics = row(GRAPHICS_ROW);
+  const roomDetail = row(ROOM_DETAIL_ROW);
+  const volume = row(VOLUME_ROW);
+  const shake = row(SHAKE_ROW);
+  const blood = row(BLOOD_ROW);
+  const frameRate = row(FRAME_RATE_ROW);
+  const ping = row(PING_ROW);
   const kept = new Set<string>([
     Child.Lock,
     Child.Close,
@@ -162,11 +188,13 @@ export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | 
     window,
     title: staticTextFrame(library, children.find((item) => item.depth === SETUP_TITLE_DEPTH)),
     graphics,
+    roomDetail,
     volume,
     shake,
     blood,
     frameRate,
     ping,
+    bottomButtons: [Child.Close, Child.Reset].map((name) => bottomButton(children, name)).filter((button) => button !== undefined),
     hidden: children.map(childKey).filter((key) => !kept.has(key)),
   };
 }
@@ -189,6 +217,7 @@ export class SetupWindow {
       release(buttonPath(Child.Reset), { kind: SetupAction.Reset }),
       release(buttonPath(Child.Close), { kind: SetupAction.Close }),
       ...this.layout.graphics.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Graphics, value: button.spec.value })),
+      ...this.layout.roomDetail.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.RoomDetail, value: button.spec.value })),
       ...this.layout.volume.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Volume, value: button.spec.value })),
       ...this.layout.shake.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.ScreenShake, value: button.spec.value })),
       ...this.layout.blood.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Blood, value: button.spec.value })),
@@ -202,11 +231,11 @@ export class SetupWindow {
     tree.set(WINDOW, { visible: open });
     if (!open) return;
     for (const key of this.layout.hidden) tree.set([...WINDOW, key], { visible: false });
-    const { graphics, volume, shake, blood, frameRate, ping } = this.layout;
+    const { graphics, roomDetail, volume, shake, blood, frameRate, ping } = this.layout;
     const { title } = this.layout;
     const texts = [
       title && this.text(tree, { name: Child.Title, depth: SETUP_ATTACHED_DEPTH, style: TextStyles.WindowTitle, anchorX: SETUP_TITLE_CENTER_X, top: title.top }, t('setup.title'), WINDOW_TEXT_COLOR),
-      ...[graphics, volume, shake, blood, frameRate, ping].flatMap((row, index) => {
+      ...[graphics, roomDetail, volume, shake, blood, frameRate, ping].flatMap((row, index) => {
         const depth = SETUP_ATTACHED_DEPTH + (index + 1) * 2;
         const rowTitle = row.title;
         const info = row.info;
@@ -216,13 +245,16 @@ export class SetupWindow {
         ];
       }),
     ].filter((item): item is DisplayItem => item !== undefined);
-    tree.set(WINDOW, { attach: texts });
+    const clones = roomDetail.buttons.map((button) => button.attached).filter((item) => item !== undefined);
+    tree.set(WINDOW, { attach: [...texts, ...clones] });
     this.buttons(tree, graphics, settings.graphics, buttonState);
+    this.buttons(tree, roomDetail, settings.roomDetail, buttonState);
     this.buttons(tree, volume, settings.soundVolume, buttonState);
     this.buttons(tree, shake, settings.screenShake, buttonState);
     this.buttons(tree, blood, settings.blood, buttonState);
     this.buttons(tree, frameRate, settings.frameRate, buttonState);
     this.buttons(tree, ping, settings.showPing, buttonState);
+    for (const { name, matrix } of this.layout.bottomButtons) tree.set([...WINDOW, name], { matrix: itemMatrix(matrix) });
     for (const name of [Child.Close, Child.Reset]) {
       tree.set([...WINDOW, name, Child.Selected], { visible: false });
       tree.set(buttonPath(name), { buttonState: buttonState(buttonPath(name)) });

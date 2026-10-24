@@ -42,8 +42,9 @@ resolution, as Flash scales filters when the stage is zoomed.
 
 A resolution change (window resize, moving to another screen, a new quality) clears the
 bitmap caches. `WorldRenderer` rebuilds its room planes and stamps the decals of the game
-again, so blood stays on the floor. `XsiFrameCache` queues the character frames it had
-rendered for idle prewarm again. A window resize takes effect for the resolution only once
+again, so blood stays on the floor (since ADR 0008 only when the plane resolution
+changes). `XsiFrameCache` queues the character frames it had rendered for idle prewarm
+again. A window resize takes effect for the resolution only once
 the resize events stop for `RESIZE_SETTLE_DELAY_MS`; the CSS size follows at once.
 
 ## Consequences
@@ -51,7 +52,9 @@ the resize events stop for `RESIZE_SETTLE_DELAY_MS`; the CSS size follows at onc
 * Menus, text, character cards, characters and objects are sharp on large and high-DPI
   screens. The look differs from the original, whose world is a 640 x 480 bitmap; recorded in
   `docs/porting/deviations.md`.
-* Bitmap memory grows with the square of the resolution, hence the limit of 3. A resize
+* Bitmap memory grows with the square of the resolution, hence the limit of 3. The room
+  planes are as large as the room and can exceed browser limits; they have their own
+  resolution since [ADR 0008](0008-room-plane-resolution.md). A resize
   re-renders the caches lazily; character frames prewarm again in idle time.
 * Pixel snapping happens in device pixels, so objects move in smaller steps than in the
   original at resolutions above 1.

@@ -134,7 +134,7 @@ Add one line per behavior change: what to do, and the result you expect.
   (Firefox); only the page, `manifest.json` and, in dev, the source modules hit the server.
 * Online match (coop or deathmatch) -> a small green "4 ms" in the top-right corner, updated every
   second; delay the page's WebSocket sends by 150 ms -> orange "155 ms", by 400 ms -> red. SETTINGS
-  (main menu or Esc) Ping OFF -> it disappears; the SETTINGS window shows six rows above RESET/CLOSE.
+  (main menu or Esc) Ping OFF -> it disappears; the SETTINGS window shows seven rows above RESET/CLOSE.
 * Phone in portrait -> black "Turn your device sideways to play." screen with a turning phone.
   Landscape -> the menu; the first tap goes full screen without browser bars (Android Chrome) and
   sound plays. iPhone Safari -> "Play in full screen / Tap Share, then Add to Home Screen." at the
@@ -301,7 +301,22 @@ Add one line per behavior change: what to do, and the result you expect.
   no 2-pixel steps; barrel outlines stay 1 stage pixel thick.
 * Main menu, SETTINGS -> the options window titled SETTINGS with Graphics (SHARP, SMOOTH,
   PIXELATED) and Sound volume (OFF, LOW, MEDIUM, FULL); SMOOTH -> the canvas is 640 x 480 at
-  once; OFF -> no sounds; RESET -> SHARP, FULL; kept after a reload (settings `version` 7).
+  once; OFF -> no sounds; RESET -> SHARP, AUTO, FULL; kept after a reload (settings `version` 8).
+* SETTINGS -> a ROOM DETAIL row (AUTO, HIGH, LOW) under Graphics, AUTO selected on a fresh profile;
+  all seven rows and RESET/CLOSE fit inside the window. LOW, reload -> still LOW (settings
+  `version` 8); a stored version 7 blob loads with AUTO.
+* Safari (macOS or iPad) in a 1080p window, SHARP, ROOM DETAIL AUTO or HIGH, play level 18 ->
+  the room draws (no blank or red floor, no crash); the floor is a bit softer than the
+  characters.
+* Play level 18, Esc -> SETTINGS -> ROOM DETAIL LOW -> the floor and walls get softer at once,
+  blood stays where it was, DevTools Memory shows less canvas memory than with HIGH; HIGH ->
+  sharp again. The console shows `display.plane_budget` once at boot.
+* `npx vitest run test/adapters/render/planeResolution.test.ts test/adapters/display/canvasArea.test.ts
+  test/adapters/render/worldRenderer.test.ts` -> room 18 at resolution 2.25 under a 16.7 M
+  pixel canvas limit gets plane resolution 1.25, small rooms keep 2.25, LOW gives 1, the probe
+  steps down once and then answers from its cache, planes are built at the plane resolution,
+  drawn scaled to the screen, decals stamped at the plane resolution, and the pieces surface
+  is released.
 * Hold two movement keys (for example S + D) -> player 1 walks diagonally at the same speed
   as straight (0.16 cells per tick).
 * `npm run dev` -> after loading, a fade from black to the main menu: background, BOXHEAD 2PLAY
@@ -330,7 +345,7 @@ Add one line per behavior change: what to do, and the result you expect.
   `'K'` stored; Escape cancels; RESET restores the defaults.
 * `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
   (wraparound, roll-over filters, valid keys, key capture, pointer, transition), option
-  mapping, settings v1 -> ... -> v7 migration, screen flow (including lobby routing), lobby view
+  mapping, settings v1 -> ... -> v8 migration, screen flow (including lobby routing), lobby view
   model, online client and online playback pass.
 * Change `src/adapters/assets/schemas.ts` (or `ASSET_FORMAT_VERSION`), then `npm run setup:assets` ->
   "Extracting game assets from the SWF (extractor-changed)"; with `FFDEC_JAR` set, point it at a

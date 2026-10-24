@@ -46,13 +46,18 @@ Only these parts of sprite 253 are drawn:
 
 The select-world OPTIONS window (`mcWindow_Options`, sprite 358) with a SETTINGS title.
 Only the background, `mcLock`, RESET and CLOSE keep their art; every other child is hidden.
-Six rows, 38 px apart instead of the original 45 px so that a sixth fits above RESET and
-CLOSE (`SetupRowSpec.shiftY` moves each row's title, info line and buttons; the Ping row
-borrows the Frame rate row's title and info texts):
+Seven rows, 36 px apart from y -100.1 (`SETUP_FIRST_ROW_Y`, `SETUP_ROW_SPACING_PX`)
+instead of the original 45 px; `setupWindowLayout` moves each row's title, info line and
+buttons by the difference to the original row. RESET and CLOSE move down from y 144.5 to
+152 (`SETUP_BOTTOM_BUTTONS_Y`), still inside the window background, so the seventh row
+fits. The Room detail and Ping rows borrow the Frame rate row's title and info texts. All
+16 option buttons of the window are in use, so the Room detail buttons are copies of
+`_Collide_Off` attached under new names at depths 150..152 (`SetupButtonSpec.clone`):
 
 | Row | Buttons (instances, moved to the row) | Setting |
 |---|---|---|
 | Graphics | SHARP, SMOOTH, PIXELATED (`_Level_Beginner`..`_Level_Expert`) | `graphics` (ADR 0006) |
+| Room detail | AUTO, HIGH, LOW (attached copies `setupRoomDetailAuto`, `setupRoomDetailHigh`, `setupRoomDetailLow`) | `roomDetail`: the room planes' resolution (ADR 0008); a change rebuilds the planes of a running game |
 | Sound volume | OFF, LOW, MEDIUM, FULL (`_Game1`..`_Game4`) | `soundVolume` 0, 25, 50, 100 |
 | Screen shake | OFF, ON (`_Damage_Off`, `_Damage_On`) | `screenShake`: the renderer uses the camera rect instead of the shaken draw origin |
 | Blood | OFF, ON (`_Speed_Slow`, `_Speed_Normal`) | `blood`: blood decals are kept but not stamped; switching rebuilds the floor |
@@ -61,7 +66,7 @@ borrows the Frame rate row's title and info texts):
 
 Button labels are attached edit texts with the glow of the original static labels. A click
 stores the value at once: the shell refits and the mixer changes its volume. RESET restores
-SHARP, FULL, both switches on and DISPLAY. These are device settings, separate from the game OPTIONS of select world.
+SHARP, AUTO, FULL, both switches on, DISPLAY and Ping on. These are device settings, separate from the game OPTIONS of select world.
 
 Removed: the INSTRUCTIONS link of `mcInstructions` (external URL), button 203 (a "view the trailer" YouTube link),
 `_IconMoreGames`, `_STC` ("A SEAN COOPER GAME" link), the four game banners (depths 60,

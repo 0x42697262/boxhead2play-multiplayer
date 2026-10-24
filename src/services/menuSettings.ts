@@ -1,6 +1,7 @@
 import type { PlayerKeyCodes } from '../adapters/input/TickInputSampler.ts';
 import { Difficulty, GameAmount, GameSpeed, type PlayerCharacter } from '../domain/world/SimulationSettings.ts';
 import type { GraphicsQuality } from './graphicsQuality.ts';
+import type { RoomDetail } from './roomDetail.ts';
 import { DEFAULT_KEYS, DEFAULT_SETTINGS, PLAYER_NAME_MAX_LENGTH, SOUND_VOLUME_MAX, type UserSettings } from './SettingsService.ts';
 
 export const OptionField = {
@@ -66,6 +67,10 @@ export function withGraphics(settings: UserSettings, graphics: GraphicsQuality):
   return { ...settings, graphics };
 }
 
+export function withRoomDetail(settings: UserSettings, roomDetail: RoomDetail): UserSettings {
+  return { ...settings, roomDetail };
+}
+
 export function withSoundVolume(settings: UserSettings, soundVolume: number): UserSettings {
   return { ...settings, soundVolume };
 }
@@ -91,8 +96,8 @@ export function withFrameRate(settings: UserSettings, frameRate: UserSettings['f
 }
 
 export function resetSetup(settings: UserSettings): UserSettings {
-  const { graphics, soundVolume, screenShake, blood, frameRate, showPing } = DEFAULT_SETTINGS;
-  return { ...settings, graphics, soundVolume, screenShake, blood, frameRate, showPing };
+  const { graphics, roomDetail, soundVolume, screenShake, blood, frameRate, showPing } = DEFAULT_SETTINGS;
+  return { ...settings, graphics, roomDetail, soundVolume, screenShake, blood, frameRate, showPing };
 }
 
 export function soundGain(settings: UserSettings): number {

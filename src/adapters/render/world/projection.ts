@@ -24,6 +24,12 @@ export function floorSourceOrigin(drawOrigin: Point2, resolution = 1): Point2 {
   return { x: -Math.round(-drawOrigin.x * resolution), y: -Math.round(-drawOrigin.y * resolution) };
 }
 
+export function planeSourceOrigin(drawOrigin: Point2, screenResolution: number, planeResolution: number): Point2 {
+  const screen = floorSourceOrigin(drawOrigin, screenResolution);
+  const scale = planeResolution / screenResolution;
+  return { x: screen.x * scale, y: screen.y * scale };
+}
+
 export function omniIndex(angleRadians: number, directions: number): number {
   const step = ((angleRadians * ANGLE_STEPS) / FULL_TURN_RADIANS) & ANGLE_STEP_MASK;
   return stepToDirectionLookup(directions)[step] ?? 0;

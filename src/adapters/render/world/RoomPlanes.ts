@@ -1,9 +1,9 @@
 import type { DecalRequested } from '../../../domain/events.ts';
 import type { Room } from '../../assets/schemas.ts';
 import type { ClipBuffers } from '../clips/ClipBuffers.ts';
-import { multiply, scaling, translation } from '../geometry/Matrix.ts';
-import { cssColor, resetContext, type Surface } from '../surface.ts';
-import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
+import { multiply, scaling, translation, type Matrix } from '../geometry/Matrix.ts';
+import { cssColor, releaseSurface, resetContext, type Surface } from '../surface.ts';
+import type { DrawOptions, SymbolRenderer } from '../symbols/SymbolRenderer.ts';
 import { pixelSnap } from './projection.ts';
 
 export const FLOOR_FILL_COLOR = 0xff0000;
@@ -13,10 +13,26 @@ export interface RoomPlanes {
   readonly floor: Surface;
   readonly decalMask: Surface;
   readonly cover: Surface;
+  readonly resolution: number;
 }
 
 export function roomBitmapSize(room: Room): { readonly width: number; readonly height: number } {
   return { width: Math.trunc(room.size.width), height: Math.trunc(room.size.height) };
+}
+
+function filled(renderer: SymbolRenderer, width: number, height: number, color: number): Surface {
+  const surface = renderer.createSurface(width, height);
+  surface.ctx.fillStyle = cssColor(color);
+  surface.ctx.fillRect(0, 0, width, height);
+  return surface;
+}
+
+function maskOutside(renderer: SymbolRenderer, pieces: Surface): Surface {
+  const mask = filled(renderer, pieces.width, pieces.height, DECAL_MASK_FILL_COLOR);
+  mask.ctx.globalCompositeOperation = 'destination-out';
+  mask.ctx.drawImage(pieces.canvas, 0, 0);
+  resetContext(mask.ctx);
+  return mask;
 }
 
 export function buildRoomPlanes(room: Room, renderer: SymbolRenderer, resolution = 1): RoomPlanes {
@@ -24,29 +40,26 @@ export function buildRoomPlanes(room: Room, renderer: SymbolRenderer, resolution
   const width = size.width * resolution;
   const height = size.height * resolution;
   const toDevice = scaling(resolution, resolution);
-  const hidden = new Set(room.hiddenCharacterIds);
-  const options = { hidden, resolution };
-  const floor = renderer.createSurface(width, height);
-  const pieces = renderer.createSurface(width, height);
-  const cover = renderer.createSurface(width, height);
-  floor.ctx.fillStyle = cssColor(FLOOR_FILL_COLOR);
-  floor.ctx.fillRect(0, 0, width, height);
+  const at = (position: { readonly x: number; readonly y: number }): Matrix => multiply(toDevice, translation(position.x, position.y));
+  const options: DrawOptions = { hidden: new Set(room.hiddenCharacterIds), resolution };
+  const floor = filled(renderer, width, height, FLOOR_FILL_COLOR);
   renderer.drawItems(floor.ctx, room.background, toDevice, options);
+  const pieces = renderer.createSurface(width, height);
   for (const piece of room.pieces) {
-    const matrix = multiply(toDevice, translation(piece.position.x, piece.position.y));
-    renderer.draw(floor.ctx, piece.characterId, 0, matrix, options);
-    renderer.draw(pieces.ctx, piece.characterId, 0, matrix, options);
-    if (piece.coverCharacterId !== null && piece.coverPosition !== null) {
-      renderer.draw(cover.ctx, piece.coverCharacterId, 0, multiply(toDevice, translation(piece.coverPosition.x, piece.coverPosition.y)), options);
-    }
+    renderer.draw(floor.ctx, piece.characterId, 0, at(piece.position), options);
+    renderer.draw(pieces.ctx, piece.characterId, 0, at(piece.position), options);
   }
-  const decalMask = renderer.createSurface(width, height);
-  decalMask.ctx.fillStyle = cssColor(DECAL_MASK_FILL_COLOR);
-  decalMask.ctx.fillRect(0, 0, width, height);
-  decalMask.ctx.globalCompositeOperation = 'destination-out';
-  decalMask.ctx.drawImage(pieces.canvas, 0, 0);
-  resetContext(decalMask.ctx);
-  return { floor, decalMask, cover };
+  const decalMask = maskOutside(renderer, pieces);
+  releaseSurface(pieces);
+  const cover = renderer.createSurface(width, height);
+  for (const piece of room.pieces) {
+    if (piece.coverCharacterId !== null && piece.coverPosition !== null) renderer.draw(cover.ctx, piece.coverCharacterId, 0, at(piece.coverPosition), options);
+  }
+  return { floor, decalMask, cover, resolution };
+}
+
+export function releaseRoomPlanes(planes: RoomPlanes): void {
+  for (const surface of [planes.floor, planes.decalMask, planes.cover]) releaseSurface(surface);
 }
 
 export class DecalStamper {
@@ -57,14 +70,19 @@ export class DecalStamper {
   stamp(planes: RoomPlanes, clips: ClipBuffers, decal: DecalRequested): void {
     const bitmap = clips.directionalFrame(decal.symbol, decal.rotationCount, decal.rotationIndex, decal.frame, { x: decal.scaleX, y: decal.scaleY });
     if (!bitmap) return;
-    const x = pixelSnap(decal.xPx * clips.resolution + bitmap.dispX);
-    const y = pixelSnap(decal.yPx * clips.resolution + bitmap.dispY);
-    const { width, height } = bitmap.surface;
+    const scale = planes.resolution / clips.resolution;
+    const x = pixelSnap(decal.xPx * planes.resolution + bitmap.dispX * scale);
+    const y = pixelSnap(decal.yPx * planes.resolution + bitmap.dispY * scale);
+    const source = bitmap.surface;
+    const scaledWidth = source.width * scale;
+    const scaledHeight = source.height * scale;
+    const width = Math.ceil(scaledWidth);
+    const height = Math.ceil(scaledHeight);
     const stamp = this.scratchFor(width, height);
     const ctx = stamp.ctx;
     resetContext(ctx);
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(bitmap.surface.canvas, 0, 0);
+    ctx.drawImage(source.canvas, 0, 0, scaledWidth, scaledHeight);
     ctx.globalCompositeOperation = 'destination-in';
     ctx.drawImage(planes.decalMask.canvas, -x, -y);
     resetContext(ctx);

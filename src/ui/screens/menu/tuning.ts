@@ -2,6 +2,7 @@ import { GameMode } from '../../../domain/world/GameMode.ts';
 import { Difficulty, GameAmount, GameSpeed } from '../../../domain/world/SimulationSettings.ts';
 import { BASE_TICKS_PER_SECOND } from '../../../domain/world/tuning.ts';
 import { GraphicsQuality } from '../../../services/graphicsQuality.ts';
+import { RoomDetail } from '../../../services/roomDetail.ts';
 import { SOUND_VOLUME_MAX, SOUND_VOLUME_OFF, UNCAPPED_FRAME_RATE, type FrameRate } from '../../../services/SettingsService.ts';
 import type { TextKey } from '../../../text/i18n.ts';
 import type { KeyField } from '../../../services/menuSettings.ts';
@@ -58,14 +59,24 @@ export const SETUP_ATTACHED_LABEL_DEPTH = 10;
 export const SETUP_INFO_WIDTH_PX = 500;
 export const SETUP_TITLE_CENTER_X = 0;
 
+export interface SetupButtonClone {
+  readonly of: string;
+  readonly depth: number;
+}
+
 export interface SetupButtonSpec<Value> {
   readonly instance: string;
   readonly value: Value;
   readonly label: TextKey;
   readonly x?: number;
+  readonly clone?: SetupButtonClone;
 }
 
 const SETUP_COLUMN_X = [-76, 4, 84, 164.1] as const;
+
+export const SETUP_FIRST_ROW_Y = -100.1;
+export const SETUP_ROW_SPACING_PX = 36;
+export const SETUP_BOTTOM_BUTTONS_Y = 152;
 
 export interface SetupRowSpec<Value> {
   readonly titleDepth: number;
@@ -73,7 +84,6 @@ export interface SetupRowSpec<Value> {
   readonly rowOf: string;
   readonly title: TextKey;
   readonly info: TextKey;
-  readonly shiftY: number;
   readonly buttons: readonly SetupButtonSpec<Value>[];
 }
 
@@ -83,11 +93,25 @@ export const GRAPHICS_ROW: SetupRowSpec<GraphicsQuality> = {
   rowOf: '_Collide_Off',
   title: 'setup.graphics.title',
   info: 'setup.graphics.info',
-  shiftY: -14.8,
   buttons: [
     { instance: '_Level_Beginner', value: GraphicsQuality.Sharp, label: 'setup.graphics.sharp' },
     { instance: '_Level_Intermediate', value: GraphicsQuality.Smooth, label: 'setup.graphics.smooth' },
     { instance: '_Level_Expert', value: GraphicsQuality.Pixelated, label: 'setup.graphics.pixelated' },
+  ],
+};
+
+const ROOM_DETAIL_TEMPLATE = '_Collide_Off';
+
+export const ROOM_DETAIL_ROW: SetupRowSpec<RoomDetail> = {
+  titleDepth: 76,
+  infoDepth: 98,
+  rowOf: '_Game1',
+  title: 'setup.roomDetail.title',
+  info: 'setup.roomDetail.info',
+  buttons: [
+    { instance: 'setupRoomDetailAuto', value: RoomDetail.Auto, label: 'setup.roomDetail.auto', x: SETUP_COLUMN_X[0], clone: { of: ROOM_DETAIL_TEMPLATE, depth: 150 } },
+    { instance: 'setupRoomDetailHigh', value: RoomDetail.High, label: 'setup.roomDetail.high', x: SETUP_COLUMN_X[1], clone: { of: ROOM_DETAIL_TEMPLATE, depth: 151 } },
+    { instance: 'setupRoomDetailLow', value: RoomDetail.Low, label: 'setup.roomDetail.low', x: SETUP_COLUMN_X[2], clone: { of: ROOM_DETAIL_TEMPLATE, depth: 152 } },
   ],
 };
 
@@ -100,7 +124,6 @@ export const VOLUME_ROW: SetupRowSpec<number> = {
   rowOf: '_Devils_Off',
   title: 'setup.volume.title',
   info: 'setup.volume.info',
-  shiftY: -22,
   buttons: [
     { instance: '_Game1', value: SOUND_VOLUME_OFF, label: 'setup.volume.off' },
     { instance: '_Game2', value: VOLUME_LOW, label: 'setup.volume.low' },
@@ -115,7 +138,6 @@ export const SHAKE_ROW: SetupRowSpec<boolean> = {
   rowOf: '_Damage_Off',
   title: 'setup.shake.title',
   info: 'setup.shake.info',
-  shiftY: -29.2,
   buttons: [
     { instance: '_Damage_Off', value: false, label: 'setup.switch.off' },
     { instance: '_Damage_On', value: true, label: 'setup.switch.on' },
@@ -128,7 +150,6 @@ export const BLOOD_ROW: SetupRowSpec<boolean> = {
   rowOf: '_Speed_Slow',
   title: 'setup.blood.title',
   info: 'setup.blood.info',
-  shiftY: -36.4,
   buttons: [
     { instance: '_Speed_Slow', value: false, label: 'setup.switch.off' },
     { instance: '_Speed_Normal', value: true, label: 'setup.switch.on' },
@@ -141,7 +162,6 @@ export const FRAME_RATE_ROW: SetupRowSpec<FrameRate> = {
   rowOf: '_Game1',
   title: 'setup.frameRate.title',
   info: 'setup.frameRate.info',
-  shiftY: -43.5,
   buttons: [
     { instance: '_Collide_Off', value: 30, label: 'setup.frameRate.30', x: SETUP_COLUMN_X[0] },
     { instance: '_Collide_On', value: 60, label: 'setup.frameRate.60', x: SETUP_COLUMN_X[1] },
@@ -156,7 +176,6 @@ export const PING_ROW: SetupRowSpec<boolean> = {
   rowOf: '_Game1',
   title: 'setup.ping.title',
   info: 'setup.ping.info',
-  shiftY: -5.5,
   buttons: [
     { instance: '_Devils_Off', value: false, label: 'setup.switch.off', x: SETUP_COLUMN_X[0] },
     { instance: '_Devils_On', value: true, label: 'setup.switch.on', x: SETUP_COLUMN_X[1] },
