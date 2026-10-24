@@ -1,6 +1,6 @@
 import type { MonitorSnapshot } from '../../src/server/monitorProtocol.ts';
 import { MONITOR_FORMAT_VERSION, MONITOR_PATH, MONITOR_TOKEN_SCHEME } from '../../src/server/monitorProtocol.ts';
-import { renderView } from './view.ts';
+import { httpErrorText, renderView } from './view.ts';
 
 const DEFAULT_URL = 'http://localhost:5173';
 const DEFAULT_INTERVAL_MS = 1000;
@@ -46,7 +46,7 @@ function parseOptions(args: readonly string[]): Options {
 async function sample(options: Options): Promise<MonitorSnapshot> {
   const headers: Record<string, string> = options.token ? { authorization: `${MONITOR_TOKEN_SCHEME}${options.token}` } : {};
   const response = await fetch(`${options.url}${MONITOR_PATH}`, { headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-  if (!response.ok) throw new Error(`HTTP ${response.status}${response.status === 403 ? ' (wrong or missing --token, or not a loopback address)' : ''}`);
+  if (!response.ok) throw new Error(httpErrorText(response.status));
   const snapshot = (await response.json()) as MonitorSnapshot;
   if (snapshot.formatVersion !== MONITOR_FORMAT_VERSION) throw new Error(`monitor format ${snapshot.formatVersion}, this tool reads ${MONITOR_FORMAT_VERSION}`);
   return snapshot;

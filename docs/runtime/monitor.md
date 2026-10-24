@@ -10,6 +10,16 @@ npm run monitor -- --url https://game.example --token "$BOXHEAD_MONITOR_TOKEN"
 npm run monitor -- --once                         # two samples, printed once (also when piped)
 ```
 
+For a local production build on port 8080:
+
+```
+BOXHEAD_MONITOR_TOKEN=local-monitor-token npm start
+npm run monitor -- --url http://localhost:8080 --token local-monitor-token
+```
+
+Without the token the production server answers `/__monitor` with 404, and the tool says so.
+Pointing the tool at a server nobody plays on shows 0 lobbies and 0 players.
+
 `q` or Ctrl+C quits. `BOXHEAD_MONITOR_URL` and `BOXHEAD_MONITOR_TOKEN` replace the flags.
 
 ## What it shows

@@ -13,6 +13,8 @@ export const Style = {
 } as const;
 
 const ANSI_PATTERN = new RegExp(`${ESC.replace('[', '\\[')}[0-9;]*m`, 'g');
+const HTTP_FORBIDDEN = 403;
+const HTTP_NOT_FOUND = 404;
 const BYTE_UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB'] as const;
 const BYTES_PER_UNIT = 1024;
 const MICROS_PER_SECOND = 1_000_000;
@@ -52,6 +54,12 @@ export interface ClientRate {
   readonly client: MonitorClient;
   readonly sentPerSecond: number;
   readonly receivedPerSecond: number;
+}
+
+export function httpErrorText(status: number): string {
+  if (status === HTTP_FORBIDDEN) return `HTTP ${status}: wrong or missing --token, or the dev server saw a non-loopback address`;
+  if (status === HTTP_NOT_FOUND) return `HTTP ${status}: no monitor at this address. A production server (npm start) serves it only when started with BOXHEAD_MONITOR_TOKEN; pass the same value with --token`;
+  return `HTTP ${status}`;
 }
 
 export function formatBytes(bytes: number): string {

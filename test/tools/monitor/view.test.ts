@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClientActivity, MONITOR_FORMAT_VERSION, type MonitorClient, type MonitorSnapshot } from '../../../src/server/monitorProtocol.ts';
-import { clientRates, cpuPercent, fit, formatBytes, formatDuration, renderView } from '../../../tools/monitor/view.ts';
+import { clientRates, cpuPercent, fit, formatBytes, formatDuration, httpErrorText, renderView } from '../../../tools/monitor/view.ts';
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
@@ -54,6 +54,12 @@ describe('monitor view', () => {
     expect(text.find((line) => line.startsWith('Ann '))).toContain('2.0 KiB/s');
     expect(text.every((line) => line.length <= 100)).toBe(true);
     expect(renderView({ url: 'u', previous: undefined, current: snapshot(0, 0, Array.from({ length: 50 }, (_unused, index) => client(`P${index}`, index))), error: undefined, width: 100, height: 20 })).toHaveLength(20);
+  });
+
+  it('explains a missing monitor and a refused token', () => {
+    expect(httpErrorText(404)).toContain('BOXHEAD_MONITOR_TOKEN');
+    expect(httpErrorText(403)).toContain('--token');
+    expect(httpErrorText(500)).toBe('HTTP 500');
   });
 
   it('shows the connection error and cuts long lines without breaking colors', () => {
