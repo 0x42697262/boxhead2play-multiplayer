@@ -1,5 +1,5 @@
 import { encodeClientMessage, parseServerMessage, ServerMessageType, type ClientMessage, type ServerMessage } from '../../net/protocol.ts';
-import { WireDecoder, WireError } from '../../net/wire.ts';
+import { WireDecoder } from '../../net/wire.ts';
 import type { Rng } from '../../domain/math/Rng.ts';
 import { SOCKET_PATH } from '../../net/tuning.ts';
 import { RECONNECT_BACKOFF_FACTOR, RECONNECT_BASE_DELAY_MS, RECONNECT_JITTER_FRACTION, RECONNECT_MAX_DELAY_MS } from './tuning.ts';
@@ -31,13 +31,16 @@ export interface ConnectionListener {
 const OPEN = 1;
 const ARRAY_BUFFER: BinaryType = 'arraybuffer';
 
-function decodeWire(decoder: WireDecoder, data: ArrayBuffer): ServerMessage | undefined {
+const DESYNCED = Symbol('desynced');
+
+function decodeWire(decoder: WireDecoder, data: ArrayBuffer): ServerMessage | undefined | typeof DESYNCED {
+  let value: unknown;
   try {
-    return parseServerMessage(decoder.decode(new Uint8Array(data)));
-  } catch (error) {
-    if (error instanceof WireError) return undefined;
-    throw error;
+    value = decoder.decode(new Uint8Array(data));
+  } catch {
+    return DESYNCED;
   }
+  return parseServerMessage(value);
 }
 
 export function reconnectDelayMs(attempt: number, jitter: number): number {
@@ -89,14 +92,21 @@ export class ServerConnection {
     if (this.socket || this.cancelRetry) return;
     const socket = this.createSocket(this.url);
     const decoder = new WireDecoder();
+    let desynced = false;
     socket.binaryType = ARRAY_BUFFER;
     this.socket = socket;
     socket.onopen = () => {
       if (this.socket === socket) this.listener.opened();
     };
     socket.onmessage = (event) => {
-      if (this.socket !== socket || !(event.data instanceof ArrayBuffer)) return;
+      if (this.socket !== socket || desynced || !(event.data instanceof ArrayBuffer)) return;
       const message = decodeWire(decoder, event.data);
+      if (message === DESYNCED) {
+        desynced = true;
+        this.listener.rejected(event.data.byteLength);
+        socket.close();
+        return;
+      }
       if (!message) {
         this.listener.rejected(event.data.byteLength);
         return;

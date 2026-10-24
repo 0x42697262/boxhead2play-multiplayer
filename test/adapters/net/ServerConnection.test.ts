@@ -69,7 +69,7 @@ describe('ServerConnection', () => {
     expect(defaultServerUrl({ protocol: 'http:', host: 'localhost:5173' })).toBe('ws://localhost:5173/ws');
   });
 
-  it('decodes binary messages as deltas, reports undecodable ones and sends only while open', () => {
+  it('decodes binary messages as deltas, rejects invalid ones and sends only while open', () => {
     const { connection, sockets, events, messages } = setup();
     connection.connect();
     expect(sockets[0]?.binaryType).toBe('arraybuffer');
@@ -77,14 +77,31 @@ describe('ServerConnection', () => {
     sockets[0]?.open();
     expect(connection.send({ type: 'leaveLobby' })).toBe(true);
     sockets[0]?.deliver({ type: 'error', reason: 'lobbyFull' });
-    sockets[0]?.deliver({ type: 'error', reason: 'notHost' });
     sockets[0]?.deliver({ type: 'bogus' });
-    sockets[0]?.deliverBytes(new Uint8Array([200, 1]));
+    sockets[0]?.deliver({ type: 'error', reason: 'notHost' });
     expect(messages).toEqual([
       { type: 'error', reason: 'lobbyFull' },
       { type: 'error', reason: 'notHost' },
     ]);
-    expect(events).toEqual(['open', 'rejected', 'rejected']);
+    expect(events).toEqual(['open', 'rejected']);
+  });
+
+  it('closes the socket when the wire cannot be decoded and starts over with a fresh decoder', () => {
+    const { connection, sockets, timers, events, messages } = setup();
+    connection.connect();
+    sockets[0]?.open();
+    sockets[0]?.deliver({ type: 'error', reason: 'lobbyFull' });
+    sockets[0]?.deliverBytes(new Uint8Array([200, 1]));
+    sockets[0]?.deliver({ type: 'error', reason: 'notHost' });
+    expect(events).toEqual(['open', 'rejected', 'close']);
+    expect(sockets[0]?.readyState).toBe(3);
+    timers[0]?.run();
+    sockets[1]?.open();
+    sockets[1]?.deliver({ type: 'error', reason: 'notHost' });
+    expect(messages).toEqual([
+      { type: 'error', reason: 'lobbyFull' },
+      { type: 'error', reason: 'notHost' },
+    ]);
   });
 
   it('starts every new socket with a fresh decoder', () => {

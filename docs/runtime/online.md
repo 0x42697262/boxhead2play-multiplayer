@@ -226,6 +226,12 @@ shows "Reload the page" instead of retrying. A full server (`MAX_CLIENTS`) answe
 client with `serverFull` and closes; the client keeps retrying with backoff and clears the
 notice on the next `welcome`.
 
+A message that the `WireDecoder` cannot decode (any exception, not only `WireError`) means
+the client's delta baselines may no longer match the server's encoder. The client closes
+the socket and ignores the rest of its messages; the reconnect opens a new socket with a
+fresh encoder and decoder on both sides and resumes the session. A message that decodes but
+fails the Zod schema leaves the baselines intact and is only dropped.
+
 The client keeps its `sessionId`
 in `sessionStorage`; `hello` with it resumes the same client within the server's grace
 period (45 s): the lobby membership and the match player stay, and the server resends
