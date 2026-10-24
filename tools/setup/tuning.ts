@@ -10,12 +10,13 @@ export const JAVA_COMMAND = 'java';
 export const JAVA_VERSION_ARGS = ['-version'] as const;
 
 export const STAMP_FILE = 'extract-stamp.json';
-export const STAMP_FORMAT_VERSION = 1;
+export const STAMP_FORMAT_VERSION = 2;
 
 export const EXTRACTOR_SOURCE_DIR = 'tools/extract';
 export const EXTRACTOR_ENTRY = 'tools/extract/main.ts';
 export const EXTRACTOR_SOURCE_EXTENSION = '.ts';
 export const EXTRACTOR_EXCLUDED_SUFFIXES = ['.test.ts'] as const;
 export const EXTRACTOR_EXCLUDED_DIRS = ['debug', 'testing'] as const;
+export const EXTRACTOR_SHARED_SOURCES = ['src/adapters/assets/schemas.ts'] as const;
 
 export const FAILURE_EXIT_CODE = 1;

@@ -3,11 +3,13 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { unzipSync } from 'fflate';
+import { ASSET_FORMAT_VERSION } from '../../src/adapters/assets/schemas.ts';
 import { isExtractorSource, parseJavaMajor, type ExtractStamp, type SourceFile } from './freshness.ts';
 import { SetupMessage } from './messages.ts';
 import {
   EXTRACTOR_EXCLUDED_DIRS,
   EXTRACTOR_EXCLUDED_SUFFIXES,
+  EXTRACTOR_SHARED_SOURCES,
   EXTRACTOR_SOURCE_DIR,
   EXTRACTOR_SOURCE_EXTENSION,
   FFDEC_ARCHIVE_SHA256,
@@ -48,20 +50,33 @@ function listFiles(directory: string, root: string): string[] {
   });
 }
 
-export function extractorFingerprint(repoRoot: string): string {
+export function extractorSourcePaths(repoRoot: string): string[] {
   const sourceRoot = path.join(repoRoot, EXTRACTOR_SOURCE_DIR);
-  const files = listFiles(sourceRoot, sourceRoot)
+  const pipeline = listFiles(sourceRoot, sourceRoot)
     .filter((relative) => isExtractorSource(relative, EXTRACTOR_SOURCE_EXTENSION, EXTRACTOR_EXCLUDED_SUFFIXES, EXTRACTOR_EXCLUDED_DIRS))
-    .map((relative) => ({ path: relative, content: readFileSync(path.join(sourceRoot, relative), 'utf8') }));
+    .map((relative) => `${EXTRACTOR_SOURCE_DIR}${POSIX_SEPARATOR}${relative}`);
+  return [...pipeline, ...EXTRACTOR_SHARED_SOURCES];
+}
+
+export function extractorFingerprint(repoRoot: string): string {
+  const files = extractorSourcePaths(repoRoot).map((relative) => ({ path: relative, content: readFileSync(path.join(repoRoot, relative), 'utf8') }));
   return fingerprintSources(files);
 }
 
-export function expectedStamp(repoRoot: string, swfPath: string): ExtractStamp {
+export function ffdecJarFingerprint(ffdecJar: string | undefined): string | null {
+  if (ffdecJar === undefined) return null;
+  if (!existsSync(ffdecJar)) throw new SetupError(SetupMessage.ffdecJarNotFound(ffdecJar));
+  return sha256(readFileSync(ffdecJar));
+}
+
+export function expectedStamp(repoRoot: string, swfPath: string, ffdecJar: string | undefined): ExtractStamp {
   return {
     formatVersion: STAMP_FORMAT_VERSION,
     swfSha256: sha256(readFileSync(swfPath)),
     extractorSha256: extractorFingerprint(repoRoot),
+    assetFormatVersion: ASSET_FORMAT_VERSION,
     ffdecVersion: FFDEC_VERSION,
+    ffdecJarSha256: ffdecJarFingerprint(ffdecJar),
   };
 }
 

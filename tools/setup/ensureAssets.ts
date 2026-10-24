@@ -13,7 +13,7 @@ function ensureAssets(repoRoot: string): void {
   if (!existsSync(config.swfPath)) throw new SetupError(SetupMessage.swfMissing(config.swfPath));
   const verdict = judgeFreshness(
     { manifestExists: existsSync(path.join(config.outDir, OutputPath.Manifest)), stamp: readStamp(config.outDir) },
-    expectedStamp(repoRoot, config.swfPath),
+    expectedStamp(repoRoot, config.swfPath, config.ffdecJar),
   );
   if (verdict.fresh) {
     console.log(SetupMessage.upToDate);

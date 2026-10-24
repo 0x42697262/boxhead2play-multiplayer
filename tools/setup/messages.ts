@@ -13,6 +13,7 @@ export const SetupMessage = {
   ffdecDownloadFailed: (url: string, detail: string) => `Could not download FFDec from ${url}: ${detail}. Set FFDEC_JAR to a local ffdec.jar to skip the download.`,
   ffdecChecksumMismatch: (expected: string, actual: string) => `The FFDec download has SHA-256 ${actual}, expected ${expected}. Refusing to run it.`,
   ffdecArchiveUnsafe: (name: string) => `The FFDec archive contains an unsafe path: ${name}`,
+  ffdecJarNotFound: (jar: string) => `FFDEC_JAR points to ${jar}, which does not exist.`,
   ffdecJarMissing: (jar: string) => `The FFDec archive did not contain ${jar}.`,
   swfMissing: (swfPath: string) => `The original game file is missing: ${swfPath}.`,
   extractFailed: (code: number | null) => `Asset extraction failed (exit code ${code ?? 'unknown'}). See the log above.`,

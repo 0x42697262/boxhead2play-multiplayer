@@ -35,13 +35,27 @@ hashes.
 `npm run dev` and `npm run build` first run `npm run setup:assets`
 (`tools/setup/ensureAssets.ts`), so a fresh clone needs only `npm install` and `npm run dev`.
 
-1. It compares `public/assets/extract-stamp.json` with the expected stamp: `formatVersion`,
-   the SWF's SHA-256, a SHA-256 over the extractor sources (`tools/extract/**/*.ts` without
-   tests, `debug/` and `testing/`) and the FFDec version. If everything matches and
-   `manifest.json` exists, it prints "Game assets are up to date." and exits (well under a
-   second).
+1. It compares `public/assets/extract-stamp.json` with the expected stamp:
+   * `formatVersion` (`STAMP_FORMAT_VERSION`, currently `2`; any other version counts as no
+     stamp),
+   * `swfSha256`, the SWF's SHA-256,
+   * `extractorSha256`, a SHA-256 over the extractor sources: `tools/extract/**/*.ts` without
+     tests, `debug/` and `testing/`, plus the `src/` modules whose content shapes the output
+     (`EXTRACTOR_SHARED_SOURCES`: `src/adapters/assets/schemas.ts`). The logger, log events
+     and env modules the extractor also imports do not change the output and are left out
+     so that editing them does not cost a re-extraction,
+   * `assetFormatVersion`, the runtime's `ASSET_FORMAT_VERSION`,
+   * `ffdecVersion`, the pinned FFDec version,
+   * `ffdecJarSha256`: `null` for the pinned download (the version and archive checksum
+     already identify it), else the SHA-256 of the jar `FFDEC_JAR` points to, so switching
+     to another local jar re-extracts. A missing `FFDEC_JAR` file stops setup with an error.
+
+   If everything matches and `manifest.json` exists, it prints "Game assets are up to date."
+   and exits (well under a second; hashing a local FFDec jar adds a few tens of
+   milliseconds).
 2. Otherwise it prints the reason (`no-assets`, `no-stamp`, `swf-changed`,
-   `extractor-changed`, `ffdec-changed`) and runs `tools/extract/main.ts`.
+   `extractor-changed`, `asset-format-changed`, `ffdec-changed`) and runs
+   `tools/extract/main.ts`.
 3. The extractor checks `java -version` (Java 8+), then resolves FFDec: `FFDEC_JAR` if
    set, else `.cache/ffdec/26.4.0/ffdec.jar`. If that is missing it downloads
    `ffdec_26.4.0.zip` from the JPEXS GitHub release (5 minute timeout), refuses any archive

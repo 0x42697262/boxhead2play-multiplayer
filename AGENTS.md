@@ -236,6 +236,9 @@ Add one line per behavior change: what to do, and the result you expect.
   (wraparound, roll-over filters, valid keys, key capture, pointer, transition), option
   mapping, settings v1 -> v2 -> v3 migration, screen flow (including lobby routing), lobby view
   model, online client and online playback pass.
+* Change `src/adapters/assets/schemas.ts` (or `ASSET_FORMAT_VERSION`), then `npm run setup:assets` ->
+  "Extracting game assets from the SWF (extractor-changed)"; with `FFDEC_JAR` set, point it at a
+  different jar -> "(ffdec-changed)"; running it again -> "Game assets are up to date."
 * Run `npm run extract` while `npm run dev` keeps running, then reload -> the loading screen
   says the server returned a web page instead of an asset and to restart the dev server; it
   does not freeze at a percentage. After restarting, the main menu appears.

@@ -5,7 +5,9 @@ export const ExtractStampSchema = z.object({
   formatVersion: z.literal(STAMP_FORMAT_VERSION),
   swfSha256: z.string(),
   extractorSha256: z.string(),
+  assetFormatVersion: z.number(),
   ffdecVersion: z.string(),
+  ffdecJarSha256: z.string().nullable(),
 });
 
 export type ExtractStamp = z.infer<typeof ExtractStampSchema>;
@@ -15,6 +17,7 @@ export const StaleReason = {
   NoStamp: 'no-stamp',
   SwfChanged: 'swf-changed',
   ExtractorChanged: 'extractor-changed',
+  AssetFormatChanged: 'asset-format-changed',
   FfdecChanged: 'ffdec-changed',
 } as const;
 
@@ -33,7 +36,9 @@ export function judgeFreshness(state: AssetState, expected: ExtractStamp): Fresh
   if (!stamp.success) return { fresh: false, reason: StaleReason.NoStamp };
   if (stamp.data.swfSha256 !== expected.swfSha256) return { fresh: false, reason: StaleReason.SwfChanged };
   if (stamp.data.extractorSha256 !== expected.extractorSha256) return { fresh: false, reason: StaleReason.ExtractorChanged };
+  if (stamp.data.assetFormatVersion !== expected.assetFormatVersion) return { fresh: false, reason: StaleReason.AssetFormatChanged };
   if (stamp.data.ffdecVersion !== expected.ffdecVersion) return { fresh: false, reason: StaleReason.FfdecChanged };
+  if (stamp.data.ffdecJarSha256 !== expected.ffdecJarSha256) return { fresh: false, reason: StaleReason.FfdecChanged };
   return { fresh: true };
 }
 

@@ -17,7 +17,7 @@ async function main(): Promise<void> {
     const config = { ...loaded, ffdecJar: await resolveFfdecJar(loaded, repoRoot, () => console.log(SetupMessage.downloadingFfdec)) };
     logger.info(LogEvent.ExtractStarted, { swf: config.swfPath, outDir: config.outDir, ffdec: config.ffdecJar });
     const manifest = await runPipeline(config, logger);
-    writeStamp(config.outDir, expectedStamp(repoRoot, config.swfPath));
+    writeStamp(config.outDir, expectedStamp(repoRoot, config.swfPath, loaded.ffdecJar));
     logger.info(LogEvent.ExtractFinished, {
       files: manifest.files.length,
       bytes: manifest.files.reduce((total, file) => total + file.bytes, 0),
