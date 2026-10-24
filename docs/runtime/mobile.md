@@ -23,9 +23,24 @@ Browsers allow full screen only inside a user gesture, and for touch only on `po
 (a touch `pointerdown` is not a user activation). `listeners.ts` therefore reports every
 `pointerup` and `keydown` as a gesture. A touch gesture calls `enterLandscapeFullscreen`
 (`src/adapters/display/fullscreen.ts`): `requestFullscreen({ navigationUI: 'hide' })`,
-then `screen.orientation.lock('landscape')` where the browser supports it. If the player
-leaves full screen, the next tap enters it again. The same gesture handling now retries the
-audio unlock until the `AudioContext` runs; before, one early touch could leave iOS silent.
+then `screen.orientation.lock('landscape')` where the browser supports it. The same gesture
+handling now retries the audio unlock until the `AudioContext` runs; before, one early touch
+could leave iOS silent.
+
+If the player leaves full screen, only a menu tap enters it again, never a tap during play.
+`entersFullscreenOnTap` (`src/ui/mobile/fullscreenTap.ts`) decides from the current screen's
+`touchLayout` (see below): menu screens (`hidden`, or none) and the in-game Esc menu
+(`menu`) re-enter, `play` does not. Before, every touch `pointerup` re-entered, so Fire, the
+stick or a weapon button threw a player who had left full screen back in mid-fight, and the
+canvas resized during play. The TAB upgrade list and the player list keep the `play` layout,
+so taps there do not re-enter either. The window listener runs after the touch controls and
+the canvas have handled the `pointerup`, and screen changes wait for the next frame, so:
+
+* the tap that starts a game from a menu still counts as a menu tap;
+* the pause button's tap opens the Esc menu first, so it re-enters (the game is behind the
+  menu); the close button's tap closes the menu first, so resuming play does not.
+
+New touch layouts do not re-enter unless they are added to `FULLSCREEN_TAP_LAYOUTS`.
 
 iPhone Safari has no full screen API for pages. There, a glass banner at the top says
 "Play in full screen: Tap Share, then Add to Home Screen." for 10 s

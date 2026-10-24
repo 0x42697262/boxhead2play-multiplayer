@@ -129,6 +129,10 @@ Add one line per behavior change: what to do, and the result you expect.
   sound plays. iPhone Safari -> "Play in full screen / Tap Share, then Add to Home Screen." at the
   top for 10 s; started from the Home Screen -> no browser bars. `/manifest.webmanifest` -> JSON
   with `display: fullscreen`.
+* Android Chrome, in a game, swipe down and leave full screen, then tap Fire, steer and tap a
+  weapon button -> the page stays out of full screen and the canvas does not resize; tap the
+  pause button (or quit to a menu and tap there) -> full screen again. `npx vitest run
+  test/ui/mobile/fullscreenTap.test.ts` -> menu and Esc menu layouts re-enter, play does not.
 * Phone, landscape, start a game by tapping -> stick bottom left, Fire with < > weapon buttons
   bottom right, pause and list buttons top left. Drag the stick right -> the player walks right;
   hold Fire while steering -> both work; > -> next weapon; list -> upgrades (scoreboard in

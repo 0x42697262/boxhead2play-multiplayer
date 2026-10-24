@@ -50,6 +50,7 @@ import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX, type Viewport } from './ui/shel
 import { attachHomeScreenHint, attachRotateHint, setHomeScreenTitle } from './ui/mobile/MobileChrome.ts';
 import { TouchControls } from './ui/touch/TouchControls.ts';
 import { SoftKeyboard } from './ui/mobile/SoftKeyboard.ts';
+import { entersFullscreenOnTap } from './ui/mobile/fullscreenTap.ts';
 import { PlayerListOverlay } from './ui/hud/PlayerListOverlay.ts';
 import { GameMenuKey } from './ui/screens/gameMenu/tuning.ts';
 import { RESIZE_SETTLE_DELAY_MS } from './ui/shell/tuning.ts';
@@ -202,7 +203,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         touch.setTouchInput(touchInput);
         if (touchInput) softKeyboard.open();
         if (webAudio && !webAudio.unlocked) void webAudio.unlock().then(() => logger.info(LogEvent.AudioUnlocked));
-        if (touchInput) void enterLandscapeFullscreen(document, window.screen.orientation).then((entered) => entered && logger.info(LogEvent.FullscreenEntered));
+        if (touchInput && entersFullscreenOnTap(flow.screen?.touchLayout)) void enterLandscapeFullscreen(document, window.screen.orientation).then((entered) => entered && logger.info(LogEvent.FullscreenEntered));
       },
       onVisibility: (visible) => {
         logger.info(LogEvent.VisibilityChanged, { visible });
