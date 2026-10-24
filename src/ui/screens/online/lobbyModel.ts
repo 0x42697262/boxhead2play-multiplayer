@@ -25,7 +25,9 @@ export interface JoinList {
 
 export interface RoomPanel {
   readonly host: boolean;
+  readonly configurable: boolean;
   readonly levelIndex: number | undefined;
+  readonly lobbyOptions: LobbyOptions;
   readonly prompt: string;
   readonly canPlay: boolean;
   readonly members: readonly string[];
@@ -74,6 +76,8 @@ export function resultText(result: OnlineSessionResult): string {
       return t('online.result.quit');
     case OnlineEnd.Lost:
       return t('online.result.lost');
+    case OnlineEnd.Failed:
+      return t('online.result.failed');
     case OnlineEnd.Finished:
       break;
   }
@@ -173,7 +177,9 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
   const host = lobby.members.some((member) => member.host && member.id === clientId);
   return {
     host,
+    configurable: host && lobby.state === LobbyState.Waiting,
     levelIndex: levelIndexOf(rooms, lobby.roomId),
+    lobbyOptions: lobby.options,
     ...roomPrompt(lobby, clientId),
     members: memberLines(lobby, clientId),
     options: optionsSummary(lobby.mode, lobby.options),

@@ -53,6 +53,12 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   screens keep no rename button.
 * **Host.** HOST creates a game at once with the level last chosen for the mode and the
   OPTIONS values, then opens the lobby room.
+* **One request at a time.** From HOST, JOIN on a row or a join code until the `lobby`
+  reply (or an `error`), the online menu ignores further HOST and JOIN clicks, so a double
+  click cannot create two games. Closing the join window does not cancel a pending join:
+  the server may already have added the player, so the menu still enters the lobby room
+  when the reply arrives. A `lobby` message for the lobby the player is just leaving
+  ("Back to menu", then HOST at once) does not count as the reply.
 * **Join window.** JOIN opens the CONTROLS window (`mcWindow_Controls`) as a list: "SELECT A
   GAME TO JOIN!", the 7 key rows of both player panels as 14 game slots. The row label
   shows `<GAME NAME>` and the key cell `JOIN n/max`, `FULL n/max` or `JOINING…`;
@@ -83,8 +89,14 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   (`OnlineClient.joinLobby(..., enterMatch)`), so the player goes straight into it.
 * **Lobby room** (`SelectWorldScreen` with a `LobbyRoom`). The OBJECTIVE screen of the mode
   with the player list under the character card and the options summary under the level.
-  The host keeps the level arrows and OPTIONS; each change reconfigures the game
-  (`configureLobby`). Clicking the level preview ("CLICK TO START GAME") starts the match.
+  The host keeps the level arrows and OPTIONS while the lobby waits for players; each change
+  reconfigures the game (`configureLobby`). The room always shows the lobby's level and
+  options (`RoomPanel.levelIndex`, `lobbyOptions`), not the saved ones, so a player who
+  becomes host after the previous host left starts from what the lobby has. A change sends
+  the lobby's options with only the changed value and also saves that value locally for
+  the next HOST. While a match runs (`RoomPanel.configurable` false) the arrows and OPTIONS
+  are hidden and changes are ignored, so the saved settings do not drift from a request the
+  server would refuse (`alreadyPlaying`). Clicking the level preview ("CLICK TO START GAME") starts the match.
   Guests see the host's level and "WAITING FOR <HOST> TO START". The character arrows
   send `setCharacter`. The room texts are attached inside `_SubScreen_Container`, so the OPTIONS
   and CONTROLS windows draw over them. "Back to menu" leaves the game and returns to the online menu.
@@ -94,6 +106,9 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   spawns a new player with `World.joinPlayer` near a living player (or the nearest open
   cell). In coop the new player gets every weapon unlocked so far; in deathmatch it
   starts with empty weapons and the pistol, like a respawn.
+* **Failed start.** If the online game screen cannot be built (for example a room the
+  client's assets do not have), `ScreenFlow` sends `leaveGame` so no idle player stays in
+  the match and opens the lobby room with "The match could not start in this browser."
 * **Leave.** QUIT? on the upgrade list (TAB) sends `leaveGame` and returns to the lobby room.
   "Back to menu" leaves the lobby (no notice for a leave the player asked for). The host
   role moves to the next connected member. An empty lobby

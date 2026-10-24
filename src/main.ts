@@ -157,12 +157,12 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         controls,
         logger,
         mode: entry.mode,
-        room: new LobbyRoom({ client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result, invite }),
+        room: new LobbyRoom({ client: online, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result, invite }),
       }),
     onlineGame: (controls, start) =>
       new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start, uiRng: menuRng, invite }),
   };
-  const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor));
+  const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor), online);
   startOnlineGame = (start) => flow.startOnlineGame(start);
   const loop = new GameLoop(flow, browserLoopClock, () => userSettings.settings.frameRate, (error) =>
     logger.error(LogEvent.FrameFailed, { screen: flow.screen?.name, error: error instanceof Error ? (error.stack ?? error.message) : String(error) }),

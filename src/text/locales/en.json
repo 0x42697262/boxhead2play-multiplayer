@@ -269,6 +269,7 @@
   "online.result.over": "Game over! Score {score}",
   "online.result.quit": "You left the match.",
   "online.result.lost": "The server lost the match.",
+  "online.result.failed": "The match could not start in this browser.",
   "online.result.error": "The match stopped because of a server error.",
   "controls.title": "CONTROLS",
   "controls.info": "Additional controls: 0-9 select weapons, {upgradeKey} shows the upgrade list",

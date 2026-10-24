@@ -1,9 +1,10 @@
+import { CompletionState } from '../domain/world/CompletionState.ts';
 import { GameMode } from '../domain/world/GameMode.ts';
 import type { GameStarted, OnlineMode } from '../net/protocol.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import type { SessionResult } from './GameSession.ts';
-import type { OnlineSessionResult } from './online/OnlineGameSession.ts';
+import { OnlineEnd, type OnlineSessionResult } from './online/OnlineGameSession.ts';
 
 export interface StagePoint {
   readonly x: number;
@@ -118,6 +119,14 @@ export type Transition =
   | { readonly kind: typeof ScreenKind.LobbyRoom; readonly entry: LobbyEntry }
   | { readonly kind: typeof ScreenKind.OnlineGame; readonly start: GameStarted };
 
+export interface OnlineMatchExit {
+  leaveGame(): void;
+}
+
+const NO_MATCH_EXIT: OnlineMatchExit = { leaveGame: () => undefined };
+
+export const FAILED_MATCH_RESULT: OnlineSessionResult = { end: OnlineEnd.Failed, state: CompletionState.Error, gameOver: undefined };
+
 export const DEFAULT_RETURN_MODE: GameMode = GameMode.Single;
 export const CODE_JOIN_MENU_MODE: OnlineMode = GameMode.Coop;
 const IDLE_TICKS_PER_SECOND = 1;
@@ -134,6 +143,7 @@ export class ScreenFlow implements FlowControls {
     private readonly factory: ScreenFactory,
     private readonly logger: Logger,
     private readonly onCursor: (cursor: Cursor) => void = () => undefined,
+    private readonly match: OnlineMatchExit = NO_MATCH_EXIT,
   ) {}
 
   get screen(): Screen | undefined {
@@ -260,7 +270,8 @@ export class ScreenFlow implements FlowControls {
           this.show(this.factory.onlineGame(this, transition.start));
         } catch (error) {
           this.logger.error(LogEvent.WorldFailed, { room: transition.start.roomId, error: String(error) });
-          this.show(this.factory.onlineMenu(this, { mode: transition.start.mode, result: undefined }));
+          this.match.leaveGame();
+          this.show(this.factory.lobbyRoom(this, { mode: transition.start.mode, result: FAILED_MATCH_RESULT }));
         }
     }
   }

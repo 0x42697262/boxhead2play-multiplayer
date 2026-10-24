@@ -1,18 +1,17 @@
 import type { RoomIndex } from '../../../adapters/assets/schemas.ts';
 import type { PlayerCharacter } from '../../../domain/world/SimulationSettings.ts';
-import type { OnlineMode } from '../../../net/protocol.ts';
+import type { LobbyOptions, OnlineMode } from '../../../net/protocol.ts';
 import type { InviteView } from '../../../services/online/LobbyInvite.ts';
 import type { OnlineClient } from '../../../services/online/OnlineClient.ts';
 import type { OnlineSessionResult } from '../../../services/online/OnlineGameSession.ts';
 import type { FlowControls } from '../../../services/ScreenFlow.ts';
-import { toLobbyOptions, type SettingsService } from '../../../services/SettingsService.ts';
 import { roomPanel, type RoomPanel } from './lobbyModel.ts';
 
 export interface SelectWorldRoom {
   panel(): RoomPanel | undefined;
   play(): void;
   back(): void;
-  configChanged(roomId: string): void;
+  configure(roomId: string, options: LobbyOptions): void;
   copyLink(): void;
   characterChanged(character: PlayerCharacter): void;
   dispose(): void;
@@ -20,7 +19,6 @@ export interface SelectWorldRoom {
 
 export interface LobbyRoomDependencies {
   readonly client: OnlineClient;
-  readonly settings: SettingsService;
   readonly rooms: RoomIndex;
   readonly controls: FlowControls;
   readonly mode: OnlineMode;
@@ -58,9 +56,9 @@ export class LobbyRoom implements SelectWorldRoom {
     this.deps.controls.openLobby(this.deps.mode);
   }
 
-  configChanged(roomId: string): void {
-    if (!this.panel()?.host) return;
-    this.deps.client.configure(roomId, toLobbyOptions(this.deps.settings.settings));
+  configure(roomId: string, options: LobbyOptions): void {
+    if (!this.panel()?.configurable) return;
+    this.deps.client.configure(roomId, options);
   }
 
   copyLink(): void {

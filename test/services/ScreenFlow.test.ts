@@ -72,9 +72,10 @@ function harness(failGame = false) {
     },
   };
   const cursors: Cursor[] = [];
-  const flow = new ScreenFlow(factory, silentLogger, (cursor) => cursors.push(cursor));
+  const left = { games: 0 };
+  const flow = new ScreenFlow(factory, silentLogger, (cursor) => cursors.push(cursor), { leaveGame: () => left.games++ });
   const names = (): string[] => shown.map((screen) => screen.name);
-  return { flow, shown, names, cursors, codes };
+  return { flow, shown, names, cursors, codes, left };
 }
 
 const START: GameStarted = {
@@ -119,12 +120,13 @@ describe('ScreenFlow online routing', () => {
     expect(names()).toEqual(['mainMenu', 'onlineMenu:coop:', 'lobbyRoom:coop:', 'online:coop:1', 'lobbyRoom:coop:finished', 'online:coop:1', 'onlineMenu:coop:lost']);
   });
 
-  it('falls back to the online menu when the online game cannot start', () => {
-    const { flow, names } = harness(true);
+  it('leaves the match and returns to the lobby room with a notice when the online game cannot start', () => {
+    const { flow, names, left } = harness(true);
     flow.start();
     flow.startOnlineGame(START);
     flow.tick();
-    expect(names()).toEqual(['mainMenu', 'onlineMenu:coop:']);
+    expect(left.games).toBe(1);
+    expect(names()).toEqual(['mainMenu', `lobbyRoom:coop:${OnlineEnd.Failed}`]);
   });
 });
 

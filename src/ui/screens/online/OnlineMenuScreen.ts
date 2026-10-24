@@ -161,6 +161,7 @@ export class OnlineMenuScreen implements Screen {
   private joiningId: string | undefined = undefined;
   private joinPage = 0;
   private awaitingLobby = false;
+  private staleLobbyId: string | undefined = undefined;
   private result: LobbyEntry['result'];
 
   constructor(private readonly deps: OnlineMenuDependencies) {
@@ -184,6 +185,10 @@ export class OnlineMenuScreen implements Screen {
 
   get joinWindowOpen(): boolean {
     return this.joinOpen;
+  }
+
+  get waitingForLobby(): boolean {
+    return this.awaitingLobby;
   }
 
   tick(): void {
@@ -237,16 +242,15 @@ export class OnlineMenuScreen implements Screen {
         return;
       case OnlineMenuAction.CloseJoin:
         this.joinOpen = false;
-        this.joiningId = undefined;
-        this.awaitingLobby = false;
         return;
       case OnlineMenuAction.Back:
         this.deps.client.stop();
         this.deps.controls.showMainMenu();
         return;
       case OnlineMenuAction.Join:
+        if (this.awaitingLobby) return;
         this.joiningId = action.row.lobbyId;
-        this.awaitingLobby = true;
+        this.awaitLobby();
         this.deps.client.joinLobby(action.row.lobbyId, this.deps.settings.settings.character, action.row.running);
         return;
     }
@@ -289,27 +293,34 @@ export class OnlineMenuScreen implements Screen {
 
   private observe(): void {
     const { client, controls } = this.deps;
+    const { lobby } = client;
+    if (!lobby) this.staleLobbyId = undefined;
     if (client.state.error) {
       this.joiningId = undefined;
       this.awaitingLobby = false;
     }
-    if (this.awaitingLobby && client.lobby) {
+    if (this.awaitingLobby && lobby && lobby.id !== this.staleLobbyId) {
       this.awaitingLobby = false;
-      controls.enterLobby(client.lobby.mode);
+      controls.enterLobby(lobby.mode);
     }
+  }
+
+  private awaitLobby(): void {
+    this.awaitingLobby = true;
+    this.staleLobbyId = this.deps.client.lobby?.id;
   }
 
   private host(): void {
     const { client, settings, rooms } = this.deps;
     const current = settings.settings;
     const roomId = roomIdForLevel(rooms, levelIndexFor(current, this.mode)) ?? rooms.rooms[0]?.id;
-    if (roomId === undefined) return;
-    this.awaitingLobby = true;
+    if (roomId === undefined || this.awaitingLobby) return;
+    this.awaitLobby();
     client.createLobby(this.mode, roomId, toLobbyOptions(current), current.character);
   }
 
   private joinByCode(code: string): void {
-    this.awaitingLobby = true;
+    this.awaitLobby();
     this.deps.client.joinByCode(code, this.deps.settings.settings.character);
   }
 

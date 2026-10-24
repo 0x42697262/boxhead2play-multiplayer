@@ -163,6 +163,15 @@ Add one line per behavior change: what to do, and the result you expect.
 * Serve the page from an older build (protocol 4) against the current server -> "This game
   version does not match the server. Reload the page." and no further socket attempts in
   DevTools > Network > WS.
+* `npx vitest run test/ui/online test/ui/menu/SelectWorldScreen.test.ts test/services/ScreenFlow.test.ts`
+  -> a double HOST sends one `createLobby`; closing the join window still enters the joined
+  lobby; Back then HOST waits for the new lobby; a host who took over sees the lobby's level
+  and options; no level or option change while the match runs; a failing online game screen
+  sends `leaveGame` and opens the lobby room with the failed notice.
+* Tab 1 hosts with level 3, tab 2 joins, tab 1 goes back to the menu -> tab 2 (now host) shows
+  level 3 and the lobby's OPTIONS, the arrows step to 4; tab 1 joins again, tab 2 starts the
+  match and presses QUIT? while tab 1 plays -> tab 2's room has no level arrows and no OPTIONS
+  until the match ends.
 * Two tabs both named "Player" in one lobby -> the room lists PLAYER and PLAYER #2.
 * `npx vitest run test/server/node` -> the match ticker catches up at most 5 ticks after a stall,
   then follows the clock, and stops inside a burst when the match ends; upgrades to paths other

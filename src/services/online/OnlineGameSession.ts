@@ -34,6 +34,7 @@ export const OnlineEnd = {
   Finished: 'finished',
   Quit: 'quit',
   Lost: 'lost',
+  Failed: 'failed',
 } as const;
 
 export type OnlineEnd = (typeof OnlineEnd)[keyof typeof OnlineEnd];

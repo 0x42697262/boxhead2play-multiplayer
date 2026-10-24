@@ -16,7 +16,7 @@ import {
   type OptionField,
 } from '../../../services/menuSettings.ts';
 import type { Cursor, FlowControls, PointerInput, Screen } from '../../../services/ScreenFlow.ts';
-import { levelIndexFor, withLevelIndex, type SettingsService } from '../../../services/SettingsService.ts';
+import { levelIndexFor, toLobbyOptions, withLevelIndex, type SettingsService, type UserSettings } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
 import { LogEvent } from '../../../text/logEvents.ts';
 import { roomIdForLevel, type RoomPanel } from '../online/lobbyModel.ts';
@@ -227,9 +227,17 @@ export class SelectWorldScreen implements Screen {
   }
 
   get levelIndex(): number {
-    const panel = this.deps.room?.panel();
-    const shared = panel && !panel.host ? panel.levelIndex : undefined;
+    const shared = this.deps.room?.panel()?.levelIndex;
     return cycleFrame(shared ?? levelIndexFor(this.deps.settings.settings, this.deps.mode), 0, this.layout.levelCount);
+  }
+
+  get configurable(): boolean {
+    return !this.deps.room || this.roomPanel?.configurable === true;
+  }
+
+  get shownOptions(): UserSettings {
+    const panel = this.roomPanel;
+    return panel ? { ...this.deps.settings.settings, ...panel.lobbyOptions } : this.deps.settings.settings;
   }
 
   get roomPanel(): RoomPanel | undefined {
@@ -307,8 +315,9 @@ export class SelectWorldScreen implements Screen {
         this.optionsOpen = false;
         return;
       case SelectAction.ResetOptions:
+        if (!this.configurable) return;
+        this.configure(resetOptions(this.shownOptions), this.levelIndex);
         settings.update(resetOptions);
-        this.configChanged();
         return;
       case SelectAction.OpenControls:
         this.controlsOpen = true;
@@ -320,8 +329,9 @@ export class SelectWorldScreen implements Screen {
         settings.update(resetKeys);
         return;
       case SelectAction.Option:
+        if (!this.configurable) return;
+        this.configure(withOption(this.shownOptions, action.field, action.value), this.levelIndex);
         settings.update((current) => withOption(current, action.field, action.value));
-        this.configChanged();
         return;
       case SelectAction.Character: {
         const next = cycleFrame(this.characterFrame, action.delta, this.layout.characterCount);
@@ -332,9 +342,10 @@ export class SelectWorldScreen implements Screen {
         return;
       }
       case SelectAction.Level: {
+        if (!this.configurable) return;
         const next = cycleFrame(this.levelIndex, action.delta, this.layout.levelCount);
+        this.configure(this.shownOptions, next);
         settings.update((current) => withLevelIndex(current, this.deps.mode, next));
-        this.configChanged();
         return;
       }
       case SelectAction.ChangeKey:
@@ -354,7 +365,7 @@ export class SelectWorldScreen implements Screen {
       release([...OWN_CARD, Child.Right], { kind: SelectAction.Character, delta: NEXT }),
     ];
     const panel = this.roomPanel;
-    const configurable = !this.deps.room || panel?.host === true;
+    const configurable = this.configurable;
     const playable = !this.deps.room || panel?.canPlay === true;
     return [
       ...(configurable ? [release(buttonPath(Child.GameOptions), { kind: SelectAction.OpenOptions })] : []),
@@ -392,16 +403,16 @@ export class SelectWorldScreen implements Screen {
     if (roomId !== undefined) this.deps.controls.startGame({ mode: this.deps.mode, roomId });
   }
 
-  private configChanged(): void {
-    const roomId = roomIdForLevel(this.deps.rooms, this.levelIndex);
-    if (roomId !== undefined) this.deps.room?.configChanged(roomId);
+  private configure(options: UserSettings, levelIndex: number): void {
+    const roomId = roomIdForLevel(this.deps.rooms, levelIndex);
+    if (roomId !== undefined) this.deps.room?.configure(roomId, toLobbyOptions(options));
   }
 
   private sceneRoom(tree: OverrideTree): DisplayItem[] {
     const panel = this.roomPanel;
     if (!panel) return [];
     const library = this.deps.kit.renderer.library;
-    if (!panel.host) {
+    if (!panel.configurable) {
       tree.set([Child.GameOptions], { visible: false });
       tree.set([...LEVEL, Child.Left], { visible: false });
       tree.set([...LEVEL, Child.Right], { visible: false });
@@ -442,12 +453,10 @@ export class SelectWorldScreen implements Screen {
         action: { kind: SelectAction.Option, field: group.field, value: button.value } as const,
       })),
     );
-    return [
-      { path: buttonPath(...OPTIONS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetOptions } },
-      { path: buttonPath(...OPTIONS, Child.Close), trigger: Trigger.Release, action: { kind: SelectAction.CloseOptions } },
-      ...options,
-      { path: [...OPTIONS, Child.Lock], trigger: Trigger.Block },
-    ];
+    const close = { path: buttonPath(...OPTIONS, Child.Close), trigger: Trigger.Release, action: { kind: SelectAction.CloseOptions } } as const;
+    const lock = { path: [...OPTIONS, Child.Lock], trigger: Trigger.Block } as const;
+    if (!this.configurable) return [close, lock];
+    return [{ path: buttonPath(...OPTIONS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetOptions } }, close, ...options, lock];
   }
 
   private controlsTargets(): MenuTarget<SelectAction>[] {
@@ -489,7 +498,7 @@ export class SelectWorldScreen implements Screen {
   private sceneOptions(tree: OverrideTree): void {
     tree.set(OPTIONS, { visible: this.optionsOpen });
     if (!this.optionsOpen) return;
-    const settings = this.deps.settings.settings;
+    const settings = this.shownOptions;
     for (const group of OPTION_GROUPS) {
       const current = optionValue(settings, group.field);
       for (const button of group.buttons) {
