@@ -41,7 +41,6 @@ export const WINDOW_TEXT_COLOR = 0x000000;
 export const OnlineMenuChild = {
   Host: 'mcSinglePlay',
   Join: 'mcCoopPlay',
-  Name: 'mcInstructions',
   Contents: '_Contents',
   Back: '_Icon_Back',
   JoinWindow: 'mcWindow_Controls',

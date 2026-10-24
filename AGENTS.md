@@ -188,13 +188,14 @@ Add one line per behavior change: what to do, and the result you expect.
   a jittering drop shadow and a hand cursor.
 * SINGLE PLAY -> select world with "Back to menu", OBJECTIVE KILL ZOMBIES, one character card and
   the level preview (no More Games, banners, Sean Cooper text or View Highscores). COOPERATIVE
-  or DEATH MATCH -> HOST, JOIN and NAME: PLAYER in the main menu style with "Back to menu" and
+  or DEATH MATCH -> HOST and JOIN in the main menu style with "Back to menu" and
   "COOPERATIVE ONLINE · Open games: 0"; HOST -> OBJECTIVE with one character card, no "2" label,
   "PLAYERS: 1. PLAYER · BAMBO (you, host)" and "CLICK TO START GAME". Back to menu -> the online
   menu, then the main menu.
 * Lobby room (HOST), open OPTIONS or CONTROLS -> the window covers the player list and the
   options line; nothing draws over it.
-* Online menu, click NAME, type "Ann", Enter -> "NAME: ANN", kept after a reload. JOIN -> the
+* Main menu, click NAME: PLAYER at the bottom left, type "Ann", Enter -> "NAME: ANN", kept after a
+  reload; a 16-letter name fits. Online menu JOIN -> the
   controls window titled "SELECT A GAME TO JOIN!" with rows like "ANN'S GAME" and "JOIN 1/16".
   With more than 14 games (for example 30 WebSocket clients that each send `hello` and `createLobby`) ->
   "Page 1 of 3", NEXT > and < PREV step through the pages, faded at the ends.

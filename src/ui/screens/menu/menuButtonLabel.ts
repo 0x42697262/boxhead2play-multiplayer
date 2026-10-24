@@ -7,6 +7,8 @@ import { MainMenuChild, ROLL_OUT_ALPHA, ROLL_OVER_ALPHA } from './tuning.ts';
 
 export const MENU_BUTTON_LABEL = 'menuLabel';
 
+const LEFT = 'left';
+
 const NO_FILTERS: readonly Filter[] = [];
 
 export interface MenuButtonLook {
@@ -15,6 +17,7 @@ export interface MenuButtonLook {
   readonly text: string;
   readonly highlighted: boolean;
   readonly filters: readonly Filter[] | undefined;
+  readonly leftAligned?: { readonly width: number };
 }
 
 export function menuButtonLabelFrame(library: SymbolLibrary, items: readonly DisplayItem[], name: string): StaticTextFrame | undefined {
@@ -31,8 +34,9 @@ export function sceneMenuButton(tree: OverrideTree, library: SymbolLibrary, look
         name: MENU_BUTTON_LABEL,
         depth: ATTACHED_LABEL_DEPTH,
         style: TextStyles.MenuLabel,
-        anchorX: frame.centerX,
+        anchorX: look.leftAligned ? frame.left : frame.centerX,
         top: frame.top + MENU_LABEL_TOP_OFFSET_PX,
+        ...(look.leftAligned ? { align: LEFT, width: look.leftAligned.width } : {}),
       })
     : undefined;
   const contents = [name, MainMenuChild.Contents];

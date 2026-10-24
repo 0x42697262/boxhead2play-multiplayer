@@ -1,4 +1,4 @@
-import type { DisplayItem, EditText, StaticText } from '../../../adapters/assets/schemas.ts';
+import type { DisplayItem, EditText, StaticText, TextAlign } from '../../../adapters/assets/schemas.ts';
 import type { Rect } from '../../../adapters/render/geometry/Rect.ts';
 import { TEXT_GUTTER_PX, textAnchorX } from '../../../adapters/render/symbols/editText.ts';
 import type { ChildOverride, SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
@@ -16,11 +16,13 @@ export interface TextPlacement {
   readonly anchorX: number;
   readonly top: number;
   readonly width?: number;
+  readonly align?: TextAlign;
 }
 
 export interface PlacedText {
   readonly item: DisplayItem;
   readonly bounds: Rect;
+  readonly align?: TextAlign;
 }
 
 const ATTACHED_INSTANCE = 0;
@@ -44,12 +46,13 @@ export function placedText(library: SymbolLibrary, placement: TextPlacement): Pl
   const { style } = placement;
   const character = library.character(style.characterId);
   if (character?.kind !== 'editText') return undefined;
-  const bounds = widened(character.editText, placement.width === undefined ? undefined : placement.width / style.scale);
-  const editText = { ...character.editText, bounds };
+  const aligned = placement.align === undefined ? character.editText : { ...character.editText, align: placement.align };
+  const bounds = widened(aligned, placement.width === undefined ? undefined : placement.width / style.scale);
+  const editText = { ...aligned, bounds };
   const x = placement.anchorX - textAnchorX(editText) * style.scale;
   const y = placement.top - (bounds.yMin + TEXT_GUTTER_PX) * style.scale;
   const item = { depth: placement.depth, characterId: style.characterId, instance: ATTACHED_INSTANCE, matrix: itemMatrix([style.scale, 0, 0, style.scale, x, y]), name: placement.name };
-  return { item, bounds };
+  return placement.align === undefined ? { item, bounds } : { item, bounds, align: placement.align };
 }
 
 export interface StaticTextFrame {
@@ -80,5 +83,5 @@ export function clippedAt(placed: PlacedText, right: number): Rect {
 }
 
 export function textOverride(placed: PlacedText, text: string, textColor: number): ChildOverride {
-  return { text, textColor, textBounds: placed.bounds };
+  return placed.align === undefined ? { text, textColor, textBounds: placed.bounds } : { text, textColor, textBounds: placed.bounds, textAlign: placed.align };
 }

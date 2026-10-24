@@ -28,7 +28,7 @@ is set at build time.
 ## Flow
 
 ```
-main menu -> COOPERATIVE / DEATH MATCH -> online menu (HOST, JOIN, NAME)
+main menu -> COOPERATIVE / DEATH MATCH -> online menu (HOST, JOIN)
 online menu -> HOST -> lobby room (OBJECTIVE screen) -> click the level -> online game
 online menu -> JOIN -> join window -> JOIN on a row -> lobby room (or straight into a running match)
 online game -> lobby room (with the result)
@@ -37,15 +37,20 @@ online game -> lobby room (with the result)
 Every online screen is drawn from the SWF's own symbols, like the menus
 (`docs/runtime/screens.md`); there is no HTML UI.
 
-* **Online menu** (`OnlineMenuScreen`). The main menu backdrop and title with the three
-  button slots of the main menu: HOST (`mcSinglePlay`), JOIN (`mcCoopPlay`) and
-  NAME: ... (`mcInstructions`), with the same roll-over. The labels are the edit text
+* **Online menu** (`OnlineMenuScreen`). The main menu backdrop and title with two
+  button slots of the main menu: HOST (`mcSinglePlay`) and JOIN (`mcCoopPlay`), with the
+  same roll-over. The labels are the edit text
   536 (Arial Rounded MT Bold, the face of the main menu labels), since the static
   labels have glyphs for their own words only. The select-world back tab returns to the
   main menu. A status line shows the connection, the number of open games, or the last
   notice. The screen connects and sends `watchLobbies(mode)`.
-* **Name.** Clicking NAME edits it in place: typed characters, Backspace, Enter saves
-  (`setName`), Escape cancels, a blinking `_` caret. Clicking anything else saves too.
+* **Name.** NAME: ... sits in the bottom-left corner of the main menu (`NAME_BUTTON`
+  `mcName`, a half-size clone of the SETTINGS button with a left-aligned label wide enough
+  for 16 characters), mirroring JOIN BY CODE in the bottom-right corner. Clicking it edits
+  the name in place: typed characters, Backspace, Enter saves to the settings, Escape
+  cancels, a blinking `_` caret. Clicking anything else saves too. The main menu is
+  offline, so the name reaches the server with the next `hello`; the lobby and game
+  screens keep no rename button.
 * **Host.** HOST creates a game at once with the level last chosen for the mode and the
   OPTIONS values, then opens the lobby room.
 * **Join window.** JOIN opens the CONTROLS window (`mcWindow_Controls`) as a list: "SELECT A

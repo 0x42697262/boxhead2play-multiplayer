@@ -9,7 +9,8 @@ import type { Cursor, FlowControls, PointerInput, Screen } from '../../../servic
 import type { SettingsService } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
 import { normalizeLobbyCode } from '../../../net/lobbyCode.ts';
-import { LOBBY_CODE_LENGTH } from '../../../net/tuning.ts';
+import { LOBBY_CODE_LENGTH, PLAYER_NAME_MAX_LENGTH } from '../../../net/tuning.ts';
+import { withPlayerName } from '../../../services/menuSettings.ts';
 import { editName, NameEntryOutcome } from '../online/nameEntry.ts';
 import type { StaticTextFrame } from '../online/stageText.ts';
 import { CARET_BLINK_TICKS } from '../online/tuning.ts';
@@ -23,6 +24,7 @@ import {
   MAIN_MENU_BACKGROUND_DEPTH,
   JOIN_CODE_BUTTON,
   MAIN_MENU_TITLE_DEPTH,
+  NAME_BUTTON,
   MainMenuChild,
   MENU_TICKS_PER_SECOND,
   MenuSymbol,
@@ -46,19 +48,22 @@ const NO_FILTERS: readonly Filter[] = [];
 const MODE_BUTTONS = [MainMenuChild.SinglePlay, MainMenuChild.CoopPlay, MainMenuChild.DeathPlay] as const;
 const MENU_BUTTONS = [...MODE_BUTTONS, MainMenuChild.Options] as const;
 const MENU_BUTTON_NAMES: ReadonlySet<string> = new Set(MENU_BUTTONS);
-const LABELED_BUTTONS = [MainMenuChild.Options, JOIN_CODE_BUTTON.name] as const;
+const LABELED_BUTTONS = [MainMenuChild.Options, JOIN_CODE_BUTTON.name, NAME_BUTTON.name] as const;
+type LabeledButton = (typeof LABELED_BUTTONS)[number];
 
 export const MainMenuAction = {
   Play: 'play',
   OpenSettings: 'openSettings',
   Settings: 'settings',
   EditCode: 'editCode',
+  EditName: 'editName',
 } as const;
 
 export type MainMenuAction =
   | { readonly kind: typeof MainMenuAction.Play; readonly mode: GameMode }
   | { readonly kind: typeof MainMenuAction.OpenSettings }
   | { readonly kind: typeof MainMenuAction.EditCode }
+  | { readonly kind: typeof MainMenuAction.EditName }
   | { readonly kind: typeof MainMenuAction.Settings; readonly action: SetupAction };
 
 const MAIN_MENU_TARGETS: readonly MenuTarget<MainMenuAction>[] = [
@@ -67,12 +72,14 @@ const MAIN_MENU_TARGETS: readonly MenuTarget<MainMenuAction>[] = [
   { path: [MainMenuChild.DeathPlay], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.DeathMatch } },
   { path: [MainMenuChild.Options], trigger: Trigger.Release, action: { kind: MainMenuAction.OpenSettings } },
   { path: [JOIN_CODE_BUTTON.name], trigger: Trigger.Release, action: { kind: MainMenuAction.EditCode } },
+  { path: [NAME_BUTTON.name], trigger: Trigger.Release, action: { kind: MainMenuAction.EditName } },
 ];
 
 export interface MainMenuLayout {
   readonly items: readonly DisplayItem[];
   readonly settingsLabel: StaticTextFrame | undefined;
   readonly joinCodeLabel: StaticTextFrame | undefined;
+  readonly nameLabel: StaticTextFrame | undefined;
   readonly setup: SetupWindowLayout;
 }
 
@@ -86,11 +93,15 @@ export function mainMenuLayout(library: SymbolLibrary): MainMenuLayout {
       item.depth === MAIN_MENU_BACKGROUND_DEPTH || item.depth === MAIN_MENU_TITLE_DEPTH || (item.name !== undefined && MENU_BUTTON_NAMES.has(item.name)),
   );
   const settings = items.find((item) => item.name === MainMenuChild.Options);
-  const joinCode = settings ? [{ ...settings, name: JOIN_CODE_BUTTON.name, depth: JOIN_CODE_BUTTON.depth, matrix: itemMatrix(JOIN_CODE_BUTTON.matrix) }] : [];
+  const clone = (button: { readonly name: string; readonly depth: number; readonly matrix: Matrix }): DisplayItem[] =>
+    settings ? [{ ...settings, name: button.name, depth: button.depth, matrix: itemMatrix(button.matrix) }] : [];
+  const joinCode = clone(JOIN_CODE_BUTTON);
+  const name = clone(NAME_BUTTON);
   return {
-    items: [...kept, ...joinCode, ...(window ? [window] : [])].sort((first, second) => first.depth - second.depth),
+    items: [...kept, ...joinCode, ...name, ...(window ? [window] : [])].sort((first, second) => first.depth - second.depth),
     settingsLabel: menuButtonLabelFrame(library, items, MainMenuChild.Options),
     joinCodeLabel: menuButtonLabelFrame(library, joinCode, JOIN_CODE_BUTTON.name),
+    nameLabel: menuButtonLabelFrame(library, name, NAME_BUTTON.name),
     setup: setupWindowLayout(library, window),
   };
 }
@@ -108,6 +119,7 @@ export class MainMenuScreen implements Screen {
   private rolledOver: { readonly name: string; readonly filters: readonly Filter[] } | undefined = undefined;
   private settingsOpen = false;
   private codeDraft: string | undefined = undefined;
+  private nameDraft: string | undefined = undefined;
   private ticks = 0;
 
   constructor(private readonly deps: MainMenuDependencies) {
@@ -126,6 +138,10 @@ export class MainMenuScreen implements Screen {
 
   get joinCodeDraft(): string | undefined {
     return this.codeDraft;
+  }
+
+  get playerNameDraft(): string | undefined {
+    return this.nameDraft;
   }
 
   tick(): void {
@@ -153,6 +169,7 @@ export class MainMenuScreen implements Screen {
   }
 
   key(code: string, typed?: string): boolean {
+    if (this.nameDraft !== undefined) return this.nameKey(code, typed);
     if (this.codeDraft === undefined) return false;
     const step = editName(this.codeDraft, code, typed === undefined ? undefined : normalizeLobbyCode(typed) || undefined, LOBBY_CODE_LENGTH);
     if (step.outcome === NameEntryOutcome.Editing) this.codeDraft = step.draft;
@@ -169,6 +186,7 @@ export class MainMenuScreen implements Screen {
     const { audio } = this.deps.kit;
     const draft = this.codeDraft;
     if (action.kind !== MainMenuAction.EditCode) this.codeDraft = undefined;
+    if (this.nameDraft !== undefined && action.kind !== MainMenuAction.EditName) this.saveName(this.nameDraft);
     switch (action.kind) {
       case MainMenuAction.Play:
         audio.play(SoundId.Click);
@@ -184,6 +202,11 @@ export class MainMenuScreen implements Screen {
         audio.play(SoundId.Click);
         if (draft === undefined) this.codeDraft = '';
         else this.joinByCode(draft);
+        return;
+      case MainMenuAction.EditName:
+        audio.play(SoundId.Click);
+        if (this.nameDraft === undefined) this.nameDraft = this.deps.settings.settings.playerName;
+        else this.saveName(this.nameDraft);
         return;
       case MainMenuAction.Settings:
         if (applySetupAction(this.deps.settings, action.action) === SetupOutcome.Closed) this.settingsOpen = false;
@@ -202,8 +225,15 @@ export class MainMenuScreen implements Screen {
     const library = this.deps.kit.renderer.library;
     for (const name of LABELED_BUTTONS) {
       const rolled = this.rolledOver?.name === name ? this.rolledOver : undefined;
-      const editing = name === JOIN_CODE_BUTTON.name && this.codeDraft !== undefined;
-      sceneMenuButton(tree, library, { name, frame: this.labelFrame(name), text: this.labelText(name), highlighted: rolled !== undefined || editing, filters: rolled?.filters });
+      const editing = (name === JOIN_CODE_BUTTON.name && this.codeDraft !== undefined) || (name === NAME_BUTTON.name && this.nameDraft !== undefined);
+      sceneMenuButton(tree, library, {
+        name,
+        frame: this.labelFrame(name),
+        text: this.labelText(name),
+        highlighted: rolled !== undefined || editing,
+        filters: rolled?.filters,
+        ...(name === NAME_BUTTON.name ? { leftAligned: { width: NAME_BUTTON.labelWidth } } : {}),
+      });
     }
     for (const name of MODE_BUTTONS) {
       const rolled = this.rolledOver?.name === name ? this.rolledOver : undefined;
@@ -213,15 +243,44 @@ export class MainMenuScreen implements Screen {
     return { items: this.layout.items, overrides: tree.overrides, expand: SETUP_EXPANDED };
   }
 
-  private labelFrame(name: (typeof LABELED_BUTTONS)[number]): StaticTextFrame | undefined {
-    return name === MainMenuChild.Options ? this.layout.settingsLabel : this.layout.joinCodeLabel;
+  private labelFrame(name: LabeledButton): StaticTextFrame | undefined {
+    switch (name) {
+      case MainMenuChild.Options:
+        return this.layout.settingsLabel;
+      case JOIN_CODE_BUTTON.name:
+        return this.layout.joinCodeLabel;
+      case NAME_BUTTON.name:
+        return this.layout.nameLabel;
+    }
   }
 
-  private labelText(name: (typeof LABELED_BUTTONS)[number]): string {
-    if (name === MainMenuChild.Options) return t('setup.menuButton');
-    if (this.codeDraft === undefined) return t('menu.joinCode');
-    const caret = Math.floor(this.ticks / CARET_BLINK_TICKS) % 2 === 0 ? t('online.menu.caret') : '';
-    return t('menu.joinCodeDraft', { code: `${this.codeDraft}${caret}` });
+  private labelText(name: LabeledButton): string {
+    switch (name) {
+      case MainMenuChild.Options:
+        return t('setup.menuButton');
+      case JOIN_CODE_BUTTON.name:
+        return this.codeDraft === undefined ? t('menu.joinCode') : t('menu.joinCodeDraft', { code: `${this.codeDraft}${this.caret()}` });
+      case NAME_BUTTON.name:
+        if (this.nameDraft === undefined) return t('online.menu.name', { name: (this.deps.settings.settings.playerName || t('online.menu.noName')).toUpperCase() });
+        return t('online.menu.name', { name: `${this.nameDraft.toUpperCase()}${this.caret()}` });
+    }
+  }
+
+  private caret(): string {
+    return Math.floor(this.ticks / CARET_BLINK_TICKS) % 2 === 0 ? t('online.menu.caret') : '';
+  }
+
+  private nameKey(code: string, typed: string | undefined): true {
+    const step = editName(this.nameDraft ?? '', code, typed, PLAYER_NAME_MAX_LENGTH);
+    if (step.outcome === NameEntryOutcome.Editing) this.nameDraft = step.draft;
+    else if (step.outcome === NameEntryOutcome.Confirmed) this.saveName(step.draft);
+    else this.nameDraft = undefined;
+    return true;
+  }
+
+  private saveName(name: string): void {
+    this.nameDraft = undefined;
+    this.deps.settings.update((settings) => withPlayerName(settings, name));
   }
 
   private joinByCode(typed: string): void {

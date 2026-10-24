@@ -1,4 +1,4 @@
-import type { Button, DisplayItem, EditText, Filter, Graphic, Sprite, StaticText, SymbolsCatalog } from '../../assets/schemas.ts';
+import type { Button, DisplayItem, EditText, Filter, Graphic, Sprite, StaticText, SymbolsCatalog, TextAlign } from '../../assets/schemas.ts';
 import { IDENTITY, multiply, type Matrix } from '../geometry/Matrix.ts';
 import { transformRect, union, type Rect } from '../geometry/Rect.ts';
 
@@ -26,6 +26,7 @@ export interface ChildOverride {
   readonly buttonState?: ButtonState;
   readonly clip?: Rect;
   readonly textBounds?: Rect;
+  readonly textAlign?: TextAlign;
 }
 
 export type Overrides = Readonly<Record<string, ChildOverride>>;

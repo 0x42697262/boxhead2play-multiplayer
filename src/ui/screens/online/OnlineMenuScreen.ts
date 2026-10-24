@@ -4,8 +4,6 @@ import { ButtonState, depthKey, type SymbolLibrary } from '../../../adapters/ren
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import type { OnlineMode } from '../../../net/protocol.ts';
-import { PLAYER_NAME_MAX_LENGTH } from '../../../net/tuning.ts';
-import { withPlayerName } from '../../../services/menuSettings.ts';
 import type { OnlineClient } from '../../../services/online/OnlineClient.ts';
 import type { Cursor, FlowControls, LobbyEntry, PointerInput, Screen } from '../../../services/ScreenFlow.ts';
 import { levelIndexFor, toLobbyOptions, type SettingsService } from '../../../services/SettingsService.ts';
@@ -18,11 +16,9 @@ import { menuButtonLabelFrame, sceneMenuButton } from '../menu/menuButtonLabel.t
 import { MAIN_MENU_BACKGROUND_DEPTH, MAIN_MENU_TITLE_DEPTH, MENU_TICKS_PER_SECOND, MenuSymbol } from '../menu/tuning.ts';
 import { itemMatrix } from '../menu/MainMenuScreen.ts';
 import { joinList, menuStatus, roomIdForLevel, type JoinList, type JoinRow } from './lobbyModel.ts';
-import { editName, NameEntryOutcome } from './nameEntry.ts';
 import { placedText, staticTextFrame, textOverride, type StaticTextFrame, type TextStyle } from './stageText.ts';
 import {
   BACK_TAB_DEPTH,
-  CARET_BLINK_TICKS,
   JOIN_ATTACHED_DEPTH,
   JOIN_PAGER_ATTACHED_LABEL_DEPTH,
   JOIN_PAGER_BUTTONS,
@@ -63,7 +59,6 @@ export const OnlineMenuAction = {
   Host: 'host',
   OpenJoin: 'openJoin',
   CloseJoin: 'closeJoin',
-  EditName: 'editName',
   Back: 'back',
   Join: 'join',
   Page: 'page',
@@ -73,12 +68,11 @@ export type OnlineMenuAction =
   | { readonly kind: typeof OnlineMenuAction.Host }
   | { readonly kind: typeof OnlineMenuAction.OpenJoin }
   | { readonly kind: typeof OnlineMenuAction.CloseJoin }
-  | { readonly kind: typeof OnlineMenuAction.EditName }
   | { readonly kind: typeof OnlineMenuAction.Back }
   | { readonly kind: typeof OnlineMenuAction.Join; readonly row: JoinRow }
   | { readonly kind: typeof OnlineMenuAction.Page; readonly step: number };
 
-const MENU_BUTTONS = [Child.Host, Child.Join, Child.Name] as const;
+const MENU_BUTTONS = [Child.Host, Child.Join] as const;
 type MenuButton = (typeof MENU_BUTTONS)[number];
 const MENU_BUTTON_NAMES: ReadonlySet<string> = new Set(MENU_BUTTONS);
 const SELECT_WORLD_ITEMS: ReadonlySet<string> = new Set([Child.Back, Child.JoinWindow]);
@@ -143,7 +137,6 @@ export function onlineMenuLayout(library: SymbolLibrary): OnlineMenuLayout {
     labels: {
       [Child.Host]: menuButtonLabelFrame(library, main, Child.Host),
       [Child.Join]: menuButtonLabelFrame(library, main, Child.Join),
-      [Child.Name]: menuButtonLabelFrame(library, main, Child.Name),
     },
     title: staticTextFrame(library, byDepth(JOIN_TITLE_DEPTH)),
     info: staticTextFrame(library, byDepth(JOIN_INFO_DEPTH)),
@@ -168,9 +161,7 @@ export class OnlineMenuScreen implements Screen {
   private joiningId: string | undefined = undefined;
   private joinPage = 0;
   private awaitingLobby = false;
-  private draft: string | undefined = undefined;
   private result: LobbyEntry['result'];
-  private ticks = 0;
 
   constructor(private readonly deps: OnlineMenuDependencies) {
     this.core = new MenuCore(deps.kit);
@@ -195,12 +186,7 @@ export class OnlineMenuScreen implements Screen {
     return this.joinOpen;
   }
 
-  get nameDraft(): string | undefined {
-    return this.draft;
-  }
-
   tick(): void {
-    this.ticks++;
     this.core.tick(
       () => this.scene(),
       () => this.targets(),
@@ -224,13 +210,8 @@ export class OnlineMenuScreen implements Screen {
     this.core.refresh(this.scene(), this.targets());
   }
 
-  key(code: string, typed?: string): boolean {
-    if (this.draft === undefined) return false;
-    const step = editName(this.draft, code, typed, PLAYER_NAME_MAX_LENGTH);
-    if (step.outcome === NameEntryOutcome.Editing) this.draft = step.draft;
-    else if (step.outcome === NameEntryOutcome.Confirmed) this.saveName(step.draft);
-    else this.draft = undefined;
-    return true;
+  key(): boolean {
+    return false;
   }
 
   suspend(): void {}
@@ -241,7 +222,6 @@ export class OnlineMenuScreen implements Screen {
 
   perform(action: OnlineMenuAction): void {
     const { audio } = this.deps.kit;
-    if (this.draft !== undefined && action.kind !== OnlineMenuAction.EditName) this.saveName(this.draft);
     audio.play(action.kind === OnlineMenuAction.Join || action.kind === OnlineMenuAction.CloseJoin ? SoundId.Click2 : SoundId.Click);
     if (action.kind !== OnlineMenuAction.CloseJoin) this.clearNotices();
     switch (action.kind) {
@@ -259,9 +239,6 @@ export class OnlineMenuScreen implements Screen {
         this.joinOpen = false;
         this.joiningId = undefined;
         this.awaitingLobby = false;
-        return;
-      case OnlineMenuAction.EditName:
-        this.draft = this.draft === undefined ? this.deps.settings.settings.playerName : undefined;
         return;
       case OnlineMenuAction.Back:
         this.deps.client.stop();
@@ -297,7 +274,6 @@ export class OnlineMenuScreen implements Screen {
     return [
       { path: [Child.Host], trigger: Trigger.Release, action: { kind: OnlineMenuAction.Host } },
       { path: [Child.Join], trigger: Trigger.Release, action: { kind: OnlineMenuAction.OpenJoin } },
-      { path: [Child.Name], trigger: Trigger.Release, action: { kind: OnlineMenuAction.EditName } },
       { path: [Child.Back], trigger: Trigger.Press, action: { kind: OnlineMenuAction.Back } },
     ];
   }
@@ -337,12 +313,6 @@ export class OnlineMenuScreen implements Screen {
     this.deps.client.joinByCode(code, this.deps.settings.settings.character);
   }
 
-  private saveName(name: string): void {
-    this.draft = undefined;
-    const updated = this.deps.settings.update((settings) => withPlayerName(settings, name));
-    this.deps.client.rename(updated.playerName);
-  }
-
   private clearNotices(): void {
     this.result = undefined;
     this.deps.client.clearNotice();
@@ -364,11 +334,6 @@ export class OnlineMenuScreen implements Screen {
         return t('online.menu.host');
       case Child.Join:
         return t('online.menu.join');
-      case Child.Name: {
-        if (this.draft === undefined) return t('online.menu.name', { name: (this.deps.settings.settings.playerName || t('online.menu.noName')).toUpperCase() });
-        const caret = Math.floor(this.ticks / CARET_BLINK_TICKS) % 2 === 0 ? t('online.menu.caret') : '';
-        return t('online.menu.name', { name: `${this.draft.toUpperCase()}${caret}` });
-      }
     }
   }
 
@@ -377,7 +342,7 @@ export class OnlineMenuScreen implements Screen {
       name,
       frame: this.layout.labels[name],
       text: this.labelText(name),
-      highlighted: this.rolledOver?.name === name || (name === Child.Name && this.draft !== undefined),
+      highlighted: this.rolledOver?.name === name,
       filters: this.rolledOver?.name === name ? this.rolledOver.filters : undefined,
     });
   }

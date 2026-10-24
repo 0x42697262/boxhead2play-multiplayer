@@ -24,7 +24,7 @@ online game -> lobby room (same mode)
 | `State_LoadWorld`, `State_LoadingWorld` (`Screen_LoadingWorld`) | Not ported. `GameScreen` starts the world directly. |
 | `State_RunWorld` | `GameScreen` / `GameSession` (single), `OnlineGameScreen` / `OnlineGameSession` (coop, deathmatch) |
 | `State_Debrief`, `State_Debrief_Winner` | Not ported. A single game returns to select world (`mReturn_SelectWorld`); an online game returns to the lobby, which shows the result. |
-| none | `OnlineMenuScreen` (HOST, JOIN with the join window, NAME) |
+| none | `OnlineMenuScreen` (HOST, JOIN with the join window) |
 
 `ScreenFlow` keeps the mode to return to (`mReturn_SelectWorld`). A room that cannot be
 created also returns there, like the original `error` completion. `CScreen.GoBack`
