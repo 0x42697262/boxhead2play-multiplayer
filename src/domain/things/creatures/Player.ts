@@ -199,7 +199,7 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
 
   private tickRespawn(): void {
     if (--this.stateCount >= 0) return;
-    const point = this.world.playerRespawnPoint(this.world.things.nearestOtherPlayer(this));
+    const point = this.world.playerRespawnPoint();
     if (!point) return;
     this.alpha = OPAQUE_ALPHA;
     this.lastAttackerIndex = undefined;

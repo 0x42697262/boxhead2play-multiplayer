@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DomainEventType, type DomainEvent } from '../../../src/domain/events.ts';
 import { CollideFlag } from '../../../src/domain/map/CollideFlag.ts';
+import { SeededRng } from '../../../src/domain/math/Rng.ts';
 import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import { ThingFlag } from '../../../src/domain/things/ThingFlag.ts';
 import { CompletionState } from '../../../src/domain/world/CompletionState.ts';
@@ -8,6 +9,8 @@ import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { IDLE_TICK_INPUT } from '../../../src/domain/world/input.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
 import { GameAmount, GameSpeed } from '../../../src/domain/world/SimulationSettings.ts';
+import { MAX_PLAYERS, PLAYER_SPAWN_CLEARANCE_CELLS } from '../../../src/domain/world/tuning.ts';
+import type { World } from '../../../src/domain/world/World.ts';
 import type { FakePlayer } from '../support/fakes.ts';
 import { FakeThing, at, cellObject, makeWorld, room, solid } from '../support/fakes.ts';
 
@@ -194,11 +197,50 @@ describe('World screen effects', () => {
     expect(world.presentation.cameras.map((camera) => camera.playerIndex)).toEqual([0, 1]);
     expect(world.presentation.cameras.map((camera) => camera.rect.width)).toEqual([640, 640]);
     expect(world.cameraFor(0)?.rect.x).toBe(32);
-    expect(world.cameraFor(1)?.rect.x).toBe(336);
     const second = world.things.playerByIndex(1);
-    if (second) second.flags |= ThingFlag.Dead;
+    if (!second) throw new Error('missing player');
+    second.move(at(20.5, 12.5));
     world.update();
     expect(world.cameraFor(1)?.rect.x).toBe(336);
+    second.flags |= ThingFlag.Dead;
+    world.update();
+    expect(world.cameraFor(1)?.rect.x).toBe(336);
+    expect(world.cameraFor(0)?.rect.x).toBe(32);
+  });
+});
+
+describe('World random player spawns', () => {
+  const spawnRoom = () => room(40, 30, [cellObject(InitKind.Player1, 5, 5), cellObject(InitKind.Player2, 6, 5), cellObject(InitKind.Zombie, 30, 20), solid(20, 0, 1, 30)]);
+  const cells = (world: World): string[] => world.things.players().map((player) => `${Math.trunc(player.position.x)},${Math.trunc(player.position.y)}`);
+
+  it.each([GameMode.Single, GameMode.Coop, GameMode.DeathMatch])('spreads 16 %s players over the floor reachable from the markers, away from each other and enemy spawns', (gameMode) => {
+    const count = gameMode === GameMode.Single ? 1 : MAX_PLAYERS;
+    const { world } = makeWorld(spawnRoom(), { options: { gameMode, playerCharacters: Array.from({ length: count }, () => 0) }, spawnRng: new SeededRng(11) });
+    const players = world.things.players();
+    expect(players).toHaveLength(count);
+    for (const player of players) {
+      expect(player.position.x).toBeLessThan(20);
+      for (const other of players) {
+        if (other === player) continue;
+        expect(Math.max(Math.abs(other.position.x - player.position.x), Math.abs(other.position.y - player.position.y))).toBeGreaterThan(PLAYER_SPAWN_CLEARANCE_CELLS);
+      }
+    }
+  });
+
+  it('puts players in different places for different seeds, the same places for the same seed', () => {
+    const options = { gameMode: GameMode.DeathMatch, playerCharacters: [0, 1, 2, 3] as const };
+    const run = (seed: number) => cells(makeWorld(spawnRoom(), { options, spawnRng: new SeededRng(seed) }).world);
+    expect(run(3)).toEqual(run(3));
+    expect(run(3)).not.toEqual(run(4));
+  });
+
+  it('respawns on a random free cell, not next to the other players', () => {
+    const { world } = makeWorld(spawnRoom(), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(5) });
+    const point = world.playerRespawnPoint();
+    expect(point).toBeDefined();
+    for (const player of world.things.players()) {
+      expect(point && Math.max(Math.abs(point.position.x - player.position.x), Math.abs(point.position.y - player.position.y))).toBeGreaterThan(PLAYER_SPAWN_CLEARANCE_CELLS);
+    }
   });
 });
 

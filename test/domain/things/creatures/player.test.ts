@@ -183,7 +183,7 @@ describe('Player kill messages', () => {
     const shooter = playerOf(world, 2);
     run(world, 15);
     victim.invincible = 0;
-    const shot = new FireBall(world, shooter.position.clone(), shooter.angle.clone(), shooter, 0, false);
+    const shot = new FireBall(world, victim.position.clone(), shooter.angle.clone(), shooter, 0, false);
     victim.affect(new ExplosionAffect(shot, shot, 1000, 2));
     for (let tick = 0; tick < 100 && victim.state !== CreatureState.Dead; tick++) world.update();
     expect(world.hud.frags.slice(0, 3)).toEqual([0, 0, 1]);

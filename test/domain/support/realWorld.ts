@@ -14,12 +14,14 @@ import { settingsWith } from './fakes.ts';
 export interface RealWorldOptions {
   readonly options?: Partial<GameOptions>;
   readonly rng?: Rng;
+  readonly spawnRng?: Rng;
   readonly animations?: AnimationCatalog;
 }
 
 export function makeRealWorld(definition: RoomDefinition, test: RealWorldOptions = {}): World {
   return World.create(definition, settingsWith(test.options), {
     rng: test.rng ?? new SequenceRng([0.5]),
+    spawnRng: test.spawnRng ?? new SequenceRng([0]),
     factory: createThingFactory(),
     animations: test.animations ?? syntheticAnimationCatalog(),
   });

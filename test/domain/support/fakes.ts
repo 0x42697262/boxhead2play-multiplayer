@@ -149,6 +149,7 @@ export function room(widthCells: number, heightCells: number, initObjects: RoomI
 export interface TestWorldOptions {
   readonly options?: Partial<GameOptions>;
   readonly rng?: Rng;
+  readonly spawnRng?: Rng;
   readonly start?: boolean;
 }
 
@@ -162,7 +163,7 @@ export function settingsWith(options: Partial<GameOptions> = {}): SimulationSett
 
 export function makeWorld(definition: RoomDefinition, test: TestWorldOptions = {}): { world: World; factory: FakeFactory } {
   const factory = new FakeFactory();
-  const dependencies = { rng: test.rng ?? new SequenceRng([0]), factory, animations: EMPTY_ANIMATION_CATALOG };
+  const dependencies = { rng: test.rng ?? new SequenceRng([0]), spawnRng: test.spawnRng ?? new SequenceRng([0]), factory, animations: EMPTY_ANIMATION_CATALOG };
   const settings = settingsWith(test.options);
   const world = test.start === false ? new World(definition, settings, dependencies) : World.create(definition, settings, dependencies);
   return { world, factory };

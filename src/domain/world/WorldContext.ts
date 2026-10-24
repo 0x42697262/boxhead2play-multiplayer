@@ -33,5 +33,5 @@ export interface WorldContext {
   trackPlayer(player: PlayerThing): void;
   shake(dx: number, dy: number): void;
   flashBrightness(level: number): void;
-  playerRespawnPoint(otherPlayer: PlayerThing | undefined): SpawnPoint | undefined;
+  playerRespawnPoint(): SpawnPoint | undefined;
 }

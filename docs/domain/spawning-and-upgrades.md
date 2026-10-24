@@ -17,24 +17,30 @@ Selection always starts at `rng.int(points.length)` and wraps around:
 |---|---|---|
 | `pickSpawnPoint` | `Spawn_ValidPosition` | first point where `cell \| nextCell` has no `Creature`/`Object` |
 | `pickSpawnPointNonStrict` | `..._NonStrict` (devils) | first point where `cell \| nextCell` has no `Creature` |
-| `pickSpawnPointClose` | `..._Close` (coop respawn) | smallest squared 3D distance `>= 4` |
-| `pickSpawnPointFar` | `..._Far` (single, deathmatch) | largest squared distance (`>=`, so later ties win) |
 
-Close and Far skip cells with `Creature`, `Object` or `Player`, and only accept points
-within the player scope (`|dx| <= 19`, `|dy| <= 13` cells, about one screen).
+### Player spawns (all modes)
 
-Player 1 starts on the `Player1` marker, or on `pickSpawnPoint` when there is none. One
-player spawns per entry in `settings.playerCharacters` (up to `MAX_PLAYERS` = 16); players
-2..4 spawn with Close/Far relative to the players already placed. If the chosen cell holds
-a player or a `Player` collide flag, `openSpawnNear` searches up to 64 cells breadth first
-(straight neighbors, skipping static impassable cells) for an open one. Respawns use
-`World.playerRespawnPoint(nearestOtherPlayer)`: the nearest living other player (2D
-distance), or any other player when all are dead.
+Rooms have only one `Player1` and one `Player2` marker, which 16 players cannot share, so
+players do not use the original `..._Close` / `..._Far` marker picks. `World.playerFloor`
+is every cell reachable from the markers through straight neighbors without static
+impassable or edge-of-map flags (`reachableFloor`), starting with the `Player1` marker.
+`World.playerRespawnPoint()` (start, late join and respawn, every mode) calls
+`pickPlayerSpawnCell(floor, spawnRng, clear)`:
+
+1. Drop cells with `NonMovablePlayer` flags (walls, objects, creatures, players).
+2. Of the rest, keep cells with no living player and no `Creature` cell within
+   `PLAYER_SPAWN_CLEARANCE_CELLS` = 3, and no zombie or devil spawn point within
+   `PLAYER_SPAWN_ENEMY_POINT_CELLS` = 5 (Chebyshev distance).
+3. Pick `rng.int` of the kept cells, or of the free cells when none is kept.
+
+The point faces the `Player1` marker's rotation. `openSpawnNear` still moves a spawn off a
+taken cell. `spawnRng` (`WorldDependencies.spawnRng`) defaults to the world rng; tests pass
+`SequenceRng([0])`, which picks the `Player1` marker.
 
 Online, players can join and leave a running world:
 
-* `World.joinPlayer(index, character)` spawns the player near the first living player
-  (or on a random player point), at the lowest free index.
+* `World.joinPlayer(index, character)` spawns the player on `playerRespawnPoint()`, at the
+  lowest free index.
 * `World.leavePlayer(index)` deletes the player and corrects the live and total player
   counts.
 

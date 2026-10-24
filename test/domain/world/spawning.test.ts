@@ -5,12 +5,11 @@ import { SequenceRng } from '../../../src/domain/math/Rng.ts';
 import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
 import {
+  pickPlayerSpawnCell,
   pickSpawnPoint,
-  pickSpawnPointClose,
-  pickSpawnPointFar,
   pickSpawnPointNonStrict,
+  reachableFloor,
   validateSpawnPoints,
-  withinPlayerScope,
   type SpawnPoint,
 } from '../../../src/domain/world/spawning.ts';
 import { at, cellObject, makeWorld, room, solid } from '../support/fakes.ts';
@@ -58,30 +57,23 @@ describe('spawn point selection', () => {
     expect(pickSpawnPointNonStrict(points, new SequenceRng([0]))).toBeUndefined();
   });
 
-  it('picks the closest point at least two cells away for coop and the farthest in scope otherwise', () => {
-    const { world } = makeWorld(room(60, 20));
-    const points = pointsAt(world, [
-      [5, 5],
-      [6, 5],
-      [12, 5],
-      [20, 5],
-      [40, 5],
-    ]);
-    const player = at(5.5, 5.5);
-    expect(pickSpawnPointClose(points, new SequenceRng([0]), player)).toBe(points[2]);
-    expect(pickSpawnPointFar(points, new SequenceRng([0]), player)).toBe(points[3]);
-    expect(withinPlayerScope(player, at(24.5, 18.5))).toBe(true);
-    expect(withinPlayerScope(player, at(25, 5.5))).toBe(false);
+  it('collects the floor reachable from the markers, without walls or closed-off cells', () => {
+    const { world } = makeWorld(room(12, 8, [solid(6, 0, 1, 8), solid(2, 2, 1, 1)]));
+    const floor = reachableFloor([world.map.cell(1, 1)]);
+    expect(floor).toContain(world.map.cell(5, 6));
+    expect(floor).not.toContain(world.map.cell(2, 2));
+    expect(floor).not.toContain(world.map.cell(6, 3));
+    expect(floor).not.toContain(world.map.cell(8, 3));
   });
 
-  it('never respawns on a cell a player stands on', () => {
+  it('picks a random free floor cell, preferring cleared cells and never a player or creature cell', () => {
     const { world } = makeWorld(room(30, 20));
-    const points = pointsAt(world, [
-      [8, 5],
-      [12, 5],
-    ]);
-    world.map.cell(12, 5).collide |= CollideFlag.Player;
-    expect(pickSpawnPointFar(points, new SequenceRng([0]), at(5.5, 5.5))).toBe(points[0]);
+    const floor = [world.map.cell(3, 3), world.map.cell(6, 3), world.map.cell(9, 3)];
+    expect(pickPlayerSpawnCell(floor, new SequenceRng([0.5]), () => true)).toBe(floor[1]);
+    expect(pickPlayerSpawnCell(floor, new SequenceRng([0.5]), (cell) => cell === floor[2])).toBe(floor[2]);
+    world.map.cell(6, 3).collide |= CollideFlag.Player;
+    world.map.cell(9, 3).collide |= CollideFlag.Creature;
+    expect(pickPlayerSpawnCell(floor, new SequenceRng([0.9]), () => false)).toBe(floor[0]);
   });
 });
 

@@ -6,6 +6,7 @@ import { Angle } from '../math/Angle.ts';
 import type { Position } from '../math/Position.ts';
 import type { Rng } from '../math/Rng.ts';
 import { CollideFlag, CollideMask } from '../map/CollideFlag.ts';
+import type { MapCell } from '../map/MapCell.ts';
 import { GameMap } from '../map/GameMap.ts';
 import { NAV_FRESHNESS_SECONDS } from '../map/tuning.ts';
 import { isPlayer, type PlayerThing } from '../things/PlayerThing.ts';
@@ -25,13 +26,15 @@ import { IDLE_PLAYER_INPUT, IDLE_TICK_INPUT, type PlayerInput, type TickInput } 
 import { initObjectsInOrder, InitKind, screenToCell, type RoomDefinition, type RoomInitObject } from './RoomDefinition.ts';
 import { ScreenEffects } from './ScreenEffects.ts';
 import type { PlayerCharacter, SimulationSettings } from './SimulationSettings.ts';
-import { openSpawnNear, pickSpawnPoint, pickSpawnPointClose, pickSpawnPointFar, pickSpawnPointNonStrict, standablePlayerPoints, type SpawnPoint, validateSpawnPoints } from './spawning.ts';
+import { openSpawnNear, pickPlayerSpawnCell, pickSpawnPoint, pickSpawnPointNonStrict, reachableFloor, standablePlayerPoints, type SpawnPoint, validateSpawnPoints } from './spawning.ts';
 import {
   DROPPED_PICKUP_SECONDS,
   KILLS_TO_WIN,
   MAX_PLAYERS,
   OPEN_SPAWN_SEARCH_CELLS,
   PICKUP_EVERY_N_KILLS,
+  PLAYER_SPAWN_CLEARANCE_CELLS,
+  PLAYER_SPAWN_ENEMY_POINT_CELLS,
   SCREEN_HEIGHT_PX,
   SCREEN_WIDTH_PX,
 } from './tuning.ts';
@@ -42,6 +45,7 @@ export interface WorldDependencies {
   readonly factory: ThingFactory;
   readonly animations: AnimationCatalog;
   readonly events?: EventQueue;
+  readonly spawnRng?: Rng;
 }
 
 export interface CameraView {
@@ -56,7 +60,6 @@ export interface Presentation {
   readonly brightness: number;
 }
 
-const FIRST_PLAYER = 0;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
 const PLAYER_SPAWN_BLOCKED = CollideFlag.Player | CollideMask.StaticImpassable;
@@ -82,6 +85,8 @@ export class World implements WorldContext, UpgradesHost {
   private devilPoints: SpawnPoint[] = [];
   private playerPoints: SpawnPoint[] = [];
   private playerStart: SpawnPoint | undefined = undefined;
+  private playerFloor: readonly MapCell[] = [];
+  private readonly spawnRng: Rng;
   private readonly trackTargets = new Map<number, Point3>();
   private readonly lastTracked = new Map<number, Point3>();
   private ambience: AmbienceState = INITIAL_AMBIENCE;
@@ -94,6 +99,7 @@ export class World implements WorldContext, UpgradesHost {
     dependencies: WorldDependencies,
   ) {
     this.rng = dependencies.rng;
+    this.spawnRng = dependencies.spawnRng ?? dependencies.rng;
     this.factory = dependencies.factory;
     this.animations = dependencies.animations;
     this.events = dependencies.events ?? new EventQueue();
@@ -169,8 +175,7 @@ export class World implements WorldContext, UpgradesHost {
 
   joinPlayer(playerIndex: number, character: PlayerCharacter): boolean {
     if (this.things.playerByIndex(playerIndex) || playerIndex >= MAX_PLAYERS) return false;
-    const anchor = this.things.players().find((player) => !player.hasFlag(ThingFlag.Dead));
-    return this.spawnPlayer(playerIndex, character, this.unoccupied(anchor ? this.playerRespawnPoint(anchor) : pickSpawnPoint(this.playerPoints, this.rng)));
+    return this.spawnPlayer(playerIndex, character, this.unoccupied(this.playerRespawnPoint()));
   }
 
   leavePlayer(playerIndex: number): boolean {
@@ -228,12 +233,11 @@ export class World implements WorldContext, UpgradesHost {
     return true;
   }
 
-  playerRespawnPoint(otherPlayer: PlayerThing | undefined): SpawnPoint | undefined {
-    const anchor = otherPlayer ?? this.things.closestPlayer();
-    if (!anchor) return undefined;
-    return this.settings.gameMode === GameMode.Coop
-      ? pickSpawnPointClose(this.playerPoints, this.rng, anchor.position)
-      : pickSpawnPointFar(this.playerPoints, this.rng, anchor.position);
+  playerRespawnPoint(): SpawnPoint | undefined {
+    const cell = pickPlayerSpawnCell(this.playerFloor, this.spawnRng, (candidate) => this.clearOfCreatures(candidate) && this.awayFromEnemySpawns(candidate));
+    if (!cell) return undefined;
+    const angle = this.playerStart?.angle.clone() ?? new Angle(0);
+    return { position: cell.centre.clone(), cell, angle, nextCell: cell.validMoveNeighbour() };
   }
 
   logKill(thing: Thing): void {
@@ -370,9 +374,10 @@ export class World implements WorldContext, UpgradesHost {
     this.devilPoints = validateSpawnPoints(this.devilPoints);
     this.playerPoints = standablePlayerPoints(this.playerPoints);
     if (this.playerStart && !this.playerPoints.includes(this.playerStart)) this.playerStart = undefined;
+    const markers = this.playerStart ? [this.playerStart, ...this.playerPoints.filter((point) => point !== this.playerStart)] : this.playerPoints;
+    this.playerFloor = reachableFloor(markers.map((point) => point.cell));
     this.settings.playerCharacters.forEach((character, index) => {
-      const point = index === FIRST_PLAYER ? (this.playerStart ?? pickSpawnPoint(this.playerPoints, this.rng)) : this.playerRespawnPoint(undefined);
-      this.spawnPlayer(index, character, this.unoccupied(point));
+      this.spawnPlayer(index, character, this.unoccupied(this.playerRespawnPoint()));
     });
   }
 
@@ -409,6 +414,24 @@ export class World implements WorldContext, UpgradesHost {
       case InitKind.Piece:
         return;
     }
+  }
+
+  private awayFromEnemySpawns(cell: MapCell): boolean {
+    const near = (point: SpawnPoint): boolean => Math.max(Math.abs(point.cell.x - cell.x), Math.abs(point.cell.y - cell.y)) < PLAYER_SPAWN_ENEMY_POINT_CELLS;
+    return !this.zombiePoints.some(near) && !this.devilPoints.some(near);
+  }
+
+  private clearOfCreatures(cell: MapCell): boolean {
+    const nearPlayer = this.things
+      .players()
+      .some((player) => !player.hasFlag(ThingFlag.Dead) && Math.max(Math.abs(Math.trunc(player.position.x) - cell.x), Math.abs(Math.trunc(player.position.y) - cell.y)) <= PLAYER_SPAWN_CLEARANCE_CELLS);
+    if (nearPlayer) return false;
+    for (let dy = -PLAYER_SPAWN_CLEARANCE_CELLS; dy <= PLAYER_SPAWN_CLEARANCE_CELLS; dy++) {
+      for (let dx = -PLAYER_SPAWN_CLEARANCE_CELLS; dx <= PLAYER_SPAWN_CLEARANCE_CELLS; dx++) {
+        if (this.map.collideAt(cell.x + dx, cell.y + dy) & CollideMask.Moving) return false;
+      }
+    }
+    return true;
   }
 
   private unoccupied(point: SpawnPoint | undefined): SpawnPoint | undefined {

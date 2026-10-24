@@ -100,6 +100,8 @@ Add one line per behavior change: what to do, and the result you expect.
   positions and identical traces for the same seed.
 * `npx vitest run test/domain/world/playerSpawns.test.ts` -> 16 players in every room, coop and
   deathmatch, never stand inside a wall; ROOM_Single_0011 has no spawn point at (16, 9).
+* Start any mode a few times -> player 1 starts in a different open spot each time, never next
+  to a zombie door; 16 online players start spread out, at least 4 cells apart.
 * DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> TAB shows one more
   death for him and no kill for anybody.
 * Tab 1 COOPERATIVE, HOST -> the address bar gets `?code=XXXXX`; click the code line -> "LINK
@@ -121,7 +123,7 @@ Add one line per behavior change: what to do, and the result you expect.
   barrels gone, scorch decals and a `(0, 30)` shake.
 * Multiplier x5 -> every player gets the UZI (key 2, 100 rounds). Weapon out of ammo ->
   red `hud.outOfAmmo.<id>` message and the pistol.
-* Coop death -> respawn after 4 s + 1 s near the nearest living player with 200 life, empty
+* Coop death -> respawn after 4 s + 1 s on a random free floor cell with 200 life, empty
   weapons and 5 s of blinking. Single death -> `worldCompleted` with `playerDead`.
 * `npm run dev`, PLAY, go to level 1/18 BOXY, click the preview -> the room, the score total
   `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.

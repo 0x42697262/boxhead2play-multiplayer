@@ -70,6 +70,7 @@
 | Respawn countdown | A dead player waits with no indication | "RESPAWN IN n" in the middle of the view until the respawn | Owner request. |
 | Enemies per player | Level counts are the same for one or two players | +50 % of the level's zombies and devils per player from the second, live caps up to 120 zombies and 20 devils | Owner request: up to 16 players. See `docs/domain/spawning-and-upgrades.md`. |
 | Frame rate | Flash drew once per 25 fps logic frame | Logic stays at 25 ticks/s; drawing follows the display, capped by SETTINGS (30, 60, 120 or DISPLAY) | Owner request. The cap only skips `present`; ticks, input and networking are unchanged. |
+| Player spawns | Player 1 on the `Player1` marker; others and respawns on the closest (coop) or farthest (single, deathmatch) player marker | Every mode: a random free floor cell reachable from the markers, 3 cells from players and creatures and 5 from enemy spawn points | Owner request: 16 players do not fit on two markers. |
 | Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
 | Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |

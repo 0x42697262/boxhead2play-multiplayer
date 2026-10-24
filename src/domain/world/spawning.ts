@@ -4,7 +4,6 @@ import type { Position } from '../math/Position.ts';
 import type { Rng } from '../math/Rng.ts';
 import { CollideFlag, CollideMask } from '../map/CollideFlag.ts';
 import type { MapCell } from '../map/MapCell.ts';
-import { PLAYER_SCOPE_CELLS_X, PLAYER_SCOPE_CELLS_Y, SPAWN_MIN_DISTANCE_SQUARED } from './tuning.ts';
 
 export interface SpawnPoint {
   readonly position: Position;
@@ -48,39 +47,27 @@ export function pickSpawnPointNonStrict(points: readonly SpawnPoint[], rng: Rng)
   return scanFromRandom(points, rng, (point) => !(spawnCollide(point) & CollideFlag.Creature));
 }
 
-export function withinPlayerScope(a: Position, b: Position): boolean {
-  return Math.abs(a.x - b.x) <= PLAYER_SCOPE_CELLS_X && Math.abs(a.y - b.y) <= PLAYER_SCOPE_CELLS_Y;
-}
-
-const PLAYER_SPAWN_BLOCK = CollideMask.NoSpawn | CollideFlag.Player;
-
-function pickByDistance(
-  points: readonly SpawnPoint[],
-  rng: Rng,
-  from: Position,
-  better: (distance: number, best: number) => boolean,
-  initial: number,
-): SpawnPoint | undefined {
-  let best: SpawnPoint | undefined;
-  let bestDistance = initial;
-  scanFromRandom(points, rng, (point) => {
-    if (point.cell.collide & PLAYER_SPAWN_BLOCK) return false;
-    const distance = point.position.distanceSquared(from);
-    if (better(distance, bestDistance) && withinPlayerScope(from, point.position)) {
-      bestDistance = distance;
-      best = point;
+export function reachableFloor(starts: readonly MapCell[]): MapCell[] {
+  const seen = new Set<MapCell>(starts);
+  const floor: MapCell[] = [...seen];
+  for (let index = 0; index < floor.length; index++) {
+    const cell = floor[index];
+    if (!cell) break;
+    for (let direction = 0; direction < DIRECTION_COUNT; direction += STRAIGHT_DIRECTION_STEP) {
+      const next = cell.adjacent(direction);
+      if (seen.has(next) || next.collide & (CollideMask.StaticImpassable | CollideFlag.EdgeOfMap)) continue;
+      seen.add(next);
+      floor.push(next);
     }
-    return false;
-  });
-  return best;
+  }
+  return floor;
 }
 
-export function pickSpawnPointClose(points: readonly SpawnPoint[], rng: Rng, from: Position): SpawnPoint | undefined {
-  return pickByDistance(points, rng, from, (d, best) => d < best && d >= SPAWN_MIN_DISTANCE_SQUARED, Number.MAX_VALUE);
-}
-
-export function pickSpawnPointFar(points: readonly SpawnPoint[], rng: Rng, from: Position): SpawnPoint | undefined {
-  return pickByDistance(points, rng, from, (d, best) => d >= best, 0);
+export function pickPlayerSpawnCell(floor: readonly MapCell[], rng: Rng, clear: (cell: MapCell) => boolean): MapCell | undefined {
+  const free = floor.filter((cell) => !(cell.collide & CollideMask.NonMovablePlayer));
+  const cleared = free.filter(clear);
+  const pool = cleared.length > 0 ? cleared : free;
+  return pool.length > 0 ? pool[rng.int(pool.length)] : undefined;
 }
 
 export function openSpawnNear(origin: SpawnPoint, occupied: ReadonlySet<MapCell>, searchCells: number): SpawnPoint | undefined {
