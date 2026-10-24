@@ -21,9 +21,9 @@ a slow frame drops logic time instead of catching up (the game slows down, as Fl
 
 `GameLoop` runs on `requestAnimationFrame`: tick the screen 0 or 1 times, present, then
 give the screen up to 6 ms of idle time (`RenderStack_Process`; the original allowed
-25 ms per Flash frame). The tick rate comes from the active screen: 25 for menus,
-`SimulationSettings.ticksPerSecond` in a game (12.5, 25 or 50 by game speed; the world
-itself uses 25 while it loads).
+25 ms per Flash frame). The tick rate comes from the active screen: 50 for menus
+(`MENU_TICKS_PER_SECOND`), `SimulationSettings.ticksPerSecond` in a game (12.5, 25 or 50
+by game speed; the world itself uses 25 while it loads).
 
 The next animation frame is requested before the frame's work runs. An exception from a
 screen's `tick`, `present` or `idle` (or from building the next screen) is caught, so one
