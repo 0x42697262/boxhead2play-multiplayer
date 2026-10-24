@@ -128,6 +128,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run dev` in a 1920 x 1080 window -> the canvas is 1440 x 1080 device pixels
   (`resolution` 2.25); menu text, character cards, barrels and characters have smooth edges,
   no 2-pixel steps; barrel outlines stay 1 stage pixel thick.
+* Main menu, SETTINGS -> the options window titled SETTINGS with Graphics (SHARP, SMOOTH,
+  PIXELATED) and Sound volume (OFF, LOW, MEDIUM, FULL); SMOOTH -> the canvas is 640 x 480 at
+  once; OFF -> no sounds; RESET -> SHARP, FULL; kept after a reload (settings `version` 3).
 * Hold two arrow keys (for example Down + Right) -> player 1 walks diagonally at the same speed
   as straight (0.16 cells per tick).
 * `npm run dev` -> after loading, a fade from black to the main menu: background, BOXHEAD 2PLAY
@@ -149,7 +152,7 @@ Add one line per behavior change: what to do, and the result you expect.
   `'K'` stored; Escape cancels; RESET restores the defaults.
 * `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
   (wraparound, roll-over filters, valid keys, key capture, pointer, transition), option
-  mapping, settings v1 -> v2 migration, screen flow (including lobby routing), lobby view
+  mapping, settings v1 -> v2 -> v3 migration, screen flow (including lobby routing), lobby view
   model, online client and online playback pass.
 * Run `npm run extract` while `npm run dev` keeps running, then reload -> the loading screen
   says the server returned a web page instead of an asset and to restart the dev server; it

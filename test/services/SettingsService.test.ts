@@ -3,6 +3,7 @@ import { MemoryStore } from '../../src/adapters/storage/KeyValueStore.ts';
 import { GameMode } from '../../src/domain/world/GameMode.ts';
 import { Difficulty, PlayerCharacter } from '../../src/domain/world/SimulationSettings.ts';
 import { silentLogger } from '../../src/observability/logger.ts';
+import { GraphicsQuality } from '../../src/services/graphicsQuality.ts';
 import {
   DEFAULT_SETTINGS,
   levelIndexFor,
@@ -29,7 +30,7 @@ describe('settings reading', () => {
     const result = readSettings(JSON.stringify(legacy));
     expect(result.migratedFrom).toBe(0);
     expect(result.settings.version).toBe(SETTINGS_VERSION);
-    expect(result.settings.soundActive).toBe(false);
+    expect(result.settings.soundVolume).toBe(0);
     expect(result.settings.devilsActive).toBe(false);
     expect(result.settings.difficulty).toBe(Difficulty.Expert);
     expect(result.settings.keys.fire).toBe(32);
@@ -54,6 +55,16 @@ describe('settings reading', () => {
     expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, character: PlayerCharacter.GiJoe, keys: { ...DEFAULT_SETTINGS.keys, fire: 70 }, difficulty: Difficulty.Expert });
   });
 
+  it('migrates version 2 to a sound volume (on = full, off = 0) and sharp graphics', () => {
+    const v2: Record<string, unknown> = { ...DEFAULT_SETTINGS, version: 2, soundActive: false, difficulty: Difficulty.Expert };
+    delete v2.soundVolume;
+    delete v2.graphics;
+    const result = readSettings(JSON.stringify(v2));
+    expect(result.migratedFrom).toBe(2);
+    expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, soundVolume: 0, difficulty: Difficulty.Expert });
+    expect(readSettings(JSON.stringify({ ...v2, soundActive: true })).settings).toMatchObject({ soundVolume: 100, graphics: GraphicsQuality.Sharp });
+  });
+
   it('rejects invalid JSON, invalid values and future versions', () => {
     expect(readSettings('{').rejected).toBe('json');
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, difficulty: 7 })).rejected).toBeDefined();
@@ -66,13 +77,13 @@ describe('SettingsService', () => {
   it('persists updates as versioned JSON and notifies listeners', () => {
     const store = new MemoryStore();
     const service = new SettingsService(store, silentLogger);
-    const seen: boolean[] = [];
-    service.subscribe((settings) => seen.push(settings.soundActive));
-    service.update((settings) => ({ ...settings, soundActive: false }));
-    expect(seen).toEqual([false]);
-    const stored = JSON.parse(store.read(SETTINGS_STORAGE_KEY) ?? '{}') as { version: number; soundActive: boolean };
-    expect(stored).toMatchObject({ version: SETTINGS_VERSION, soundActive: false });
-    expect(new SettingsService(store, silentLogger).settings.soundActive).toBe(false);
+    const seen: number[] = [];
+    service.subscribe((settings) => seen.push(settings.soundVolume));
+    service.update((settings) => ({ ...settings, soundVolume: 25 }));
+    expect(seen).toEqual([25]);
+    const stored = JSON.parse(store.read(SETTINGS_STORAGE_KEY) ?? '{}') as { version: number; soundVolume: number };
+    expect(stored).toMatchObject({ version: SETTINGS_VERSION, soundVolume: 25 });
+    expect(new SettingsService(store, silentLogger).settings.soundVolume).toBe(25);
   });
 
   it('refuses an update that fails validation', () => {

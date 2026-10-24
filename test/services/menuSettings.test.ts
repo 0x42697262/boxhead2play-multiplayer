@@ -43,7 +43,7 @@ describe('option groups to settings (RegisterButton_Option / RegisterButton_SetG
       collisionsActive: false,
       damageActive: false,
       gameAmount: GameAmount.Kills50,
-      soundActive: false,
+      soundVolume: 25,
     };
     const reset = resetOptions(changed);
     expect(reset).toMatchObject({
@@ -53,7 +53,7 @@ describe('option groups to settings (RegisterButton_Option / RegisterButton_SetG
       collisionsActive: true,
       damageActive: true,
       gameAmount: GameAmount.Kills10,
-      soundActive: false,
+      soundVolume: 25,
     });
   });
 });

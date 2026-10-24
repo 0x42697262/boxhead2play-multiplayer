@@ -10,12 +10,13 @@ validated with Zod and written back on every change (`CSaveData` flushed on ever
 Unreadable storage or a failed write is logged (`save.rejected`, `save.write_failed`) and
 the game continues with the values in memory.
 
-## Version 2
+## Version 3
 
 | Field | Type | Default | Original |
 |---|---|---|---|
-| `version` | `2` | | |
-| `soundActive` | boolean | true | `mSoundActive` |
+| `version` | `3` | | |
+| `soundVolume` | 0..100 | 100 | `mSoundActive` (on/off) |
+| `graphics` | `sharp`, `smooth`, `pixelated` | `sharp` | none (ADR 0006) |
 | `musicActive` | boolean | true | `mMusicActive` (no music is registered) |
 | `detail` | boolean | true | `mDetail` (`_quality` HIGH/LOW) |
 | `difficulty` | 0..3 | 0 | `mDifficulty` |
@@ -45,10 +46,12 @@ current version, then validates.
 * Version 1 had local two-player fields: `characters` (two entries), `keys.player1` and
   `keys.player2`, `viewSideDeathMatch`. `migrateLocalTwoPlayer` keeps the first
   character and `keys.player1`, drops the rest and adds an empty `playerName`.
+* Version 2 had `soundActive`. `migrateSoundSwitch` turns it into `soundVolume` (on 100,
+  off 0) and adds `graphics: sharp`.
  A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 3: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[2]`
-that turns a version 2 object into a version 3 object.
+To add version 4: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[3]`
+that turns a version 3 object into a version 4 object.

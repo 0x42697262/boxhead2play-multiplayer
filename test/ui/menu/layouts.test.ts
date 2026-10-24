@@ -10,10 +10,19 @@ import { OnlineMenuChild } from '../../../src/ui/screens/online/tuning.ts';
 import { assetsMissing, assetSymbols } from '../../adapters/assets/support.ts';
 
 describe('menu layouts from the real library', () => {
-  it.skipIf(assetsMissing)('main menu keeps the background, the title and the SINGLE PLAY, COOPERATIVE and DEATH MATCH buttons in their slots', () => {
+  it.skipIf(assetsMissing)('main menu keeps the background, the title, the mode buttons, SETTINGS in the INSTRUCTIONS slot and the options window', () => {
     const library = new SymbolLibrary(assetSymbols());
     const layout = mainMenuLayout(library);
-    expect(layout.items.map((item) => item.depth)).toEqual([1, 8, 10, 12, 82]);
+    expect(layout.items.map((item) => item.depth)).toEqual([1, 8, 10, 12, 14, 82, 207]);
+    expect(layout.settingsLabel).toBeDefined();
+    const { graphics, volume, hidden } = layout.setup;
+    expect(graphics.buttons.map((button) => button.spec.instance)).toEqual(['_Level_Beginner', '_Level_Intermediate', '_Level_Expert']);
+    for (const button of graphics.buttons) expect(button.matrix?.[5]).toBeCloseTo(-85.2, 0);
+    for (const button of volume.buttons) expect(button.matrix?.[5]).toBeCloseTo(-40, 0);
+    expect(graphics.buttons.every((button) => button.label !== undefined)).toBe(true);
+    expect(graphics.title && volume.info).toBeDefined();
+    expect(hidden).toContain('_Collide_Off');
+    expect(hidden).not.toContain('_Game1');
     const play = instanceHitArea(library, layout.items, [MainMenuChild.SinglePlay], {});
     const coopArea = instanceHitArea(library, layout.items, [MainMenuChild.CoopPlay], {});
     const deathArea = instanceHitArea(library, layout.items, [MainMenuChild.DeathPlay], {});

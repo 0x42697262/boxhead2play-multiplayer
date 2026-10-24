@@ -28,6 +28,7 @@ import { createLogger, type Logger } from './observability/logger.ts';
 import { OnlineClient } from './services/online/OnlineClient.ts';
 import { ScreenFlow, type ScreenFactory } from './services/ScreenFlow.ts';
 import { SettingsService } from './services/SettingsService.ts';
+import { soundGain } from './services/menuSettings.ts';
 import { AppError, ErrorCode } from './text/errors.ts';
 import { t, type TextKey } from './text/i18n.ts';
 import { LogEvent } from './text/logEvents.ts';
@@ -72,8 +73,12 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   logger.info(LogEvent.AssetsLoaded, { graphics: images.size, rooms: catalogs.rooms.size });
 
   const userSettings = new SettingsService(new LocalStorageStore(window.localStorage), logger);
-  const audio = new SoundMixer(webAudio ?? silentOutput, userSettings.settings.soundActive);
-  userSettings.subscribe((current) => audio.setSfxActive(current.soundActive));
+  const audio = new SoundMixer(webAudio ?? silentOutput, soundGain(userSettings.settings));
+  shell.setGraphicsQuality(userSettings.settings.graphics);
+  userSettings.subscribe((current) => {
+    audio.setVolume(soundGain(current));
+    shell.setGraphicsQuality(current.graphics);
+  });
 
   const renderer = new SymbolRenderer(new SymbolLibrary(catalogs.symbols), images, offscreenSurfaces, { fontFamily });
   const clips = new ClipBuffers(renderer);
@@ -101,7 +106,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   );
 
   const screens: ScreenFactory = {
-    mainMenu: (controls) => new MainMenuScreen({ kit: menuKit, rng: menuRng, controls }),
+    mainMenu: (controls) => new MainMenuScreen({ kit: menuKit, rng: menuRng, controls, settings: userSettings }),
     selectWorld: (controls, mode) => new SelectWorldScreen({ kit: menuKit, settings: userSettings, rooms: catalogs.roomIndex, controls, logger, mode }),
     game: (controls, selection) =>
       new GameScreen({

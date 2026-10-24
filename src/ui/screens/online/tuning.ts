@@ -15,6 +15,9 @@ const PROMPT_FONT_PX = 16;
 const HEADING_FONT_PX = 14;
 const SMALL_FONT_PX = 12;
 const FRAGS_NAME_FONT_PX = 40;
+const OPTION_TITLE_FONT_PX = 13;
+const OPTION_BUTTON_FONT_PX = 17;
+const UPGRADE_ROW_FONT_PX = 10;
 
 export const TextStyles = {
   MenuLabel: { characterId: EditTextAsset.WinnerName, scale: MENU_LABEL_FONT_PX / WINNER_NAME_FONT_PX },
@@ -25,6 +28,9 @@ export const TextStyles = {
   RowLabel: { characterId: EditTextAsset.HudUpgradeRow, scale: 1 },
   ListHeading: { characterId: EditTextAsset.FragsName, scale: HEADING_FONT_PX / FRAGS_NAME_FONT_PX },
   ListItem: { characterId: EditTextAsset.FragsName, scale: SMALL_FONT_PX / FRAGS_NAME_FONT_PX },
+  OptionTitle: { characterId: EditTextAsset.HudUpgradeRow, scale: OPTION_TITLE_FONT_PX / UPGRADE_ROW_FONT_PX },
+  OptionInfo: { characterId: EditTextAsset.HudUpgradeRow, scale: 1 },
+  OptionButton: { characterId: EditTextAsset.HudMessage, scale: OPTION_BUTTON_FONT_PX / HUD_MESSAGE_FONT_PX },
 } as const satisfies Record<string, TextStyle>;
 
 export const MENU_TEXT_COLOR = 0x333333;
@@ -38,7 +44,6 @@ export const OnlineMenuChild = {
   Contents: '_Contents',
   Back: '_Icon_Back',
   JoinWindow: 'mcWindow_Controls',
-  Label: 'onlineLabel',
   Status: 'onlineStatus',
 } as const;
 

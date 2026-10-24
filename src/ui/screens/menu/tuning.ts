@@ -1,6 +1,9 @@
 import { GameMode } from '../../../domain/world/GameMode.ts';
 import { Difficulty, GameAmount, GameSpeed } from '../../../domain/world/SimulationSettings.ts';
 import { BASE_TICKS_PER_SECOND } from '../../../domain/world/tuning.ts';
+import { GraphicsQuality } from '../../../services/graphicsQuality.ts';
+import { SOUND_VOLUME_MAX, SOUND_VOLUME_OFF } from '../../../services/SettingsService.ts';
+import type { TextKey } from '../../../text/i18n.ts';
 import type { KeyField } from '../../../services/menuSettings.ts';
 import { OPTION_OFF, OPTION_ON, OptionField } from '../../../services/menuSettings.ts';
 
@@ -28,8 +31,75 @@ export const MainMenuChild = {
   SinglePlay: 'mcSinglePlay',
   CoopPlay: 'mcCoopPlay',
   DeathPlay: 'mcDeathPlay',
+  Options: 'mcInstructions',
   Contents: '_Contents',
+  OptionsWindow: 'mcWindow_Options',
 } as const;
+
+export const SetupWindowChild = {
+  Lock: 'mcLock',
+  Close: '_Button_Close',
+  Reset: '_Button_Reset',
+  Button: '_Button',
+  Selected: '_Selected',
+  Title: 'setupTitle',
+  RowTitle: 'setupRowTitle',
+  RowInfo: 'setupRowInfo',
+  ButtonLabel: 'setupButtonLabel',
+} as const;
+
+export const SETUP_WINDOW_BACKGROUND_DEPTH = 3;
+export const SETUP_TITLE_DEPTH = 134;
+export const SETUP_BUTTON_LABEL_DEPTH = 6;
+export const SETUP_ATTACHED_DEPTH = 300;
+export const SETUP_ATTACHED_LABEL_DEPTH = 10;
+export const SETUP_INFO_WIDTH_PX = 500;
+export const SETUP_TITLE_CENTER_X = 0;
+
+export interface SetupButtonSpec<Value> {
+  readonly instance: string;
+  readonly value: Value;
+  readonly label: TextKey;
+}
+
+export interface SetupRowSpec<Value> {
+  readonly titleDepth: number;
+  readonly infoDepth: number;
+  readonly rowOf: string;
+  readonly title: TextKey;
+  readonly info: TextKey;
+  readonly buttons: readonly SetupButtonSpec<Value>[];
+}
+
+export const GRAPHICS_ROW: SetupRowSpec<GraphicsQuality> = {
+  titleDepth: 12,
+  infoDepth: 20,
+  rowOf: '_Collide_Off',
+  title: 'setup.graphics.title',
+  info: 'setup.graphics.info',
+  buttons: [
+    { instance: '_Level_Beginner', value: GraphicsQuality.Sharp, label: 'setup.graphics.sharp' },
+    { instance: '_Level_Intermediate', value: GraphicsQuality.Smooth, label: 'setup.graphics.smooth' },
+    { instance: '_Level_Expert', value: GraphicsQuality.Pixelated, label: 'setup.graphics.pixelated' },
+  ],
+};
+
+const VOLUME_LOW = 25;
+const VOLUME_MEDIUM = 50;
+
+export const VOLUME_ROW: SetupRowSpec<number> = {
+  titleDepth: 28,
+  infoDepth: 36,
+  rowOf: '_Devils_Off',
+  title: 'setup.volume.title',
+  info: 'setup.volume.info',
+  buttons: [
+    { instance: '_Game1', value: SOUND_VOLUME_OFF, label: 'setup.volume.off' },
+    { instance: '_Game2', value: VOLUME_LOW, label: 'setup.volume.low' },
+    { instance: '_Game3', value: VOLUME_MEDIUM, label: 'setup.volume.medium' },
+    { instance: '_Game4', value: SOUND_VOLUME_MAX, label: 'setup.volume.full' },
+  ],
+};
 
 export const ROLL_OUT_ALPHA = 0.5;
 export const ROLL_OVER_ALPHA = 1;

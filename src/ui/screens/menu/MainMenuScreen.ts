@@ -1,13 +1,19 @@
 import type { DisplayItem, Filter } from '../../../adapters/assets/schemas.ts';
 import type { Matrix } from '../../../adapters/render/geometry/Matrix.ts';
 import type { StageScene } from '../../../adapters/render/menu/LayeredStage.ts';
-import type { ChildOverride, Overrides, SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
+import type { SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import { GameMode } from '../../../domain/world/GameMode.ts';
 import type { Cursor, FlowControls, PointerInput, Screen } from '../../../services/ScreenFlow.ts';
+import type { SettingsService } from '../../../services/SettingsService.ts';
+import { t } from '../../../text/i18n.ts';
+import type { StaticTextFrame } from '../online/stageText.ts';
+import { menuButtonLabelFrame, sceneMenuButton } from './menuButtonLabel.ts';
+import { OverrideTree } from './overrideTree.ts';
+import { applySetupAction, SETUP_EXPANDED, SetupOutcome, SetupWindow, setupWindowLayout, type SetupAction, type SetupWindowLayout } from './SetupWindow.ts';
 import { MenuCore, type MenuKit } from './MenuCore.ts';
-import { Trigger, type MenuTarget } from './MenuPointer.ts';
+import { mapTargets, Trigger, type MenuTarget } from './MenuPointer.ts';
 import { rollOverFilters } from './rollOver.ts';
 import {
   MAIN_MENU_BACKGROUND_DEPTH,
@@ -23,10 +29,7 @@ export interface MainMenuDependencies {
   readonly kit: MenuKit;
   readonly rng: Rng;
   readonly controls: FlowControls;
-}
-
-export interface MainMenuLayout {
-  readonly items: readonly DisplayItem[];
+  readonly settings: SettingsService;
 }
 
 export function itemMatrix(matrix: Matrix): DisplayItem['matrix'] {
@@ -35,23 +38,48 @@ export function itemMatrix(matrix: Matrix): DisplayItem['matrix'] {
 }
 
 const NO_FILTERS: readonly Filter[] = [];
-const MENU_BUTTONS = [MainMenuChild.SinglePlay, MainMenuChild.CoopPlay, MainMenuChild.DeathPlay] as const;
+const MODE_BUTTONS = [MainMenuChild.SinglePlay, MainMenuChild.CoopPlay, MainMenuChild.DeathPlay] as const;
+const MENU_BUTTONS = [...MODE_BUTTONS, MainMenuChild.Options] as const;
 const MENU_BUTTON_NAMES: ReadonlySet<string> = new Set(MENU_BUTTONS);
 
-const MAIN_MENU_TARGETS: readonly MenuTarget<GameMode>[] = [
-  { path: [MainMenuChild.SinglePlay], trigger: Trigger.Release, action: GameMode.Single },
-  { path: [MainMenuChild.CoopPlay], trigger: Trigger.Release, action: GameMode.Coop },
-  { path: [MainMenuChild.DeathPlay], trigger: Trigger.Release, action: GameMode.DeathMatch },
+export const MainMenuAction = {
+  Play: 'play',
+  OpenSettings: 'openSettings',
+  Settings: 'settings',
+} as const;
+
+export type MainMenuAction =
+  | { readonly kind: typeof MainMenuAction.Play; readonly mode: GameMode }
+  | { readonly kind: typeof MainMenuAction.OpenSettings }
+  | { readonly kind: typeof MainMenuAction.Settings; readonly action: SetupAction };
+
+const MAIN_MENU_TARGETS: readonly MenuTarget<MainMenuAction>[] = [
+  { path: [MainMenuChild.SinglePlay], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.Single } },
+  { path: [MainMenuChild.CoopPlay], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.Coop } },
+  { path: [MainMenuChild.DeathPlay], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.DeathMatch } },
+  { path: [MainMenuChild.Options], trigger: Trigger.Release, action: { kind: MainMenuAction.OpenSettings } },
 ];
+
+export interface MainMenuLayout {
+  readonly items: readonly DisplayItem[];
+  readonly settingsLabel: StaticTextFrame | undefined;
+  readonly setup: SetupWindowLayout;
+}
 
 export function mainMenuLayout(library: SymbolLibrary): MainMenuLayout {
   const rootId = library.characterId(MenuSymbol.Main);
+  const selectId = library.characterId(MenuSymbol.SelectWorld);
   const items = rootId === undefined ? [] : library.frameItems(rootId, 0);
+  const window = (selectId === undefined ? [] : library.frameItems(selectId, 0)).find((item) => item.name === MainMenuChild.OptionsWindow);
   const kept = items.filter(
     (item) =>
       item.depth === MAIN_MENU_BACKGROUND_DEPTH || item.depth === MAIN_MENU_TITLE_DEPTH || (item.name !== undefined && MENU_BUTTON_NAMES.has(item.name)),
   );
-  return { items: kept.sort((first, second) => first.depth - second.depth) };
+  return {
+    items: [...kept, ...(window ? [window] : [])].sort((first, second) => first.depth - second.depth),
+    settingsLabel: menuButtonLabelFrame(library, items, MainMenuChild.Options),
+    setup: setupWindowLayout(library, window),
+  };
 }
 
 export function mainMenuBackdrop(library: SymbolLibrary): readonly DisplayItem[] {
@@ -61,25 +89,32 @@ export function mainMenuBackdrop(library: SymbolLibrary): readonly DisplayItem[]
 export class MainMenuScreen implements Screen {
   readonly name = 'mainMenu';
   readonly ticksPerSecond = MENU_TICKS_PER_SECOND;
-  private readonly core: MenuCore<GameMode>;
+  private readonly core: MenuCore<MainMenuAction>;
   private readonly layout: MainMenuLayout;
+  private readonly setup: SetupWindow;
   private rolledOver: { readonly name: string; readonly filters: readonly Filter[] } | undefined = undefined;
+  private settingsOpen = false;
 
   constructor(private readonly deps: MainMenuDependencies) {
     this.core = new MenuCore(deps.kit);
     this.layout = mainMenuLayout(deps.kit.renderer.library);
+    this.setup = new SetupWindow(deps.kit.renderer.library, this.layout.setup);
   }
 
   get cursor(): Cursor {
     return this.core.cursor;
   }
 
+  get settingsWindowOpen(): boolean {
+    return this.settingsOpen;
+  }
+
   tick(): void {
     this.core.tick(
       () => this.scene(),
-      () => MAIN_MENU_TARGETS,
+      () => this.targets(),
     );
-    const hovered = this.core.pointer.hoveredTarget?.path[0];
+    const hovered = this.settingsOpen ? undefined : this.core.pointer.hoveredTarget?.path[0];
     this.rolledOver = hovered === undefined ? undefined : { name: hovered, filters: rollOverFilters(this.deps.rng) };
   }
 
@@ -90,12 +125,11 @@ export class MainMenuScreen implements Screen {
   idle(): void {}
 
   pointer(input: PointerInput): void {
-    const mode = this.core.handle(input, this.scene(), MAIN_MENU_TARGETS);
+    const action = this.core.handle(input, this.scene(), this.targets());
     if (this.core.pointer.hoveredTarget?.path[0] !== this.rolledOver?.name) this.rolledOver = undefined;
-    if (mode === undefined) return;
-    this.deps.kit.audio.play(SoundId.Click);
-    if (mode === GameMode.Single) this.deps.controls.selectWorld(mode);
-    else this.deps.controls.openLobby(mode);
+    if (action === undefined) return;
+    this.perform(action);
+    this.core.refresh(this.scene(), this.targets());
   }
 
   key(): boolean {
@@ -106,19 +140,43 @@ export class MainMenuScreen implements Screen {
 
   dispose(): void {}
 
+  perform(action: MainMenuAction): void {
+    const { audio } = this.deps.kit;
+    switch (action.kind) {
+      case MainMenuAction.Play:
+        audio.play(SoundId.Click);
+        if (action.mode === GameMode.Single) this.deps.controls.selectWorld(action.mode);
+        else this.deps.controls.openLobby(action.mode);
+        return;
+      case MainMenuAction.OpenSettings:
+        audio.play(SoundId.Click);
+        this.settingsOpen = true;
+        this.rolledOver = undefined;
+        return;
+      case MainMenuAction.Settings:
+        if (applySetupAction(this.deps.settings, action.action) === SetupOutcome.Closed) this.settingsOpen = false;
+        audio.play(SoundId.Click2);
+        return;
+    }
+  }
+
+  targets(): readonly MenuTarget<MainMenuAction>[] {
+    if (!this.settingsOpen) return MAIN_MENU_TARGETS;
+    return mapTargets(this.setup.targets(), (action) => ({ kind: MainMenuAction.Settings, action }));
+  }
+
   scene(): StageScene {
-    const overrides: Record<string, ChildOverride> = {};
+    const tree = new OverrideTree();
+    const library = this.deps.kit.renderer.library;
     for (const name of MENU_BUTTONS) {
       const rolled = this.rolledOver?.name === name ? this.rolledOver : undefined;
-      overrides[name] = {
-        children: {
-          [MainMenuChild.Contents]: {
-            alpha: rolled ? ROLL_OVER_ALPHA : ROLL_OUT_ALPHA,
-            filters: rolled?.filters ?? NO_FILTERS,
-          },
-        },
-      };
+      if (name === MainMenuChild.Options) {
+        sceneMenuButton(tree, library, { name, frame: this.layout.settingsLabel, text: t('setup.menuButton'), highlighted: rolled !== undefined, filters: rolled?.filters });
+        continue;
+      }
+      tree.set([name, MainMenuChild.Contents], { alpha: rolled ? ROLL_OVER_ALPHA : ROLL_OUT_ALPHA, filters: rolled?.filters ?? NO_FILTERS });
     }
-    return { items: this.layout.items, overrides: overrides as Overrides, expand: new Set() };
+    this.setup.scene(tree, this.settingsOpen, this.deps.settings.settings, (path) => this.core.pointer.buttonState(path));
+    return { items: this.layout.items, overrides: tree.overrides, expand: SETUP_EXPANDED };
   }
 }

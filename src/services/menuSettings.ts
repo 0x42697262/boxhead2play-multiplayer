@@ -1,6 +1,7 @@
 import type { PlayerKeyCodes } from '../adapters/input/TickInputSampler.ts';
 import { Difficulty, GameAmount, GameSpeed, type PlayerCharacter } from '../domain/world/SimulationSettings.ts';
-import { DEFAULT_KEYS, PLAYER_NAME_MAX_LENGTH, type UserSettings } from './SettingsService.ts';
+import type { GraphicsQuality } from './graphicsQuality.ts';
+import { DEFAULT_KEYS, DEFAULT_SETTINGS, PLAYER_NAME_MAX_LENGTH, SOUND_VOLUME_MAX, type UserSettings } from './SettingsService.ts';
 
 export const OptionField = {
   Difficulty: 'difficulty',
@@ -59,4 +60,20 @@ export function resetKeys(settings: UserSettings): UserSettings {
 
 export function withPlayerName(settings: UserSettings, name: string): UserSettings {
   return { ...settings, playerName: name.slice(0, PLAYER_NAME_MAX_LENGTH) };
+}
+
+export function withGraphics(settings: UserSettings, graphics: GraphicsQuality): UserSettings {
+  return { ...settings, graphics };
+}
+
+export function withSoundVolume(settings: UserSettings, soundVolume: number): UserSettings {
+  return { ...settings, soundVolume };
+}
+
+export function resetSetup(settings: UserSettings): UserSettings {
+  return { ...settings, graphics: DEFAULT_SETTINGS.graphics, soundVolume: DEFAULT_SETTINGS.soundVolume };
+}
+
+export function soundGain(settings: UserSettings): number {
+  return settings.soundVolume / SOUND_VOLUME_MAX;
 }

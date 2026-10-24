@@ -15,6 +15,10 @@ export interface MenuTarget<Action> {
   readonly action?: Action;
 }
 
+export function mapTargets<From, To>(targets: readonly MenuTarget<From>[], wrap: (action: From) => To): MenuTarget<To>[] {
+  return targets.map(({ action, ...target }) => (action === undefined ? target : { ...target, action: wrap(action) }));
+}
+
 export type TargetHit<Action> = (point: StagePoint) => MenuTarget<Action> | undefined;
 
 function samePath(first: readonly string[] | undefined, second: readonly string[] | undefined): boolean {

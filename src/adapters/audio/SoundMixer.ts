@@ -20,20 +20,20 @@ export class SoundMixer {
 
   constructor(
     private readonly output: AudioOutput,
-    private sfxActive: boolean,
+    private gain: number,
   ) {}
 
-  get active(): boolean {
-    return this.sfxActive;
+  get volume(): number {
+    return this.gain;
   }
 
   play(sound: SoundId): void {
-    if (!this.sfxActive) return;
+    if (this.gain <= 0) return;
     const voice = this.voice(sound);
     if (voice.playing) this.stopVoice(voice);
     const sample = SOUND_SAMPLES[sound];
     voice.playing = true;
-    const handle = this.output.start(sample.linkage, sample.volume, () => {
+    const handle = this.output.start(sample.linkage, sample.volume * this.gain, () => {
       if (voice.handle === handle) voice.playing = false;
     });
     voice.handle = handle;
@@ -57,9 +57,9 @@ export class SoundMixer {
     }
   }
 
-  setSfxActive(active: boolean): void {
-    this.sfxActive = active;
-    if (!active) this.stopAll();
+  setVolume(gain: number): void {
+    this.gain = gain;
+    if (gain <= 0) this.stopAll();
   }
 
   stopAll(): void {

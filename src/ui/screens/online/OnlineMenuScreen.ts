@@ -14,12 +14,12 @@ import { MenuCore, type MenuKit } from '../menu/MenuCore.ts';
 import { Trigger, type MenuTarget } from '../menu/MenuPointer.ts';
 import { OverrideTree } from '../menu/overrideTree.ts';
 import { rollOverFilters } from '../menu/rollOver.ts';
-import { MAIN_MENU_BACKGROUND_DEPTH, MAIN_MENU_TITLE_DEPTH, MENU_TICKS_PER_SECOND, MenuSymbol, ROLL_OUT_ALPHA, ROLL_OVER_ALPHA } from '../menu/tuning.ts';
+import { menuButtonLabelFrame, sceneMenuButton } from '../menu/menuButtonLabel.ts';
+import { MAIN_MENU_BACKGROUND_DEPTH, MAIN_MENU_TITLE_DEPTH, MENU_TICKS_PER_SECOND, MenuSymbol } from '../menu/tuning.ts';
 import { joinList, menuStatus, roomIdForLevel, type JoinRow } from './lobbyModel.ts';
 import { editName, NameEntryOutcome } from './nameEntry.ts';
 import { placedText, staticTextFrame, textOverride, type StaticTextFrame, type TextStyle } from './stageText.ts';
 import {
-  ATTACHED_LABEL_DEPTH,
   BACK_TAB_DEPTH,
   CARET_BLINK_TICKS,
   JOIN_ATTACHED_DEPTH,
@@ -33,8 +33,6 @@ import {
   JOIN_TEXT_WIDTH_PX,
   JOIN_TITLE_DEPTH,
   JoinWindowChild,
-  MENU_LABEL_DEPTH,
-  MENU_LABEL_TOP_OFFSET_PX,
   MENU_TEXT_COLOR,
   OnlineMenuChild as Child,
   ROW_LABEL_COLOR,
@@ -74,7 +72,6 @@ const MENU_BUTTONS = [Child.Host, Child.Join, Child.Name] as const;
 type MenuButton = (typeof MENU_BUTTONS)[number];
 const MENU_BUTTON_NAMES: ReadonlySet<string> = new Set(MENU_BUTTONS);
 const SELECT_WORLD_ITEMS: ReadonlySet<string> = new Set([Child.Back, Child.JoinWindow]);
-const NO_FILTERS: readonly Filter[] = [];
 const WINDOW = [Child.JoinWindow] as const;
 const CLOSE = [...WINDOW, JoinWindowChild.Close, JoinWindowChild.Button] as const;
 
@@ -92,13 +89,6 @@ export interface OnlineMenuLayout {
   readonly title: StaticTextFrame | undefined;
   readonly info: StaticTextFrame | undefined;
   readonly slots: readonly JoinRowSlot[];
-}
-
-function contentsLabel(library: SymbolLibrary, items: readonly DisplayItem[], name: string): StaticTextFrame | undefined {
-  const button = items.find((item) => item.name === name);
-  const contents = button ? library.findChild(button.characterId, Child.Contents) : undefined;
-  const label = contents ? library.frameItems(contents.characterId, 0).find((item) => item.depth === MENU_LABEL_DEPTH) : undefined;
-  return staticTextFrame(library, label);
 }
 
 export function onlineMenuLayout(library: SymbolLibrary): OnlineMenuLayout {
@@ -125,7 +115,11 @@ export function onlineMenuLayout(library: SymbolLibrary): OnlineMenuLayout {
   });
   return {
     items,
-    labels: { [Child.Host]: contentsLabel(library, main, Child.Host), [Child.Join]: contentsLabel(library, main, Child.Join), [Child.Name]: contentsLabel(library, main, Child.Name) },
+    labels: {
+      [Child.Host]: menuButtonLabelFrame(library, main, Child.Host),
+      [Child.Join]: menuButtonLabelFrame(library, main, Child.Join),
+      [Child.Name]: menuButtonLabelFrame(library, main, Child.Name),
+    },
     title: staticTextFrame(library, byDepth(JOIN_TITLE_DEPTH)),
     info: staticTextFrame(library, byDepth(JOIN_INFO_DEPTH)),
     slots,
@@ -324,25 +318,13 @@ export class OnlineMenuScreen implements Screen {
   }
 
   private sceneButton(tree: OverrideTree, name: MenuButton): void {
-    const rolled = this.rolledOver?.name === name || (name === Child.Name && this.draft !== undefined);
-    const frame = this.layout.labels[name];
-    const label = frame
-      ? placedText(this.deps.kit.renderer.library, {
-          name: Child.Label,
-          depth: ATTACHED_LABEL_DEPTH,
-          style: TextStyles.MenuLabel,
-          anchorX: frame.centerX,
-          top: frame.top + MENU_LABEL_TOP_OFFSET_PX,
-        })
-      : undefined;
-    tree.set([name, Child.Contents], {
-      alpha: rolled ? ROLL_OVER_ALPHA : ROLL_OUT_ALPHA,
-      filters: this.rolledOver?.name === name ? this.rolledOver.filters : NO_FILTERS,
-      ...(label ? { attach: [label.item] } : {}),
+    sceneMenuButton(tree, this.deps.kit.renderer.library, {
+      name,
+      frame: this.layout.labels[name],
+      text: this.labelText(name),
+      highlighted: this.rolledOver?.name === name || (name === Child.Name && this.draft !== undefined),
+      filters: this.rolledOver?.name === name ? this.rolledOver.filters : undefined,
     });
-    if (!label) return;
-    tree.set([name, Child.Contents, depthKey(MENU_LABEL_DEPTH)], { visible: false });
-    tree.set([name, Child.Contents, Child.Label], textOverride(label, this.labelText(name), MENU_TEXT_COLOR));
   }
 
   private sceneJoinWindow(tree: OverrideTree): void {

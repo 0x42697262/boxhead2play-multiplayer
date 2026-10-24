@@ -39,8 +39,25 @@ Only these parts of sprite 253 are drawn:
   logo with the characters, checked visually);
 * **SINGLE PLAY** (`mcSinglePlay`, depth 8), **COOPERATIVE** (`mcCoopPlay`, depth 10) and
   **DEATH MATCH** (`mcDeathPlay`, depth 12) at their original positions and labels.
+* **SETTINGS** in the `mcInstructions` slot (depth 14). The label is the attached edit text
+  of the online menu (`menuButtonLabel.ts`), because the INSTRUCTIONS art has no other glyphs.
 
-Removed: `mcInstructions` (external URL), button 203 (a "view the trailer" YouTube link),
+### SETTINGS window (`SetupWindow.ts`)
+
+The select-world OPTIONS window (`mcWindow_Options`, sprite 358) with a SETTINGS title.
+Only the background, `mcLock`, RESET and CLOSE keep their art; every other child is hidden.
+Two rows use the positions of the first two OPTIONS rows:
+
+| Row | Buttons (instances, moved to the row) | Setting |
+|---|---|---|
+| Graphics | SHARP, SMOOTH, PIXELATED (`_Level_Beginner`..`_Level_Expert`) | `graphics` (ADR 0006) |
+| Sound volume | OFF, LOW, MEDIUM, FULL (`_Game1`..`_Game4`) | `soundVolume` 0, 25, 50, 100 |
+
+Button labels are attached edit texts with the glow of the original static labels. A click
+stores the value at once: the shell refits and the mixer changes its volume. RESET restores
+SHARP and FULL. These are device settings, separate from the game OPTIONS of select world.
+
+Removed: the INSTRUCTIONS link of `mcInstructions` (external URL), button 203 (a "view the trailer" YouTube link),
 `_IconMoreGames`, `_STC` ("A SEAN COOPER GAME" link), the four game banners (depths 60,
 66, 70, 75, all external links) and `_Size`.
 

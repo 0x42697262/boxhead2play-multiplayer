@@ -12,13 +12,18 @@ import {
 import type { LobbyOptions } from '../net/protocol.ts';
 import { PLAYER_NAME_MAX_LENGTH } from '../net/tuning.ts';
 import type { Logger } from '../observability/logger.ts';
+import { DEFAULT_GRAPHICS_QUALITY, GraphicsQuality } from './graphicsQuality.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
 const LEGACY_VERSION = 0;
 const LOCAL_TWO_PLAYER_VERSION = 1;
+const SOUND_SWITCH_VERSION = 2;
 const LEGACY_ENABLED = 1;
+
+export const SOUND_VOLUME_MAX = 100;
+export const SOUND_VOLUME_OFF = 0;
 
 const KEY_CODE_MIN = 0;
 const KEY_CODE_MAX = 255;
@@ -42,7 +47,8 @@ const levelIndex = z.number().int().nonnegative();
 
 export const UserSettingsSchema = z.object({
   version: z.literal(SETTINGS_VERSION),
-  soundActive: z.boolean(),
+  soundVolume: z.number().int().min(SOUND_VOLUME_OFF).max(SOUND_VOLUME_MAX),
+  graphics: z.enum(Object.values(GraphicsQuality) as [GraphicsQuality, ...GraphicsQuality[]]),
   musicActive: z.boolean(),
   detail: z.boolean(),
   difficulty: enumValue(Difficulty),
@@ -82,7 +88,8 @@ const DEFAULT_SINGLE_LEVEL = 8;
 
 export const DEFAULT_SETTINGS: UserSettings = {
   version: SETTINGS_VERSION,
-  soundActive: true,
+  soundVolume: SOUND_VOLUME_MAX,
+  graphics: DEFAULT_GRAPHICS_QUALITY,
   musicActive: true,
   detail: true,
   difficulty: Difficulty.Beginner,
@@ -123,7 +130,7 @@ export function migrateLegacy(raw: Raw): Raw {
   const d = DEFAULT_SETTINGS;
   return {
     version: LOCAL_TWO_PLAYER_VERSION,
-    soundActive: pick(raw, 'mSoundActive', d.soundActive, asBoolean),
+    soundActive: pick(raw, 'mSoundActive', true, asBoolean),
     musicActive: pick(raw, 'mMusicActive', d.musicActive, asBoolean),
     detail: pick(raw, 'mDetail', d.detail, asBoolean),
     difficulty: pick(raw, 'mDifficulty', d.difficulty, asNumber),
@@ -155,16 +162,27 @@ export function migrateLocalTwoPlayer(raw: Raw): Raw {
   const first: unknown = Array.isArray(characters) ? characters[0] : undefined;
   return {
     ...kept,
-    version: SETTINGS_VERSION,
+    version: SOUND_SWITCH_VERSION,
     character: first ?? DEFAULT_SETTINGS.character,
     keys: asRaw(raw.keys).player1 ?? DEFAULT_SETTINGS.keys,
     playerName: DEFAULT_SETTINGS.playerName,
   };
 }
 
+export function migrateSoundSwitch(raw: Raw): Raw {
+  const { soundActive, ...kept } = raw;
+  return {
+    ...kept,
+    version: SETTINGS_VERSION,
+    soundVolume: soundActive === false ? SOUND_VOLUME_OFF : DEFAULT_SETTINGS.soundVolume,
+    graphics: DEFAULT_SETTINGS.graphics,
+  };
+}
+
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [LEGACY_VERSION]: migrateLegacy,
   [LOCAL_TWO_PLAYER_VERSION]: migrateLocalTwoPlayer,
+  [SOUND_SWITCH_VERSION]: migrateSoundSwitch,
 };
 
 function versionOf(raw: Raw): number {

@@ -28,14 +28,14 @@ function fakeOutput(): AudioOutput & { readonly started: Started[] } {
 describe('SoundMixer (CSound semantics)', () => {
   it('plays a registration at its volume factor', () => {
     const output = fakeOutput();
-    const mixer = new SoundMixer(output, true);
+    const mixer = new SoundMixer(output, 1);
     mixer.play(SoundId.ZombieHit);
     expect(output.started).toEqual([expect.objectContaining({ linkage: 'Creature.Zombie.Hit.wav', gain: 0.3 })]);
   });
 
   it('restarts a sample that is still playing: one channel per registration', () => {
     const output = fakeOutput();
-    const mixer = new SoundMixer(output, true);
+    const mixer = new SoundMixer(output, 1);
     mixer.play(SoundId.PistolFire);
     mixer.play(SoundId.PistolFire);
     expect(output.started).toHaveLength(2);
@@ -49,7 +49,7 @@ describe('SoundMixer (CSound semantics)', () => {
 
   it('keeps ambience registrations separate from the hit samples of the same file', () => {
     const output = fakeOutput();
-    const mixer = new SoundMixer(output, true);
+    const mixer = new SoundMixer(output, 1);
     mixer.play(SoundId.ZombieHit1);
     mixer.play(SoundId.ZombieAmbience1);
     mixer.play(SoundId.ZombieAmbience2);
@@ -59,11 +59,18 @@ describe('SoundMixer (CSound semantics)', () => {
     expect(mixer.isPlaying(SoundId.ZombieHit1)).toBe(true);
   });
 
-  it('turning sfx off stops everything and ignores new requests', () => {
+  it('scales every sample by the volume', () => {
     const output = fakeOutput();
-    const mixer = new SoundMixer(output, true);
+    const mixer = new SoundMixer(output, 0.5);
+    mixer.play(SoundId.ZombieHit);
+    expect(output.started[0]?.gain).toBeCloseTo(0.15);
+  });
+
+  it('volume 0 stops everything and ignores new requests', () => {
+    const output = fakeOutput();
+    const mixer = new SoundMixer(output, 1);
     mixer.play(SoundId.EffectExplosion);
-    mixer.setSfxActive(false);
+    mixer.setVolume(0);
     expect(output.started[0]?.stopped).toBe(true);
     mixer.play(SoundId.EffectExplosion);
     expect(output.started).toHaveLength(1);
