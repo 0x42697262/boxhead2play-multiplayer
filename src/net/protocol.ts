@@ -150,6 +150,7 @@ export const ErrorReason = {
   RoomUnknown: 'roomUnknown',
   AlreadyPlaying: 'alreadyPlaying',
   RateLimited: 'rateLimited',
+  ServerFull: 'serverFull',
 } as const;
 
 export type ErrorReason = (typeof ErrorReason)[keyof typeof ErrorReason];

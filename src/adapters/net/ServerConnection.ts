@@ -1,8 +1,8 @@
-import { encodeClientMessage, parseServerMessage, type ClientMessage, type ServerMessage } from '../../net/protocol.ts';
+import { encodeClientMessage, parseServerMessage, ServerMessageType, type ClientMessage, type ServerMessage } from '../../net/protocol.ts';
 import { WireDecoder, WireError } from '../../net/wire.ts';
+import type { Rng } from '../../domain/math/Rng.ts';
 import { SOCKET_PATH } from '../../net/tuning.ts';
-
-export const RECONNECT_DELAY_MS = 1500;
+import { RECONNECT_BACKOFF_FACTOR, RECONNECT_BASE_DELAY_MS, RECONNECT_JITTER_FRACTION, RECONNECT_MAX_DELAY_MS } from './tuning.ts';
 
 export interface SocketLike {
   readonly readyState: number;
@@ -39,6 +39,11 @@ function decodeWire(decoder: WireDecoder, data: ArrayBuffer): ServerMessage | un
     throw error;
   }
 }
+
+export function reconnectDelayMs(attempt: number, jitter: number): number {
+  const backoff = Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_BASE_DELAY_MS * RECONNECT_BACKOFF_FACTOR ** attempt);
+  return Math.round(backoff * (1 - RECONNECT_JITTER_FRACTION * jitter));
+}
 const SECURE_PAGE_PROTOCOL = 'https:';
 const SECURE_SOCKET_PROTOCOL = 'wss:';
 const PLAIN_SOCKET_PROTOCOL = 'ws:';
@@ -61,10 +66,12 @@ export class ServerConnection {
   private socket: SocketLike | undefined = undefined;
   private cancelRetry: (() => void) | undefined = undefined;
   private wanted = false;
+  private attempt = 0;
 
   constructor(
     private readonly url: string,
     private readonly listener: ConnectionListener,
+    private readonly jitter: Rng,
     private readonly createSocket: SocketFactory = browserSocketFactory,
     private readonly timers: ConnectionTimers = browserTimers,
   ) {}
@@ -90,8 +97,12 @@ export class ServerConnection {
     socket.onmessage = (event) => {
       if (this.socket !== socket || !(event.data instanceof ArrayBuffer)) return;
       const message = decodeWire(decoder, event.data);
-      if (message) this.listener.message(message);
-      else this.listener.rejected(event.data.byteLength);
+      if (!message) {
+        this.listener.rejected(event.data.byteLength);
+        return;
+      }
+      if (message.type === ServerMessageType.Welcome) this.attempt = 0;
+      this.listener.message(message);
     };
     socket.onerror = () => socket.close();
     socket.onclose = () => {
@@ -104,6 +115,7 @@ export class ServerConnection {
 
   disconnect(): void {
     this.wanted = false;
+    this.attempt = 0;
     this.cancelRetry?.();
     this.cancelRetry = undefined;
     const socket = this.socket;
@@ -118,7 +130,9 @@ export class ServerConnection {
   }
 
   private scheduleRetry(): void {
-    this.cancelRetry = this.timers.after(RECONNECT_DELAY_MS, () => {
+    const delayMs = reconnectDelayMs(this.attempt, this.jitter.next());
+    this.attempt++;
+    this.cancelRetry = this.timers.after(delayMs, () => {
       this.cancelRetry = undefined;
       if (this.wanted) this.connect();
     });

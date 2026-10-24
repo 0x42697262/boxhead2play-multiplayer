@@ -115,7 +115,7 @@ that every decoded frame equals the JSON one.
 
 Every change to a message schema, including a new enum value such as a HUD message tone
 or a text key a frame may carry, bumps `PROTOCOL_VERSION` (`src/net/tuning.ts`). Version 5
-added the `joined` message tone (`hud.joined`).
+added the `joined` message tone (`hud.joined`) and the `serverFull` error.
 
 | Client -> server | Purpose |
 |---|---|
@@ -217,7 +217,16 @@ Hiding the tab sends released controls so the player stops walking.
 
 ## Reconnect
 
-`ServerConnection` reconnects every 1.5 s after a drop. The client keeps its `sessionId`
+`ServerConnection` reconnects after a drop with exponential backoff: 1.5 s, doubling up to
+30 s, each delay shortened by a random part of up to half (`src/adapters/net/tuning.ts`; the
+random source is a constructor argument so tests are deterministic). The jitter spreads out
+the reconnects of many tabs after a server restart. A `welcome` resets the backoff. A
+`versionMismatch` error is final: `OnlineClient` disconnects the transport, goes offline and
+shows "Reload the page" instead of retrying. A full server (`MAX_CLIENTS`) answers a new
+client with `serverFull` and closes; the client keeps retrying with backoff and clears the
+notice on the next `welcome`.
+
+The client keeps its `sessionId`
 in `sessionStorage`; `hello` with it resumes the same client within the server's grace
 period (45 s): the lobby membership and the match player stay, and the server resends
 `lobby` and `gameStarted`. After the grace period the member is removed from the lobby

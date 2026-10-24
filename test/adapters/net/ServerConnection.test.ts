@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { defaultServerUrl, RECONNECT_DELAY_MS, ServerConnection, type SocketLike } from '../../../src/adapters/net/ServerConnection.ts';
+import { defaultServerUrl, reconnectDelayMs, ServerConnection, type SocketLike } from '../../../src/adapters/net/ServerConnection.ts';
+import { RECONNECT_BASE_DELAY_MS, RECONNECT_MAX_DELAY_MS } from '../../../src/adapters/net/tuning.ts';
 import type { ServerMessage } from '../../../src/net/protocol.ts';
 import { WireEncoder } from '../../../src/net/wire.ts';
+import { SequenceRng } from '../../../src/domain/math/Rng.ts';
 
 class FakeSocket implements SocketLike {
   readyState = 0;
@@ -37,7 +39,7 @@ class FakeSocket implements SocketLike {
   }
 }
 
-function setup() {
+function setup(jitter = 0) {
   const sockets: FakeSocket[] = [];
   const timers: { delay: number; run: () => void }[] = [];
   const events: string[] = [];
@@ -45,6 +47,7 @@ function setup() {
   const connection = new ServerConnection(
     'ws://host/ws',
     { opened: () => events.push('open'), closed: () => events.push('close'), message: (message) => messages.push(message), rejected: () => events.push('rejected') },
+    new SequenceRng([jitter]),
     () => {
       const socket = new FakeSocket();
       sockets.push(socket);
@@ -107,10 +110,34 @@ describe('ServerConnection', () => {
     sockets[0]?.open();
     sockets[0]?.close();
     expect(events).toEqual(['open', 'close']);
-    expect(timers[0]?.delay).toBe(RECONNECT_DELAY_MS);
+    expect(timers[0]?.delay).toBe(RECONNECT_BASE_DELAY_MS);
     timers[0]?.run();
     expect(sockets).toHaveLength(2);
     connection.disconnect();
     expect(timers).toHaveLength(1);
+  });
+
+  it('backs off exponentially up to the cap and starts over after a welcome', () => {
+    const { connection, sockets, timers } = setup();
+    connection.connect();
+    for (let attempt = 0; attempt < 8; attempt++) {
+      sockets.at(-1)?.close();
+      timers.at(-1)?.run();
+    }
+    expect(timers.map((timer) => timer.delay)).toEqual([1500, 3000, 6000, 12000, 24000, RECONNECT_MAX_DELAY_MS, RECONNECT_MAX_DELAY_MS, RECONNECT_MAX_DELAY_MS]);
+    sockets.at(-1)?.open();
+    sockets.at(-1)?.deliver({ type: 'welcome', clientId: 'c1', sessionId: 's', resumed: true });
+    sockets.at(-1)?.close();
+    expect(timers.at(-1)?.delay).toBe(RECONNECT_BASE_DELAY_MS);
+  });
+
+  it('shortens each delay by up to half with the jitter source', () => {
+    expect(reconnectDelayMs(0, 0)).toBe(RECONNECT_BASE_DELAY_MS);
+    expect(reconnectDelayMs(0, 1)).toBe(RECONNECT_BASE_DELAY_MS / 2);
+    expect(reconnectDelayMs(1, 0.5)).toBe(RECONNECT_BASE_DELAY_MS * 2 * 0.75);
+    const { connection, sockets, timers } = setup(1);
+    connection.connect();
+    sockets[0]?.close();
+    expect(timers[0]?.delay).toBe(RECONNECT_BASE_DELAY_MS / 2);
   });
 });

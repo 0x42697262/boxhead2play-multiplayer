@@ -153,6 +153,12 @@ Add one line per behavior change: what to do, and the result you expect.
   card; click the code line -> "LINK COPIED!". Paste the link in tab 2 -> tab 2 opens in tab 1's room. Main menu JOIN BY CODE
   (bottom right), type the code in lower case, Enter -> the same room; a wrong code -> "No game
   has that code.". In the game, Esc -> COPY LINK: XXXXX copies the link.
+* `npx vitest run test/adapters/net test/services/online/OnlineClient.test.ts` -> reconnect
+  delays 1.5 s, 3 s, 6 s … capped at 30 s and back to 1.5 s after a `welcome`;
+  `versionMismatch` stops reconnecting; `serverFull` keeps retrying.
+* Serve the page from an older build (protocol 4) against the current server -> "This game
+  version does not match the server. Reload the page." and no further socket attempts in
+  DevTools > Network > WS.
 * Two tabs both named "Player" in one lobby -> the room lists PLAYER and PLAYER #2.
 * `npx vitest run test/server/node` -> the match ticker catches up at most 5 ticks after a stall,
   then follows the clock, and stops inside a burst when the match ends; upgrades to paths other

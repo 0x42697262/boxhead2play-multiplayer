@@ -56,6 +56,19 @@ describe('Hub sessions', () => {
     expect(outdated.closed).toBe(true);
   });
 
+  it('turns away a new client with serverFull once the server has its maximum, but still resumes a known session', () => {
+    const setup = testHub();
+    const clients = Array.from({ length: MAX_CLIENTS }, (_unused, index) => setup.connect(`P${index}`));
+    const late = setup.connect('Late');
+    expect(late.last('error')?.reason).toBe(ErrorReason.ServerFull);
+    expect(late.closed).toBe(true);
+    const first = clients[0];
+    const sessionId = first?.last('welcome')?.sessionId;
+    first?.link?.closed();
+    const back = setup.connect('P0', sessionId);
+    expect(back.last('welcome')?.resumed).toBe(true);
+  });
+
   it('gives every lobby its own 5 character code and joins by it, ignoring case and spaces', () => {
     const setup = testHub();
     const { host, lobbyId } = hostAndGuest(setup);
@@ -122,16 +135,6 @@ describe('Hub limits', () => {
     const ann = setup.connect('Ann');
     ann.link?.receive(' '.repeat(MAX_MESSAGE_BYTES + 1));
     expect(ann.last('error')?.reason).toBe(ErrorReason.RateLimited);
-  });
-
-  it('refuses a client beyond the client limit and closes its connection', () => {
-    const setup = testHub();
-    for (let index = 0; index < MAX_CLIENTS; index++) setup.connect(`P${index}`);
-    const extra = setup.connect('Extra');
-    expect(extra.last('welcome')).toBeUndefined();
-    expect(extra.last('error')?.reason).toBe(ErrorReason.RateLimited);
-    expect(extra.closed).toBe(true);
-    expect(setup.hub.clientCount).toBe(MAX_CLIENTS);
   });
 
   it('refuses a lobby beyond the lobby limit', () => {

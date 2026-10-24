@@ -112,12 +112,16 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     now: () => performance.now(),
   });
   online.bind(
-    new ServerConnection(settings.serverUrl ?? defaultServerUrl(window.location), {
-      opened: () => online.opened(),
-      closed: () => online.closed(),
-      message: (message) => online.receive(message),
-      rejected: (byteLength) => online.rejected(byteLength),
-    }),
+    new ServerConnection(
+      settings.serverUrl ?? defaultServerUrl(window.location),
+      {
+        opened: () => online.opened(),
+        closed: () => online.closed(),
+        message: (message) => online.receive(message),
+        rejected: (byteLength) => online.rejected(byteLength),
+      },
+      new SeededRng(randomSeed()),
+    ),
   );
 
   const link = new BrowserLobbyLink(window);

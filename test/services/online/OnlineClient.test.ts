@@ -96,6 +96,31 @@ describe('OnlineClient connection', () => {
     expect(transport.sent.at(-1)).toEqual({ type: 'watchLobbies', mode: GameMode.DeathMatch });
   });
 
+  it('stops reconnecting after a version mismatch and keeps the notice', () => {
+    const { online, transport } = client();
+    online.start();
+    online.opened();
+    online.watch(GameMode.Coop);
+    online.receive({ type: 'error', reason: 'versionMismatch' });
+    expect(transport.disconnects).toBe(1);
+    expect(online.state).toMatchObject({ status: OnlineStatus.Offline, error: 'versionMismatch' });
+    online.closed();
+    expect(online.state.status).toBe(OnlineStatus.Offline);
+  });
+
+  it('keeps reconnecting while the server is full and clears that notice after a welcome', () => {
+    const { online, transport } = client();
+    online.start();
+    online.opened();
+    online.receive({ type: 'error', reason: 'serverFull' });
+    online.closed();
+    expect(transport.disconnects).toBe(0);
+    expect(online.state).toMatchObject({ status: OnlineStatus.Connecting, error: 'serverFull' });
+    online.opened();
+    online.receive({ type: 'welcome', clientId: 'c1', sessionId: 's', resumed: false });
+    expect(online.state).toMatchObject({ status: OnlineStatus.Online, error: undefined });
+  });
+
   it('leaves the lobby and disconnects on stop', () => {
     const { online, transport } = client();
     online.start();

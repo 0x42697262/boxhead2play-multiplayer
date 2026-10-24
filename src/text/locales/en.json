@@ -261,6 +261,7 @@
   "online.error.roomUnknown": "The server does not know that level.",
   "online.error.alreadyPlaying": "The game is already running.",
   "online.error.rateLimited": "Too many requests. Slow down.",
+  "online.error.serverFull": "The server is full. Trying again…",
   "online.left.left": "You left the game.",
   "online.left.closed": "The game was closed.",
   "online.left.expired": "You were away too long and left the game.",

@@ -167,7 +167,7 @@ export class Hub {
     const known = message.sessionId === null ? undefined : this.sessions.get(message.sessionId);
     if (known) return this.resume(known, connection, message.name);
     if (this.sessions.size >= MAX_CLIENTS) {
-      this.reject(connection, ErrorReason.RateLimited);
+      this.reject(connection, ErrorReason.ServerFull);
       connection.close();
       return undefined;
     }

@@ -4,11 +4,11 @@ import type { PlayerCharacter } from '../../domain/world/SimulationSettings.ts';
 import type { ControlMasks } from '../../net/controlMask.ts';
 import {
   ClientMessageType,
+  ErrorReason,
   LobbyState,
   PROTOCOL_VERSION,
   ServerMessageType,
   type ClientMessage,
-  type ErrorReason,
   type GameOver,
   type GameStarted,
   LeaveReason,
@@ -255,6 +255,7 @@ export class OnlineClient {
       case ServerMessageType.Error:
         this.enterMatchOf = undefined;
         this.deps.logger.warn(LogEvent.OnlineError, { reason: message.reason });
+        if (message.reason === ErrorReason.VersionMismatch) this.halt();
         this.update({ error: message.reason });
         return;
     }
@@ -267,15 +268,24 @@ export class OnlineClient {
     if (lobby.state === LobbyState.Playing && self?.playerIndex === null) this.play();
   }
 
+  private halt(): void {
+    this.transport?.disconnect();
+    this.welcomed = false;
+    this.queued = [];
+    this.latency.reset();
+    this.update({ status: OnlineStatus.Offline });
+  }
+
   private welcome(clientId: string, sessionId: string, resumed: boolean): void {
     this.deps.session.write(SESSION_STORAGE_KEY, sessionId);
     this.welcomed = true;
     this.deps.logger.info(LogEvent.OnlineConnected, { resumed });
+    const error = this.current.error === ErrorReason.ServerFull ? undefined : this.current.error;
     if (!resumed) {
       this.sink?.lost();
-      this.update({ status: OnlineStatus.Online, clientId, lobby: undefined });
+      this.update({ status: OnlineStatus.Online, clientId, lobby: undefined, error });
     } else {
-      this.update({ status: OnlineStatus.Online, clientId });
+      this.update({ status: OnlineStatus.Online, clientId, error });
     }
     const pending = this.queued;
     this.queued = [];
