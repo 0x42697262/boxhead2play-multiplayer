@@ -135,7 +135,7 @@ export class TouchControls {
     this.menuButton.setAttribute('aria-label', t(shown === TouchLayout.Menu ? 'touch.close' : 'touch.menu'));
   }
 
-  private releaseAll(): void {
+  releaseAll(): void {
     this.input.releaseAll();
     for (const [button] of this.holdButtons) button.classList.remove(TouchClass.Pressed);
     this.resetStick();

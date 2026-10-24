@@ -27,8 +27,9 @@ movie clip, so every registration is one channel with its own volume:
 `WebAudioOutput` decodes every registered MP3 (`sounds/index.json`) at boot into
 `AudioBuffer`s. Each start creates an `AudioBufferSourceNode` through a `GainNode`.
 The context starts suspended; the first key press or pointer press calls `resume()`
-(browser autoplay policy). A hidden page suspends the context and a visible page resumes
-it. Without WebAudio the mixer runs with a silent output and logs `audio.unavailable`.
+(browser autoplay policy). A hidden page, or single play frozen because the phone is upright
+(`docs/runtime/loop.md`, "Visibility and portrait"), suspends the context; it resumes when
+the page is visible and, for single play, in landscape again. Without WebAudio the mixer runs with a silent output and logs `audio.unavailable`.
 
 Only registered sounds are decoded. The intro logo sounds (timeline StartSounds) are not
 loaded, because the temporary shell has no intro screen.

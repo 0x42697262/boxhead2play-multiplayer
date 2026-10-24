@@ -2,11 +2,13 @@ import type { KeyboardState } from '../adapters/input/KeyboardState.ts';
 import { PointerPhase, type ScreenFlow } from '../services/ScreenFlow.ts';
 import type { GameLoop } from './GameLoop.ts';
 import { isShortcut, releasesHeldKeys } from './keyModifiers.ts';
+import { presenceEffects, type Presence, type PresenceEffects } from './presence.ts';
 
 export interface ListenerTargets {
   readonly window: Window;
   readonly document: Document;
   readonly canvas: HTMLCanvasElement;
+  readonly portrait: MediaQueryList;
   readonly stageWidth: number;
   readonly stageHeight: number;
 }
@@ -17,7 +19,7 @@ export interface ListenerHandlers {
   readonly loop: GameLoop;
   readonly isGameKey: (code: string) => boolean;
   readonly onGesture: (touch: boolean) => void;
-  readonly onVisibility: (visible: boolean) => void;
+  readonly onPresence: (presence: Presence, effects: PresenceEffects) => void;
   readonly onResize: () => void;
 }
 
@@ -26,6 +28,12 @@ const FORM_TAGS: ReadonlySet<string> = new Set(['INPUT', 'SELECT', 'TEXTAREA', '
 const SINGLE_CHARACTER = 1;
 const MOUSE = 'mouse';
 const IOS_PINCH_EVENT = 'gesturestart';
+const VISIBLE = 'visible';
+const MEDIA_CHANGE_EVENT = 'change';
+
+export function presenceOf(document: Document, portrait: MediaQueryList): Presence {
+  return { hidden: document.visibilityState !== VISIBLE, portrait: portrait.matches };
+}
 
 function typedCharacter(event: KeyboardEvent): string | undefined {
   return event.key.length === SINGLE_CHARACTER ? event.key : undefined;
@@ -78,14 +86,18 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
   canvas.addEventListener('pointerup', pointer(PointerPhase.Up));
   canvas.addEventListener('pointermove', pointer(PointerPhase.Move));
   canvas.addEventListener('pointerleave', pointer(PointerPhase.Leave));
-  document.addEventListener('visibilitychange', () => {
-    const visible = document.visibilityState === 'visible';
-    if (!visible) {
+  let presence = presenceOf(document, targets.portrait);
+  const updatePresence = (): void => {
+    const next = presenceOf(document, targets.portrait);
+    const effects = presenceEffects(presence, next, handlers.flow.screen?.simulation);
+    presence = next;
+    if (effects.releaseKeys) {
       handlers.keyboard.releaseAll();
       handlers.flow.suspend();
-    } else {
-      handlers.loop.resetTiming();
     }
-    handlers.onVisibility(visible);
-  });
+    if (effects.resetTiming) handlers.loop.resetTiming();
+    handlers.onPresence(next, effects);
+  };
+  document.addEventListener('visibilitychange', updatePresence);
+  targets.portrait.addEventListener(MEDIA_CHANGE_EVENT, updatePresence);
 }

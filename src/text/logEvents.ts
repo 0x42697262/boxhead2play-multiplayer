@@ -17,7 +17,7 @@ export const LogEvent = {
   FullscreenEntered: 'display.fullscreen_entered',
   AssetWorkerRegistered: 'assets.worker_registered',
   AssetWorkerFailed: 'assets.worker_failed',
-  VisibilityChanged: 'loop.visibility_changed',
+  PresenceChanged: 'loop.presence_changed',
   AudioUnavailable: 'audio.unavailable',
   FrameBudgetExceeded: 'loop.frame_budget_exceeded',
   FrameFailed: 'loop.frame_failed',

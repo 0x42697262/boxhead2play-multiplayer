@@ -20,6 +20,13 @@ export const TouchLayout = {
 
 export type TouchLayout = (typeof TouchLayout)[keyof typeof TouchLayout];
 
+export const Simulation = {
+  Local: 'local',
+  Shared: 'shared',
+} as const;
+
+export type Simulation = (typeof Simulation)[keyof typeof Simulation];
+
 export const TextEntryKind = {
   Name: 'name',
   Code: 'code',
@@ -59,6 +66,7 @@ export interface Screen {
   readonly ticksPerSecond: number;
   readonly cursor: Cursor;
   readonly touchLayout?: TouchLayout;
+  readonly simulation?: Simulation;
   readonly textEntry?: TextEntry | undefined;
   readonly playerList?: PlayerListView | undefined;
   tick(): void;

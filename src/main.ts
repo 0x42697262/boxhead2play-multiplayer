@@ -30,7 +30,8 @@ import { SeededRng } from './domain/math/Rng.ts';
 import { createThingFactory } from './domain/things/factory.ts';
 import { browserLoopClock, GameLoop } from './entry/GameLoop.ts';
 import { debounce } from './entry/debounce.ts';
-import { attachListeners } from './entry/listeners.ts';
+import { attachListeners, presenceOf } from './entry/listeners.ts';
+import { AudioChange, freezes, type Presence } from './entry/presence.ts';
 import type { GameStarted } from './net/protocol.ts';
 import { createLogger, type Logger } from './observability/logger.ts';
 import { LobbyInvite } from './services/online/LobbyInvite.ts';
@@ -56,6 +57,7 @@ import { entersFullscreenOnTap } from './ui/mobile/fullscreenTap.ts';
 import { PlayerListOverlay } from './ui/hud/PlayerListOverlay.ts';
 import { GameMenuKey } from './ui/screens/gameMenu/tuning.ts';
 import { RESIZE_SETTLE_DELAY_MS } from './ui/shell/tuning.ts';
+import { PORTRAIT_TOUCH_QUERY } from './ui/mobile/tuning.ts';
 import { enterLandscapeFullscreen, isHomeScreenCandidate } from './adapters/display/fullscreen.ts';
 
 const APP_ELEMENT_ID = 'app';
@@ -172,8 +174,14 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   };
   const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor), online);
   startOnlineGame = (start) => flow.startOnlineGame(start);
-  const loop = new GameLoop(flow, browserLoopClock, () => userSettings.settings.frameRate, (error) =>
-    logger.error(LogEvent.FrameFailed, { screen: flow.screen?.name, error: error instanceof Error ? (error.stack ?? error.message) : String(error) }),
+  const portrait = window.matchMedia(PORTRAIT_TOUCH_QUERY);
+  let presence: Presence = presenceOf(document, portrait);
+  const loop = new GameLoop(
+    flow,
+    browserLoopClock,
+    () => userSettings.settings.frameRate,
+    (error) => logger.error(LogEvent.FrameFailed, { screen: flow.screen?.name, error: error instanceof Error ? (error.stack ?? error.message) : String(error) }),
+    () => freezes(presence, flow.screen?.simulation),
   );
   const gameKeys = (): ReadonlySet<string> => boundCodes(buildBindings(userSettings.settings.keys));
   let keys = gameKeys();
@@ -196,7 +204,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     cancel: (handle) => window.clearTimeout(handle),
   });
   attachListeners(
-    { window, document, canvas: shell.canvas, stageWidth: STAGE_WIDTH_PX, stageHeight: STAGE_HEIGHT_PX },
+    { window, document, canvas: shell.canvas, portrait, stageWidth: STAGE_WIDTH_PX, stageHeight: STAGE_HEIGHT_PX },
     {
       keyboard,
       flow,
@@ -208,10 +216,12 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         if (webAudio && !webAudio.unlocked) void webAudio.unlock().then(() => logger.info(LogEvent.AudioUnlocked));
         if (touchInput && entersFullscreenOnTap(flow.screen?.touchLayout)) void enterLandscapeFullscreen(document, window.screen.orientation).then((entered) => entered && logger.info(LogEvent.FullscreenEntered));
       },
-      onVisibility: (visible) => {
-        logger.info(LogEvent.VisibilityChanged, { visible });
-        if (!visible) void webAudio?.suspend();
-        else void webAudio?.unlock();
+      onPresence: (next, effects) => {
+        presence = next;
+        logger.info(LogEvent.PresenceChanged, { ...next, frozen: freezes(next, flow.screen?.simulation) });
+        if (effects.releaseKeys) touch.releaseAll();
+        if (effects.audio === AudioChange.Suspend) void webAudio?.suspend();
+        if (effects.audio === AudioChange.Resume) void webAudio?.unlock();
       },
       onResize: () => {
         shell.layout(visibleViewport());

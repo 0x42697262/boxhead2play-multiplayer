@@ -56,9 +56,30 @@ Per tick, `GameSession.tick()`:
 `World.create` already runs the first tick (`InitCleanUp`), so the session routes its
 events and renders once at start.
 
-## Visibility
+## Visibility and portrait
 
-A hidden page releases all keys and suspends audio. The browser stops animation frames,
-so a single-play world does not advance while hidden; when the page is visible again the
-clock resets and no time is caught up. An online game sends released controls to the
-server (`releaseControls`); the server world keeps running.
+The player is *away* while the page is hidden or a touch phone is held upright (the
+portrait query of `docs/runtime/mobile.md`). `src/entry/presence.ts` decides what that
+means, as pure functions of (hidden, portrait, the screen's `simulation`):
+
+| Effect | When |
+|---|---|
+| Release all keys (keyboard, virtual touch keys and the stick), `ScreenFlow.suspend` | on going away (not again while already away) |
+| Freeze the loop (`freezes`) | away and the screen's `simulation` is `local` (single play) |
+| Suspend audio | hidden, or frozen; resumed when neither holds any more |
+| Reset the loop clock | the page becomes visible again |
+
+`listeners.ts` reads the presence from `document.visibilityState` and the
+`matchMedia(PORTRAIT_TOUCH_QUERY)` list on every `visibilitychange` and media `change`,
+applies the key and timing effects, and hands the rest to `main.ts`. A hidden page gets no
+animation frames anyway. An upright phone still gets them, so `GameLoop` asks `freezes`
+each frame: a frozen frame runs no tick, present or idle and resets the clock to now. When
+the phone is turned back, the next frame draws the world where it stopped and the first
+tick follows one interval later, with no catch-up burst and no pause screen, exactly like
+returning to a hidden tab. Single play in portrait is the owner's choice: the rotate screen
+hides the game, so it must not keep running. Menus keep running (they hold no game state).
+
+Online games are `shared`: the server world keeps running for everyone else, and the local
+session keeps receiving and playing back frames so it is current when the phone is turned
+back. Going away only releases the keys, and `OnlineGameScreen.suspend` sends released
+controls to the server (`releaseControls`), so your player stops walking and firing.

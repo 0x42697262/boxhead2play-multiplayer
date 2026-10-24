@@ -267,6 +267,13 @@ Add one line per behavior change: what to do, and the result you expect.
   stops.
 * Switch to another tab while playing single -> on return the game continues where it was,
   with no pause screen and no catch-up burst.
+* Phone, single play, hold the phone upright while zombies walk -> the rotate screen, zombies stop
+  and the sound stops; turn it back to landscape -> the game continues where it was, with no
+  catch-up burst. Hold Fire and the stick, then turn upright and back -> the player stands still.
+* Phone in an online game with a second player, hold the phone upright while walking -> the other
+  tab sees your player stop at once while its zombies and players keep moving; turn back -> your
+  view shows the current world. `npx vitest run test/entry test/ui/mobile` -> presence rules,
+  the frozen loop without catch-up and the shared portrait query pass.
 * `npx vitest run test/adapters test/services test/entry test/ui` -> asset mapping,
   render math, XSI plane lists, HUD animation, mixer, input edges, settings migration,
   session routing and loop accounting pass (asset-based suites skip without

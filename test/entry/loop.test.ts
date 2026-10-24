@@ -145,6 +145,39 @@ describe('ScreenFlow and GameLoop', () => {
   });
 });
 
+describe('GameLoop freeze', () => {
+  it('runs nothing while frozen and does not catch up the frozen time afterwards', () => {
+    const screen = new CountingScreen('game', 25);
+    const factory: ScreenFactory = {
+      mainMenu: () => screen,
+      selectWorld: () => new CountingScreen('selectWorld', 50),
+      onlineMenu: () => new CountingScreen('onlineMenu', 50),
+      lobbyRoom: () => new CountingScreen('lobbyRoom', 50),
+      onlineGame: () => new CountingScreen('onlineGame', 25),
+      game: () => new CountingScreen('game', 50),
+    };
+    const flow = new ScreenFlow(factory, silentLogger);
+    flow.start();
+    let frozen = false;
+    const loop = new GameLoop(flow, fakeTime(), () => UNCAPPED_FRAME_RATE, () => undefined, () => frozen);
+    loop.frame(0);
+    loop.frame(40);
+    expect(screen.ticks).toBe(1);
+    expect(screen.presents).toBe(2);
+    frozen = true;
+    for (let now = 80; now <= 4000; now += 40) loop.frame(now);
+    expect(screen.ticks).toBe(1);
+    expect(screen.presents).toBe(2);
+    expect(screen.idles).toBe(2);
+    frozen = false;
+    loop.frame(4020);
+    expect(screen.ticks).toBe(1);
+    expect(screen.presents).toBe(3);
+    loop.frame(4040);
+    expect(screen.ticks).toBe(2);
+  });
+});
+
 describe('GameLoop failures', () => {
   it('keeps scheduling frames when a tick throws, and reports each failure streak once', () => {
     let throwsLeft = 2;

@@ -17,7 +17,7 @@ import type { ThingFactory } from '../../domain/things/ThingFactory.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { GameSession } from '../../services/GameSession.ts';
 import type { Cursor} from '../../services/ScreenFlow.ts';
-import { PointerPhase, TouchLayout, type FlowControls, type GameSelection, type PointerInput, type Screen } from '../../services/ScreenFlow.ts';
+import { PointerPhase, Simulation, TouchLayout, type FlowControls, type GameSelection, type PointerInput, type Screen } from '../../services/ScreenFlow.ts';
 import { toGameOptions, type SettingsService } from '../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../text/errors.ts';
 import type { Shell } from '../shell/Shell.ts';
@@ -48,6 +48,7 @@ export interface GameScreenDependencies {
 
 export class GameScreen implements Screen {
   readonly name = 'game';
+  readonly simulation = Simulation.Local;
   private readonly menu: GameMenu;
   private readonly renderer: WorldRenderer;
   private readonly session: GameSession;

@@ -51,7 +51,20 @@ false. Started from the Home Screen, the game runs without browser bars.
 ## Portrait
 
 On touch screens (`pointer: coarse`) in portrait a black screen with a turning phone
-says "Turn your device sideways to play." (pure CSS media query, `MobileChrome.ts`).
+says "Turn your device sideways to play." (`MobileChrome.ts`, shown by the media query
+`(orientation: portrait) and (pointer: coarse)` in `mobile.css`).
+
+The game reacts to the same query: `PORTRAIT_TOUCH_QUERY` in `src/ui/mobile/tuning.ts`.
+CSS cannot import a TypeScript constant, so `mobile.css` repeats the string, and
+`test/ui/mobile/portraitQuery.test.ts` fails if the two differ. Turning the phone upright
+counts like hiding the tab (`docs/runtime/loop.md`, "Visibility and portrait"):
+
+* single play freezes (no ticks, no drawing, no sound) and continues where it stopped when
+  the phone is turned back, without a catch-up burst;
+* online play keeps running, because the world is shared; only every held key, the stick
+  and the touch buttons are released, so your player stops.
+
+A desktop window that is taller than wide has a fine pointer and is never "upright".
 
 ## Touch controls (`src/ui/touch/`)
 

@@ -28,6 +28,7 @@ export class GameLoop {
     private readonly time: LoopClock = browserLoopClock,
     private readonly frameRate: () => number = () => UNCAPPED_FRAME_RATE,
     private readonly onFailure: (error: unknown) => void = () => undefined,
+    private readonly frozen: () => boolean = () => false,
   ) {}
 
   start(): void {
@@ -52,6 +53,10 @@ export class GameLoop {
   }
 
   private run(now: number): void {
+    if (this.frozen()) {
+      this.clock.reset(now);
+      return;
+    }
     if (this.flow.version !== this.seenVersion) {
       this.seenVersion = this.flow.version;
       this.clock.reset(now);

@@ -18,7 +18,7 @@ import type { InviteView } from '../../../services/online/LobbyInvite.ts';
 import type { OnlineClient } from '../../../services/online/OnlineClient.ts';
 import { OnlineGameSession } from '../../../services/online/OnlineGameSession.ts';
 import type { Cursor} from '../../../services/ScreenFlow.ts';
-import { PointerPhase, TouchLayout, type FlowControls, type PointerInput, type Screen } from '../../../services/ScreenFlow.ts';
+import { PointerPhase, Simulation, TouchLayout, type FlowControls, type PointerInput, type Screen } from '../../../services/ScreenFlow.ts';
 import type { SettingsService } from '../../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../../text/errors.ts';
 import type { Shell } from '../../shell/Shell.ts';
@@ -47,6 +47,7 @@ export function playerNames(client: OnlineClient): HudFrame['playerNames'] {
 
 export class OnlineGameScreen implements Screen {
   readonly name = 'onlineGame';
+  readonly simulation = Simulation.Shared;
   private readonly menu: GameMenu;
   private readonly renderer: WorldRenderer;
   private readonly session: OnlineGameSession;
