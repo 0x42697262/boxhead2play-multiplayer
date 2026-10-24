@@ -7,13 +7,12 @@ Status: accepted
 The server sends every player a frame 25 times per second: camera, every draw entry in view
 (with symbol, animation and style names), the HUD and the tick's events. As JSON a frame is
 4 to 12 KB, so a player received 150 to 300 KiB/s before compression. The owner saw about
-5 MiB in 30 s in the browser and asked for tanka-maze's approach, because the server has a
-bandwidth cap.
+5 MiB in 30 s in the browser and asked for smaller network messages, because the server
+has a bandwidth cap.
 
-tanka-maze (`src/shared/wire/`) sends binary snapshots: strings never go on the wire (an
-index and a roster sent once), positions and angles are quantized integers, a slim snapshot
-leaves out fields that rarely change, identical snapshots are skipped, the snapshot rate
-falls with the player count (clients interpolate) and permessage-deflate is off.
+Common techniques for game snapshots: binary encoding, strings sent once and referenced by
+index, quantized numbers, leaving out fields that did not change, skipping identical
+snapshots, and lowering the snapshot rate with client interpolation.
 
 Our frames are generic trees (`DrawEntry`, `Visual`, `NetHud`) shared with the local
 renderer, so a hand-written per-field codec would duplicate every visual type.
@@ -45,8 +44,8 @@ Client -> server messages stay JSON text: they are small and input is already se
 change. permessage-deflate stays on: it shrinks the binary frames another 4 to 6 times for
 little CPU, and the bandwidth cap matters more than the CPU here.
 
-The 25 Hz frame rate is unchanged. Sending fewer frames would need client interpolation
-(tanka-maze uses 140 ms) and adds latency.
+The 25 Hz frame rate is unchanged. Sending fewer frames would need client interpolation,
+which adds latency.
 
 ## Results (`npm run bandwidth`, ROOM_Single_0001, 30 s, everyone moving and firing)
 

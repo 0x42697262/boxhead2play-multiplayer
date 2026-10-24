@@ -6,10 +6,9 @@ Status: accepted
 
 The original *Boxhead: 2Play Rooms* is a local two-player game: both players share one
 keyboard, coop shares one camera (the average of both players), and deathmatch splits the
-stage into two scaled 480 x 480 views. The owner asked for multiplayer over the network,
-modeled on `~/Projects/tanka-maze` (a Node WebSocket server that owns the simulation,
-lobbies that players create and join, a single port in production), and for local
-two-player play to be removed.
+stage into two scaled 480 x 480 views. The owner asked for multiplayer over the network
+(a Node WebSocket server that owns the simulation, lobbies that players create and join,
+a single port in production), and for local two-player play to be removed.
 
 The domain is already deterministic and pure (ADR 0001): `World.update(TickInput)` with
 an injected `Rng`, and rendering only reads plain-data visual descriptors.
