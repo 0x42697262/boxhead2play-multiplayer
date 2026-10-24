@@ -3,6 +3,7 @@ import {
   decodeClientMessage,
   ErrorReason,
   LeaveReason,
+  LobbyState,
   PROTOCOL_VERSION,
   ServerMessageType,
   type ClientMessage,
@@ -14,6 +15,7 @@ import { LogEvent } from '../text/logEvents.ts';
 import { Lobby, type LobbyClient } from './Lobby.ts';
 import type { CancelTimer, Connection, HubDependencies } from './ports.ts';
 import { lobbyCodeFromNumber, normalizeLobbyCode } from '../net/lobbyCode.ts';
+import { ClientActivity, type MonitorClient, type MonitorLobby, type Traffic } from './monitorProtocol.ts';
 import { nameKey, sanitizeName, uniqueName } from './sanitize.ts';
 import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from './tuning.ts';
 
@@ -39,6 +41,14 @@ class ClientSession implements LobbyClient {
   send(message: ServerMessage): void {
     this.connection?.send(message);
   }
+}
+
+const NO_TRAFFIC: Traffic = { bytesSent: 0, bytesReceived: 0 };
+
+function clientActivity(connected: boolean, lobbyState: LobbyState | undefined, playerIndex: number | null): ClientActivity {
+  if (!connected) return ClientActivity.Offline;
+  if (lobbyState === undefined) return ClientActivity.Menu;
+  return lobbyState === LobbyState.Playing && playerIndex !== null ? ClientActivity.Playing : ClientActivity.Lobby;
 }
 
 class RateLimiter {
@@ -106,6 +116,26 @@ export class Hub {
         if (client?.connection === connection) this.disconnected(client);
       },
     };
+  }
+
+  monitorClients(): MonitorClient[] {
+    return [...this.sessions.values()].map((session) => {
+      const lobby = session.lobby?.dto();
+      const member = lobby?.members.find((candidate) => candidate.id === session.id);
+      const traffic = session.connection?.traffic() ?? NO_TRAFFIC;
+      return {
+        id: session.id,
+        name: session.name,
+        activity: clientActivity(session.connected, lobby?.state, member?.playerIndex ?? null),
+        lobby: lobby?.name ?? null,
+        mode: lobby?.mode ?? session.watching,
+        ...traffic,
+      };
+    });
+  }
+
+  monitorLobbies(): MonitorLobby[] {
+    return [...this.lobbies.values()].map((lobby) => lobby.monitorRow());
   }
 
   close(): void {
@@ -236,6 +266,7 @@ export class Hub {
       ticker: this.deps.ticker,
       newId: this.deps.newId,
       newSeed: this.deps.newSeed,
+      clock: this.deps.clock,
       logger: this.deps.logger,
       onChanged: (changed) => this.lobbyChanged(changed),
       onEmpty: (empty) => this.lobbyClosed(empty),

@@ -20,6 +20,7 @@ Server environment (validated in `src/config/serverEnv.ts`):
 | `BOXHEAD_STATIC_DIR` | `dist` | Built client to serve |
 | `BOXHEAD_ASSET_DIR` | `dist/assets` | Extracted assets the server loads |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `BOXHEAD_MONITOR_TOKEN` | unset | At least 16 characters. Turns on `/__monitor` for `npm run monitor -- --token` (see `docs/runtime/monitor.md`) |
 
 The client connects to the page's own host unless `VITE_SERVER_URL` (`ws://` or `wss://`)
 is set at build time.

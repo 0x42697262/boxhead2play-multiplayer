@@ -3,6 +3,7 @@ import type { Server } from 'node:http';
 import type { Logger } from '../../observability/logger.ts';
 import { Hub } from '../Hub.ts';
 import type { GameContent } from '../ports.ts';
+import { createMonitor, type Monitor, type MonitorAccess } from './monitor.ts';
 import { attachSocketGateway } from './socketGateway.ts';
 import { fixedStepTicker, nodeClock, nodeTimers } from './timing.ts';
 
@@ -10,10 +11,11 @@ const SEED_LIMIT = 2 ** 32;
 
 export interface GameServer {
   readonly hub: Hub;
+  readonly monitor: Monitor;
   close(): void;
 }
 
-export function attachGameServer(server: Server, content: GameContent, logger: Logger): GameServer {
+export function attachGameServer(server: Server, content: GameContent, logger: Logger, access: MonitorAccess): GameServer {
   const hub = new Hub({
     content,
     ticker: fixedStepTicker(nodeClock),
@@ -24,9 +26,12 @@ export function attachGameServer(server: Server, content: GameContent, logger: L
     logger,
   });
   const gateway = attachSocketGateway(server, hub);
+  const monitor = createMonitor({ hub, traffic: () => gateway.traffic() }, access);
   return {
     hub,
+    monitor,
     close() {
+      monitor.close();
       gateway.close();
       hub.close();
     },

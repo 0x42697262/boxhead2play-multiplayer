@@ -22,6 +22,7 @@
     "extract": "node tools/extract/main.ts",
     "extract:debug": "node tools/extract/debug/composeRoomSvg.ts",
     "bandwidth": "node tools/dev/runInVite.ts tools/dev/bandwidth.ts",
+    "monitor": "node tools/monitor/main.ts",
     "ci": "npm run lint && npm run typecheck && npm run test"
   },
   "devDependencies": {

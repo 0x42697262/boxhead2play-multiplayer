@@ -1,9 +1,11 @@
 import type { IncomingMessage, Server } from 'node:http';
+import type { Socket } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { SOCKET_PATH } from '../../net/tuning.ts';
 import { WireEncoder } from '../../net/wire.ts';
 import type { Hub } from '../Hub.ts';
+import type { Traffic } from '../monitorProtocol.ts';
 import type { Connection } from '../ports.ts';
 import { MAX_MESSAGE_BYTES, PING_INTERVAL_MS } from '../tuning.ts';
 
@@ -14,11 +16,18 @@ interface Watched {
   alive: boolean;
 }
 
-function socketConnection(socket: WebSocket): Connection {
+function socketTraffic(transport: Socket): Traffic {
+  return { bytesSent: transport.bytesWritten, bytesReceived: transport.bytesRead };
+}
+
+function socketConnection(socket: WebSocket, transport: Socket): Connection {
   const encoder = new WireEncoder();
   return {
     send(message) {
       if (socket.readyState === OPEN) socket.send(encoder.encode(message));
+    },
+    traffic() {
+      return socketTraffic(transport);
     },
     close() {
       socket.close();
@@ -32,6 +41,7 @@ function text(data: RawData): string {
 }
 
 export interface SocketGateway {
+  traffic(): Traffic;
   close(): void;
 }
 
@@ -43,17 +53,28 @@ export function attachSocketGateway(server: Server, hub: Hub): SocketGateway {
     sockets.handleUpgrade(request, socket, head, (client) => sockets.emit('connection', client, request));
   };
   server.on('upgrade', upgrade);
-  sockets.on('connection', (socket: WebSocket) => {
+  const transports = new Set<Socket>();
+  let closedSent = 0;
+  let closedReceived = 0;
+  sockets.on('connection', (socket: WebSocket, request: IncomingMessage) => {
     const state: Watched = { alive: true };
+    const transport = request.socket;
     watched.set(socket, state);
-    const link = hub.connect(socketConnection(socket));
+    transports.add(transport);
+    const link = hub.connect(socketConnection(socket, transport));
     socket.on('pong', () => {
       state.alive = true;
     });
     socket.on('message', (data, binary) => {
       if (!binary) link.receive(text(data));
     });
-    socket.on('close', () => link.closed());
+    socket.on('close', () => {
+      if (transports.delete(transport)) {
+        closedSent += transport.bytesWritten;
+        closedReceived += transport.bytesRead;
+      }
+      link.closed();
+    });
     socket.on('error', () => socket.terminate());
   });
   const ping = setInterval(() => {
@@ -68,6 +89,15 @@ export function attachSocketGateway(server: Server, hub: Hub): SocketGateway {
     }
   }, PING_INTERVAL_MS);
   return {
+    traffic() {
+      let bytesSent = closedSent;
+      let bytesReceived = closedReceived;
+      for (const transport of transports) {
+        bytesSent += transport.bytesWritten;
+        bytesReceived += transport.bytesRead;
+      }
+      return { bytesSent, bytesReceived };
+    },
     close() {
       clearInterval(ping);
       server.off('upgrade', upgrade);

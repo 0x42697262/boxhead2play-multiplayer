@@ -16,9 +16,10 @@ import { MAX_LOBBY_PLAYERS } from '../net/tuning.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import { Match, type MatchResult, type MatchStep } from './Match.ts';
-import type { GameContent, StopTicking, Ticker } from './ports.ts';
+import type { MonitorLobby } from './monitorProtocol.ts';
+import type { Clock, GameContent, StopTicking, Ticker } from './ports.ts';
 import { lobbyName } from './sanitize.ts';
-import { MATCH_ABANDONED } from './tuning.ts';
+import { MATCH_ABANDONED, TICK_TIME_SMOOTHING } from './tuning.ts';
 
 export interface LobbyClient {
   readonly id: string;
@@ -38,6 +39,7 @@ export interface LobbyDependencies {
   readonly ticker: Ticker;
   readonly newId: () => string;
   readonly newSeed: () => number;
+  readonly clock: Clock;
   readonly logger: Logger;
   readonly onChanged: (lobby: Lobby) => void;
   readonly onEmpty: (lobby: Lobby) => void;
@@ -61,6 +63,7 @@ export class Lobby {
   private hostId: string;
   private match: Match | undefined = undefined;
   private stopTicking: StopTicking | undefined = undefined;
+  private tickMs: number | undefined = undefined;
 
   constructor(
     setup: LobbySetup,
@@ -250,7 +253,19 @@ export class Lobby {
     member.client.send({ type: ServerMessageType.Upgrades, upgrades: match.upgrades });
   }
 
+  monitorRow(): MonitorLobby {
+    const { id, name, mode, state } = this.dto();
+    return { id, name, mode, state, members: this.members.length, tickMs: this.match ? (this.tickMs ?? null) : null };
+  }
+
   private tick(match: Match): void {
+    const started = this.deps.clock.now();
+    this.step(match);
+    const elapsed = this.deps.clock.now() - started;
+    this.tickMs = this.tickMs === undefined ? elapsed : this.tickMs + (elapsed - this.tickMs) * TICK_TIME_SMOOTHING;
+  }
+
+  private step(match: Match): void {
     let step: MatchStep;
     try {
       step = match.step();

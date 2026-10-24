@@ -12,3 +12,6 @@ export const LOBBY_NAME_SUFFIX = "'s game";
 export const MS_PER_SECOND = 1000;
 export const PING_INTERVAL_MS = 20_000;
 export const MATCH_ABANDONED = 'abandoned';
+export const TICK_TIME_SMOOTHING = 0.1;
+export const EVENT_LOOP_RESOLUTION_MS = 10;
+export const NANOS_PER_MS = 1_000_000;

@@ -3,9 +3,11 @@ import type { ThingFactory } from '../domain/things/ThingFactory.ts';
 import type { RoomDefinition } from '../domain/world/RoomDefinition.ts';
 import type { ServerMessage } from '../net/protocol.ts';
 import type { Logger } from '../observability/logger.ts';
+import type { Traffic } from './monitorProtocol.ts';
 
 export interface Connection {
   send(message: ServerMessage): void;
+  traffic(): Traffic;
   close(): void;
 }
 

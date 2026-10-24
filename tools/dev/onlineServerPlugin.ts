@@ -22,6 +22,9 @@ export function onlineServerPlugin(): Plugin {
       const module = (await server.ssrLoadModule(DEV_SERVER_MODULE)) as DevServerModule;
       const game = await module.attachDevGameServer(http, path.resolve(server.config.root, DEV_ASSET_DIR), LogLevel.Info);
       http.once('close', () => game?.close());
+      server.middlewares.use((request, response, next) => {
+        if (!game?.monitor.handle(request, response)) next();
+      });
     },
   };
 }

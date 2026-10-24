@@ -4,14 +4,16 @@ import { createLogger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import { loadGameContent } from './node/content.ts';
 import { attachGameServer, type GameServer } from './node/gameServer.ts';
+import type { MonitorAccess } from './node/monitor.ts';
 
 const DEV_LOG_SESSION = 'dev-server';
+const DEV_MONITOR_ACCESS: MonitorAccess = { token: undefined, loopbackWithoutToken: true };
 
 export async function attachDevGameServer(server: Server, assetDir: string, logLevel: LogLevel): Promise<GameServer | undefined> {
   const logger = createLogger(logLevel, DEV_LOG_SESSION);
   try {
     const content = await loadGameContent(assetDir);
-    const game = attachGameServer(server, content, logger);
+    const game = attachGameServer(server, content, logger, DEV_MONITOR_ACCESS);
     logger.info(LogEvent.ServerStarted, { session: DEV_LOG_SESSION, rooms: content.rooms.size });
     return game;
   } catch (error) {

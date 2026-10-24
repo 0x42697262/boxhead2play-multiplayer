@@ -16,8 +16,13 @@ async function main(): Promise<void> {
   const settings = loadServerSettings(process.env);
   const logger = createLogger(settings.logLevel, SERVER_LOG_SESSION);
   const content = await loadGameContent(settings.assetDir);
-  const server = createServer(staticFileHandler(settings.staticDir));
-  const game = attachGameServer(server, content, logger);
+  const serveStatic = staticFileHandler(settings.staticDir);
+  const monitorEnabled = settings.monitorToken !== undefined;
+  const server = createServer((request, response) => {
+    if (monitorEnabled && game.monitor.handle(request, response)) return;
+    serveStatic(request, response);
+  });
+  const game = attachGameServer(server, content, logger, { token: settings.monitorToken, loopbackWithoutToken: false });
   server.listen(settings.port, settings.host, () => {
     logger.info(LogEvent.ServerStarted, { host: settings.host, port: settings.port, rooms: content.rooms.size, assets: join(settings.assetDir) });
   });

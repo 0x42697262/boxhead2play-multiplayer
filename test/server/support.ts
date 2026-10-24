@@ -5,6 +5,7 @@ import { Difficulty, GameAmount, GameSpeed } from '../../src/domain/world/Simula
 import { encodeClientMessage, parseServerMessage, PROTOCOL_VERSION, type ClientMessage, type LobbyOptions, type ServerMessage } from '../../src/net/protocol.ts';
 import { WireDecoder, WireEncoder } from '../../src/net/wire.ts';
 import { Hub, type Link } from '../../src/server/Hub.ts';
+import type { Traffic } from '../../src/server/monitorProtocol.ts';
 import type { Connection, GameContent, HubDependencies, Ticker, Timers } from '../../src/server/ports.ts';
 import { syntheticAnimationCatalog } from '../domain/support/animationCatalog.ts';
 import { cellObject, room } from '../domain/support/fakes.ts';
@@ -77,8 +78,17 @@ export class FakeConnection implements Connection {
   private readonly encoder = new WireEncoder();
   private readonly decoder = new WireDecoder();
 
+  bytesSent = 0;
+  bytesReceived = 0;
+
+  traffic(): Traffic {
+    return { bytesSent: this.bytesSent, bytesReceived: this.bytesReceived };
+  }
+
   send(sent: ServerMessage): void {
-    const message = parseServerMessage(this.decoder.decode(this.encoder.encode(sent)));
+    const bytes = this.encoder.encode(sent);
+    this.bytesSent += bytes.length;
+    const message = parseServerMessage(this.decoder.decode(bytes));
     if (!message) throw new Error(`undecodable server message: ${sent.type}`);
     this.received.push(message);
   }
@@ -88,7 +98,9 @@ export class FakeConnection implements Connection {
   }
 
   say(message: ClientMessage): void {
-    this.link?.receive(encodeClientMessage(message));
+    const text = encodeClientMessage(message);
+    this.bytesReceived += text.length;
+    this.link?.receive(text);
   }
 
   last<T extends ServerMessage['type']>(type: T): Extract<ServerMessage, { type: T }> | undefined {

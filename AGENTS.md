@@ -109,6 +109,10 @@ Add one line per behavior change: what to do, and the result you expect.
   to a zombie door; 16 online players start spread out, at least 4 cells apart.
 * DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> TAB shows one more
   death for him and no kill for anybody.
+* `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET
+  rows, the lobby with its tick time and both players with about 0.5 KiB/s upload each; `q`
+  quits and restores the terminal. `npm start` without `BOXHEAD_MONITOR_TOKEN` -> `/__monitor`
+  is not served.
 * `npm run bandwidth` -> per-player rates for coop and deathmatch with 1/4/16 players; wire +
   deflate stays under 5 KiB/s and no "decoded frames differ" line appears. In the browser,
   DevTools > Network > WS shows binary server frames of tens of bytes while nothing moves.
