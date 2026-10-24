@@ -60,6 +60,7 @@
 | Stored menu indexes | `mcGotoFrame` wraps the shown frame, `LoadLevel` uses the unwrapped stored index | Both use the wrapped index | An out-of-range saved index would have loaded a missing room. |
 | Key prompt alpha | After an invalid key, a valid key closes the prompt and `mcPressAKey` can keep a partial alpha for the next prompt | Each prompt starts fully visible | Bug fix. |
 | Modal windows | Blocking by `mcLock.onPress` and `mc2PlayerCover.onPress` | Same blockers, hit-tested on their bounds | Flash tests clip shapes; both blockers are full rectangles. |
+| In-game menu | Esc does nothing in game | Esc opens SETTINGS / QUIT over the running game (see `docs/runtime/screens.md`) | Owner request: change graphics and volume, and quit, without the upgrade list. |
 | Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
 | Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |

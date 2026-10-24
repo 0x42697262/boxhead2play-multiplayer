@@ -9,9 +9,12 @@ import { prewarmCollections } from '../../../adapters/render/xsi/collections.ts'
 import { masksOf } from '../../../net/controlMask.ts';
 import { gameOptionsFor, type GameStarted } from '../../../net/protocol.ts';
 import type { Logger } from '../../../observability/logger.ts';
+import type { Rng } from '../../../domain/math/Rng.ts';
+import { GameMenu } from '../gameMenu/GameMenu.ts';
 import type { OnlineClient } from '../../../services/online/OnlineClient.ts';
 import { OnlineGameSession } from '../../../services/online/OnlineGameSession.ts';
-import { Cursor, PointerPhase, type FlowControls, type PointerInput, type Screen } from '../../../services/ScreenFlow.ts';
+import type { Cursor} from '../../../services/ScreenFlow.ts';
+import { PointerPhase, type FlowControls, type PointerInput, type Screen } from '../../../services/ScreenFlow.ts';
 import type { SettingsService } from '../../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../../text/errors.ts';
 import type { Shell } from '../../shell/Shell.ts';
@@ -28,6 +31,7 @@ export interface OnlineGameScreenDependencies {
   readonly logger: Logger;
   readonly controls: FlowControls;
   readonly start: GameStarted;
+  readonly uiRng: Rng;
 }
 
 export function playerNames(client: OnlineClient): HudFrame['playerNames'] {
@@ -38,7 +42,7 @@ export function playerNames(client: OnlineClient): HudFrame['playerNames'] {
 
 export class OnlineGameScreen implements Screen {
   readonly name = 'onlineGame';
-  readonly cursor = Cursor.Default;
+  private readonly menu: GameMenu;
   private readonly renderer: WorldRenderer;
   private readonly session: OnlineGameSession;
 
@@ -70,7 +74,12 @@ export class OnlineGameScreen implements Screen {
       logger: deps.logger,
       onFinished: (result) => deps.controls.finishOnlineGame(result, client.lobby !== undefined),
     });
+    this.menu = new GameMenu({ shell: deps.shell, renderer: deps.kit.renderer, audio: deps.audio, settings: deps.settings, rng: deps.uiRng, quit: () => this.session.requestQuit() });
     deps.shell.hideOverlay();
+  }
+
+  get cursor(): Cursor {
+    return this.menu.cursor;
   }
 
   get ticksPerSecond(): number {
@@ -79,6 +88,7 @@ export class OnlineGameScreen implements Screen {
 
   tick(): void {
     this.session.tick();
+    this.menu.tick();
   }
 
   present(): void {
@@ -87,6 +97,7 @@ export class OnlineGameScreen implements Screen {
     const { ctx, canvas } = this.deps.shell;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(composed.canvas, 0, 0, canvas.width, canvas.height);
+    this.menu.present();
   }
 
   idle(hasTime: () => boolean): void {
@@ -94,12 +105,16 @@ export class OnlineGameScreen implements Screen {
   }
 
   pointer(input: PointerInput): void {
+    if (this.menu.open) {
+      this.menu.pointer(input);
+      return;
+    }
     if (input.phase !== PointerPhase.Down) return;
     if (this.renderer.hud.hitTest(input.point) === HudAction.Quit) this.session.requestQuit();
   }
 
-  key(): boolean {
-    return false;
+  key(code: string): boolean {
+    return this.menu.key(code);
   }
 
   suspend(): void {

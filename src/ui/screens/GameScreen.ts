@@ -15,10 +15,12 @@ import type { Rng } from '../../domain/math/Rng.ts';
 import type { ThingFactory } from '../../domain/things/ThingFactory.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { GameSession } from '../../services/GameSession.ts';
-import { Cursor, PointerPhase, type FlowControls, type GameSelection, type PointerInput, type Screen } from '../../services/ScreenFlow.ts';
+import type { Cursor} from '../../services/ScreenFlow.ts';
+import { PointerPhase, type FlowControls, type GameSelection, type PointerInput, type Screen } from '../../services/ScreenFlow.ts';
 import { toGameOptions, type SettingsService } from '../../services/SettingsService.ts';
 import { AppError, ErrorCode } from '../../text/errors.ts';
 import type { Shell } from '../shell/Shell.ts';
+import { GameMenu } from './gameMenu/GameMenu.ts';
 
 export interface RenderKit {
   readonly renderer: SymbolRenderer;
@@ -37,6 +39,7 @@ export interface GameScreenDependencies {
   readonly audio: SoundMixer;
   readonly keyboard: KeyboardState;
   readonly rng: Rng;
+  readonly uiRng: Rng;
   readonly logger: Logger;
   readonly controls: FlowControls;
   readonly selection: GameSelection;
@@ -44,7 +47,7 @@ export interface GameScreenDependencies {
 
 export class GameScreen implements Screen {
   readonly name = 'game';
-  readonly cursor = Cursor.Default;
+  private readonly menu: GameMenu;
   private readonly renderer: WorldRenderer;
   private readonly session: GameSession;
 
@@ -71,7 +74,12 @@ export class GameScreen implements Screen {
       logger: deps.logger,
       onCompleted: (result) => deps.controls.finishGame(result),
     });
+    this.menu = new GameMenu({ shell: deps.shell, renderer: deps.kit.renderer, audio: deps.audio, settings: deps.settings, rng: deps.uiRng, quit: () => this.session.requestQuit() });
     deps.shell.hideOverlay();
+  }
+
+  get cursor(): Cursor {
+    return this.menu.cursor;
   }
 
   get ticksPerSecond(): number {
@@ -80,6 +88,7 @@ export class GameScreen implements Screen {
 
   tick(): void {
     this.session.tick();
+    this.menu.tick();
   }
 
   present(): void {
@@ -87,6 +96,7 @@ export class GameScreen implements Screen {
     const { ctx, canvas } = this.deps.shell;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(composed.canvas, 0, 0, canvas.width, canvas.height);
+    this.menu.present();
   }
 
   idle(hasTime: () => boolean): void {
@@ -94,13 +104,17 @@ export class GameScreen implements Screen {
   }
 
   pointer(input: PointerInput): void {
+    if (this.menu.open) {
+      this.menu.pointer(input);
+      return;
+    }
     if (input.phase !== PointerPhase.Down) return;
     const action = this.renderer.hud.hitTest(input.point);
     if (action === HudAction.Quit) this.session.requestQuit();
   }
 
-  key(): boolean {
-    return false;
+  key(code: string): boolean {
+    return this.menu.key(code);
   }
 
   suspend(): void {}

@@ -170,6 +170,20 @@ covers the stage and swallows clicks, so the window is modal.
   creates the array, so those entries are lost and the keys count as invalid. The
   backslash entry's name is `''` in the decompiled table and is kept.
 
+## In-game Esc menu (`GameMenu`)
+
+The original has no in-game menu. Esc opens one in single and online play (owner request):
+
+* A white backdrop at 75 % alpha over the running game (no pause), then the main menu's
+  `mcCoopPlay` and `mcDeathPlay` slots with attached labels SETTINGS and QUIT, styled and
+  rolled over like the main menu buttons. The menu background and title are not drawn
+  (`StageScene.transparent`).
+* SETTINGS opens the same `mcWindow_Options` SETTINGS window as the main menu
+  (`SetupWindow`); CLOSE or Esc returns to the choices. Esc on the choices closes the menu.
+* QUIT does what QUIT? on the upgrade list does: single play ends the game, online play
+  leaves to the lobby room.
+* The game keeps reading the keyboard while the menu is open; the pointer goes to the menu.
+
 ## Transitions (`CScreen_Transition`)
 
 Each menu screen snapshots the visible canvas (the previous screen's last frame, or the

@@ -247,6 +247,7 @@
   "controls.info": "Additional controls: 0-9 select weapons, {upgradeKey} shows the upgrade list",
   "controls.upgradeListKey": "TAB",
   "setup.menuButton": "SETTINGS",
+  "gameMenu.quit": "QUIT",
   "setup.title": "SETTINGS",
   "setup.graphics.title": "Graphics:",
   "setup.graphics.info": "SHARP draws at your screen's resolution. SMOOTH and PIXELATED draw at 640 x 480 like the original.",

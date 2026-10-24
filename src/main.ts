@@ -119,6 +119,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         audio,
         keyboard,
         rng: new SeededRng(randomSeed()),
+        uiRng: menuRng,
         logger,
         controls,
         selection,
@@ -136,7 +137,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         room: new LobbyRoom({ client: online, settings: userSettings, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result }),
       }),
     onlineGame: (controls, start) =>
-      new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start }),
+      new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start, uiRng: menuRng }),
   };
   const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor));
   startOnlineGame = (start) => flow.startOnlineGame(start);

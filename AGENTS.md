@@ -118,6 +118,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * Two browser tabs on `npm run dev`: DEATH MATCH in both, HOST in one, JOIN and the row's JOIN in
   the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player, the frags bar
   with the local name on the left and the opponent on the right, no switch-sides arrows.
+* In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
+  SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
+  screen (online: the lobby room).
 * Switch to another tab while playing single -> on return the game continues where it was,
   with no pause screen and no catch-up burst.
 * `npx vitest run test/adapters test/services test/entry test/ui` -> asset mapping,

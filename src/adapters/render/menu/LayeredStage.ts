@@ -11,6 +11,7 @@ export interface StageScene {
   readonly items: readonly DisplayItem[];
   readonly overrides: Overrides;
   readonly expand: ReadonlySet<string>;
+  readonly transparent?: boolean;
 }
 
 export interface StageLayer {
@@ -74,12 +75,16 @@ export class LayeredStage {
 
   render(scene: StageScene): Surface {
     const layers = this.layers(scene);
-    const key = layers.map((layer) => layer.key).join('\n');
+    const key = `${scene.transparent === true}\n${layers.map((layer) => layer.key).join('\n')}`;
     if (key === this.composedKey) return this.current;
     const ctx = this.current.ctx;
     resetContext(ctx);
-    ctx.fillStyle = STAGE_BACKGROUND;
-    ctx.fillRect(0, 0, this.current.width, this.current.height);
+    if (scene.transparent === true) {
+      ctx.clearRect(0, 0, this.current.width, this.current.height);
+    } else {
+      ctx.fillStyle = STAGE_BACKGROUND;
+      ctx.fillRect(0, 0, this.current.width, this.current.height);
+    }
     for (const layer of layers) {
       const bitmap = this.bitmap(layer);
       if (bitmap) ctx.drawImage(bitmap.surface.canvas, bitmap.x, bitmap.y);

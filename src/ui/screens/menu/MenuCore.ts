@@ -14,6 +14,18 @@ export interface MenuKit {
   readonly audio: SoundMixer;
 }
 
+export function sceneHitTest<Action>(
+  library: SymbolRenderer['library'],
+  scene: StageScene,
+  targets: readonly MenuTarget<Action>[],
+): (point: StagePoint) => MenuTarget<Action> | undefined {
+  return (point) =>
+    targets.find((target) => {
+      const area = instanceHitArea(library, scene.items, target.path, scene.overrides);
+      return area !== undefined && hitAreaContains(area, point);
+    });
+}
+
 function snapshot(kit: MenuKit): ScreenTransition {
   const surface = kit.renderer.createSurface(kit.shell.canvas.width, kit.shell.canvas.height);
   surface.ctx.drawImage(kit.shell.canvas, 0, 0);
@@ -63,11 +75,6 @@ export class MenuCore<Action> {
   }
 
   hitTest(scene: StageScene, targets: readonly MenuTarget<Action>[]): (point: StagePoint) => MenuTarget<Action> | undefined {
-    const library = this.kit.renderer.library;
-    return (point) =>
-      targets.find((target) => {
-        const area = instanceHitArea(library, scene.items, target.path, scene.overrides);
-        return area !== undefined && hitAreaContains(area, point);
-      });
+    return sceneHitTest(this.kit.renderer.library, scene, targets);
   }
 }
