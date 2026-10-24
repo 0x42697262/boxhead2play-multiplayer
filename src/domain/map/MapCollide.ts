@@ -17,6 +17,7 @@ export interface MovingBody {
 
 export class MapCollide {
   private collided = false;
+  private touched: Thing[] = [];
 
   constructor(
     private readonly map: GameMap,
@@ -25,6 +26,10 @@ export class MapCollide {
 
   get lastCollided(): boolean {
     return this.collided;
+  }
+
+  get lastTouched(): readonly Thing[] {
+    return this.touched;
   }
 
   markArea(from: Position, to: Position, flags: number): void {
@@ -78,6 +83,7 @@ export class MapCollide {
 
   genericCollide(body: MovingBody): boolean {
     this.collided = false;
+    this.touched = [];
     const { position } = body;
     const step = body.delta.clone();
     const pushed = this.collideMapwho(position.add(step), body.radius, body.id);
@@ -154,6 +160,7 @@ export class MapCollide {
         if (distance >= radius + other.radius) continue;
         if (checkHeight && !(position.z < other.position.z + other.height)) continue;
         other.collidedWithId = other.id;
+        this.touched.push(other);
         const away = position.subtract(other.position).scale((radius + other.radius - distance) / distance);
         position = position.add(away);
         this.collided = true;

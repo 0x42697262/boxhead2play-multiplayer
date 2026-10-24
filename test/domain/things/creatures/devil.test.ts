@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Angle } from '../../../../src/domain/math/Angle.ts';
 import { CreatureState } from '../../../../src/domain/things/creatures/CreatureState.ts';
 import { Devil } from '../../../../src/domain/things/creatures/Devil.ts';
 import { FireBall } from '../../../../src/domain/things/shots/FireBall.ts';
@@ -25,6 +26,20 @@ describe('Devil', () => {
     expect(devil.maxLife).toBe(1000);
     expect(fireballs).toBeGreaterThan(0);
     expect(lowest).toBeLessThanOrEqual(150 + 1);
+  });
+
+  it('hurts the player it touches even when the player stands just across a cell border', () => {
+    const world = makeRealWorld(room(16, 7, [cellObject(InitKind.Player1, 5, 3)]));
+    const player = playerOf(world);
+    player.move(at(5.05, 3.5));
+    const devil = spawn(world, new Devil(world, at(14.5, 1.5)));
+    spawn(world, new FireBall(world, at(2.5, 3.5), new Angle(0), devil, 50, false));
+    const before = player.life;
+    for (let tick = 0; tick < 40 && player.life === before; tick++) {
+      player.invincible = 0;
+      world.update();
+    }
+    expect(player.life).toBeLessThan(before);
   });
 
   it('throws an object-breaking fireball at a wall in its way', () => {

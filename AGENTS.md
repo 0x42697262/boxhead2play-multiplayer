@@ -105,6 +105,9 @@ Add one line per behavior change: what to do, and the result you expect.
   "+N MORE", under "PLAYERS: n/16".
 * Zombie next to a player -> the player loses 50 life per attack (also with damage off).
   Devil within 5 cells, facing the player with a clear line -> a fireball for 50.
+* `npx vitest run test/domain/map/GameMap.test.ts test/domain/things/creatures/devil.test.ts` ->
+  diagonal zombie attacks also hit a player in a side cell; a fireball hurts a player standing
+  just across a cell border.
 * Shoot a barrel next to another barrel -> two explosions two ticks apart, both
   barrels gone, scorch decals and a `(0, 30)` shake.
 * Multiplier x5 -> every player gets the UZI (key 2, 100 rounds). Weapon out of ammo ->

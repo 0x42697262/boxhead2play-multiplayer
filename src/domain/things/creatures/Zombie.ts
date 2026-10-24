@@ -88,7 +88,8 @@ export class Zombie extends Creature {
 
   private tickAttack(): void {
     if (!this.animator.animate(attackAnimationSpeed(ZOMBIE.attackAnimationRate, this.speed))) return;
-    this.cellHere()?.adjacent(this.angle.direction).affect(new ZombieAttackAffect(this, this.damage));
+    const attack = new ZombieAttackAffect(this, this.damage);
+    for (const cell of this.cellHere()?.cellsToward(this.angle.direction, CollideFlag.Player) ?? []) cell.affect(attack);
     const returnState = this.states.previous;
     this.setState(CreatureState.Sleep);
     this.stateCount = ZOMBIE.attackSleepTicks;

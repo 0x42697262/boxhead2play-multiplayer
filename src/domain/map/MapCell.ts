@@ -102,6 +102,13 @@ export class MapCell implements CellId {
     }
   }
 
+  cellsToward(direction: number, sideFlags: number): MapCell[] {
+    const d = wrapDirection(direction);
+    const ahead = this.adjacent(d);
+    if (!(d & 1)) return [ahead];
+    return [ahead, ...[this.adjacent(d - 1), this.adjacent(d + 1)].filter((cell) => (cell.collide & sideFlags) !== 0)];
+  }
+
   collideFlagsToward(direction: number): number {
     const d = wrapDirection(direction);
     const flags = this.adjacent(d).collide;

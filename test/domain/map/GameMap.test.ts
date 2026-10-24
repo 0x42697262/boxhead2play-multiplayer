@@ -26,6 +26,15 @@ describe('GameMap cells', () => {
     expect(world.map.invalidCell.collide).toBe(CollideFlag.Solid);
   });
 
+  it('aims a zombie attack at the cell ahead, and on a diagonal also at the side cells holding a player', () => {
+    const { world } = makeWorld(room(10, 10));
+    const centre = world.map.cell(5, 5);
+    world.map.cell(6, 5).collide |= CollideFlag.Player;
+    expect(centre.cellsToward(Direction.East, CollideFlag.Player)).toEqual([world.map.cell(6, 5)]);
+    expect(centre.cellsToward(Direction.NorthEast, CollideFlag.Player)).toEqual([world.map.cell(6, 4), world.map.cell(6, 5)]);
+    expect(centre.cellsToward(Direction.SouthWest, CollideFlag.Player)).toEqual([world.map.cell(4, 6)]);
+  });
+
   it('marks collision solids from px rectangles, rounding to cells', () => {
     const { world } = makeWorld(room(10, 10, [solid(3, 3, 2, 1)]));
     expect(world.map.cell(3, 3).collide & CollideFlag.Solid).toBeTruthy();

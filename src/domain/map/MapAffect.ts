@@ -9,12 +9,17 @@ import { LINE_STEP_CELLS } from './tuning.ts';
 export class MapAffect {
   constructor(private readonly map: GameMap) {}
 
-  affectArea(area: CellRect, affect: Affect): void {
+  affectArea(area: CellRect, affect: Affect, touched: readonly Thing[] = []): void {
+    const affected = new Set<Thing>();
     for (const cell of this.map.cellsInArea(area)) {
       if (cell.childCount === 0) continue;
       for (const thing of cell.newestFirst()) {
+        affected.add(thing);
         if (thing.affectFlags & affect.type && affect.affector.id !== thing.id) thing.affect(affect);
       }
+    }
+    for (const thing of touched) {
+      if (!affected.has(thing) && thing.affectFlags & affect.type && affect.affector.id !== thing.id) thing.affect(affect);
     }
   }
 

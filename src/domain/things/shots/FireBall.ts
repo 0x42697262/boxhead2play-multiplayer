@@ -43,7 +43,7 @@ export class FireBall extends Shot {
       const affect = this.attacksObject
         ? new DevilAttackAffect(this.parent, this, FIREBALL.objectDamage, this.angle)
         : new FireBallAffect(this.parent, this, this.damage, this.angle);
-      this.world.map.affects.affectArea(area, affect);
+      this.world.map.affects.affectArea(area, affect, this.world.map.collide.lastTouched);
       this.delete();
       return;
     }
