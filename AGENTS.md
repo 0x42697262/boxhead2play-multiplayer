@@ -262,7 +262,7 @@ Add one line per behavior change: what to do, and the result you expect.
   no 2-pixel steps; barrel outlines stay 1 stage pixel thick.
 * Main menu, SETTINGS -> the options window titled SETTINGS with Graphics (SHARP, SMOOTH,
   PIXELATED) and Sound volume (OFF, LOW, MEDIUM, FULL); SMOOTH -> the canvas is 640 x 480 at
-  once; OFF -> no sounds; RESET -> SHARP, FULL; kept after a reload (settings `version` 3).
+  once; OFF -> no sounds; RESET -> SHARP, FULL; kept after a reload (settings `version` 7).
 * Hold two movement keys (for example S + D) -> player 1 walks diagonally at the same speed
   as straight (0.16 cells per tick).
 * `npm run dev` -> after loading, a fade from black to the main menu: background, BOXHEAD 2PLAY
@@ -291,7 +291,7 @@ Add one line per behavior change: what to do, and the result you expect.
   `'K'` stored; Escape cancels; RESET restores the defaults.
 * `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
   (wraparound, roll-over filters, valid keys, key capture, pointer, transition), option
-  mapping, settings v1 -> v2 -> v3 migration, screen flow (including lobby routing), lobby view
+  mapping, settings v1 -> ... -> v7 migration, screen flow (including lobby routing), lobby view
   model, online client and online playback pass.
 * Change `src/adapters/assets/schemas.ts` (or `ASSET_FORMAT_VERSION`), then `npm run setup:assets` ->
   "Extracting game assets from the SWF (extractor-changed)"; with `FFDEC_JAR` set, point it at a
@@ -305,11 +305,11 @@ Add one line per behavior change: what to do, and the result you expect.
   `.cache/`, assets are extracted, the main menu loads. A second `npm run dev` prints "Game
   assets are up to date." and starts immediately.
 * `npx vitest run test/server test/net test/adapters/net` -> hub sessions and resume, lobby
-  host rules, a fifth player refused, per-player frames, remote input moving a player 0.16
+  host rules, a seventeenth player refused, per-player frames, remote input moving a player 0.16
   cells per tick, late join and leave, game over, the 45 s reconnect grace, control masks and
   the protocol codec pass.
-* `npx vitest run test/domain/world test/domain/things` -> four players spawn on four
-  different cells, every player gets a 640 px camera, late join takes the lowest free index,
+* `npx vitest run test/domain/world test/domain/things` -> 16 players spawn spread out
+  (more than 3 cells apart), every player gets a 640 px camera, late join takes the lowest free index,
   a deathmatch kill is credited to the shooter, and a coop late joiner gets the unlocked
   weapons.
 * Two tabs on `npm run dev`, COOPERATIVE, HOST in tab 1, JOIN in tab 2 (the room lists both names
