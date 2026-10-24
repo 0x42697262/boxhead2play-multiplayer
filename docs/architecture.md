@@ -85,3 +85,5 @@ The caching strategy is [ADR 0004](adr/0004-canvas-rendering-and-caching.md). Re
 `src/main.ts` loads the catalogs, images, fonts and sounds with a progress display, builds
 the adapters and services, and starts `ScreenFlow` with the main menu. The menu screens
 are described in `docs/runtime/screens.md`.
+
+Parked ideas and what decides them are in `docs/plans.md`.
