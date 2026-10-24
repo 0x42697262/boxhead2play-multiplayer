@@ -14,6 +14,7 @@ export const LogEvent = {
   WorldCompleted: 'world.completed',
   WorldFailed: 'world.failed',
   AudioUnlocked: 'audio.unlocked',
+  FullscreenEntered: 'display.fullscreen_entered',
   VisibilityChanged: 'loop.visibility_changed',
   AudioUnavailable: 'audio.unavailable',
   FrameBudgetExceeded: 'loop.frame_budget_exceeded',

@@ -1,4 +1,5 @@
 import './ui/shell/shell.css';
+import './ui/mobile/mobile.css';
 import { browserFetcher, loadCatalogs } from './adapters/assets/AssetLoader.ts';
 import { fontFamily, loadFonts } from './adapters/assets/FontLoader.ts';
 import { decodeBrowserImage, GraphicImages } from './adapters/assets/GraphicImages.ts';
@@ -42,6 +43,8 @@ import { LobbyRoom } from './ui/screens/online/LobbyRoom.ts';
 import { OnlineMenuScreen } from './ui/screens/online/OnlineMenuScreen.ts';
 import { OnlineGameScreen } from './ui/screens/online/OnlineGameScreen.ts';
 import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX, type Viewport } from './ui/shell/Shell.ts';
+import { attachHomeScreenHint, attachRotateHint, setHomeScreenTitle } from './ui/mobile/MobileChrome.ts';
+import { enterLandscapeFullscreen, isHomeScreenCandidate } from './adapters/display/fullscreen.ts';
 
 const APP_ELEMENT_ID = 'app';
 const PERCENT = 100;
@@ -159,8 +162,9 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
       flow,
       loop,
       isGameKey: (code) => keys.has(code),
-      onFirstGesture: () => {
-        void webAudio?.unlock().then(() => logger.info(LogEvent.AudioUnlocked));
+      onGesture: (touch) => {
+        if (webAudio && !webAudio.unlocked) void webAudio.unlock().then(() => logger.info(LogEvent.AudioUnlocked));
+        if (touch) void enterLandscapeFullscreen(document, window.screen.orientation).then((entered) => entered && logger.info(LogEvent.FullscreenEntered));
       },
       onVisibility: (visible) => {
         logger.info(LogEvent.VisibilityChanged, { visible });
@@ -195,6 +199,9 @@ function main(): void {
   if (!host) return;
   const shell = Shell.create(document, host);
   shell.fit(browserViewport(window));
+  setHomeScreenTitle(document);
+  attachRotateHint(document);
+  if (isHomeScreenCandidate(navigator, document.fullscreenEnabled)) attachHomeScreenHint(document, (run, delayMs) => window.setTimeout(run, delayMs));
   let logger: Logger = createLogger(loadSettings({}).logLevel, crypto.randomUUID());
   try {
     logger = createLogger(loadSettings(readBrowserEnv()).logLevel, crypto.randomUUID());

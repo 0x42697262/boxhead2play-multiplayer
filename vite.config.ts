@@ -1,9 +1,10 @@
 import { defineConfig } from 'vitest/config';
+import { webManifestPlugin } from './tools/build/webManifest.ts';
 import { onlineServerPlugin } from './tools/dev/onlineServerPlugin.ts';
 
 export default defineConfig(({ isSsrBuild }) => ({
   base: './',
-  plugins: [onlineServerPlugin()],
+  plugins: [onlineServerPlugin(), webManifestPlugin()],
   build: {
     target: 'es2023',
     sourcemap: true,

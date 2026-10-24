@@ -15,7 +15,7 @@ export interface ListenerHandlers {
   readonly flow: ScreenFlow;
   readonly loop: GameLoop;
   readonly isGameKey: (code: string) => boolean;
-  readonly onFirstGesture: () => void;
+  readonly onGesture: (touch: boolean) => void;
   readonly onVisibility: (visible: boolean) => void;
   readonly onResize: () => void;
 }
@@ -23,6 +23,8 @@ export interface ListenerHandlers {
 const FORM_TAGS: ReadonlySet<string> = new Set(['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON']);
 
 const SINGLE_CHARACTER = 1;
+const MOUSE = 'mouse';
+const IOS_PINCH_EVENT = 'gesturestart';
 
 function typedCharacter(event: KeyboardEvent): string | undefined {
   if (event.ctrlKey || event.metaKey || event.altKey) return undefined;
@@ -36,14 +38,8 @@ function typingInForm(event: KeyboardEvent): boolean {
 
 export function attachListeners(targets: ListenerTargets, handlers: ListenerHandlers): void {
   const { window, document, canvas } = targets;
-  let gestured = false;
-  const gesture = (): void => {
-    if (gestured) return;
-    gestured = true;
-    handlers.onFirstGesture();
-  };
   window.addEventListener('keydown', (event) => {
-    gesture();
+    handlers.onGesture(false);
     if (typingInForm(event)) return;
     if (handlers.isGameKey(event.code)) event.preventDefault();
     if (!event.repeat && handlers.flow.key(event.code, typedCharacter(event))) event.preventDefault();
@@ -54,7 +50,11 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
     handlers.keyboard.keyUp(event.code);
   });
   window.addEventListener('blur', () => handlers.keyboard.releaseAll());
-  window.addEventListener('pointerdown', gesture);
+  window.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === MOUSE) handlers.onGesture(false);
+  });
+  window.addEventListener('pointerup', (event) => handlers.onGesture(event.pointerType !== MOUSE));
+  document.addEventListener(IOS_PINCH_EVENT, (event) => event.preventDefault());
   window.addEventListener('resize', handlers.onResize);
   const pointer = (phase: PointerPhase) => (event: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();

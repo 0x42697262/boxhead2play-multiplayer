@@ -2,9 +2,18 @@ html,
 body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
   background: #000;
   color: #fff;
   font-family: system-ui, sans-serif;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #app {
@@ -13,6 +22,7 @@ body {
   justify-content: center;
   width: 100%;
   height: 100%;
+  height: 100dvh;
 }
 
 .shell {

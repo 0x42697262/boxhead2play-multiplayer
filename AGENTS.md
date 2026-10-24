@@ -121,6 +121,11 @@ Add one line per behavior change: what to do, and the result you expect.
 * Online match (coop or deathmatch) -> a small green "4 ms" in the top-right corner, updated every
   second; delay the page's WebSocket sends by 150 ms -> orange "155 ms", by 400 ms -> red. SETTINGS
   (main menu or Esc) Ping OFF -> it disappears; the SETTINGS window shows six rows above RESET/CLOSE.
+* Phone in portrait -> black "Turn your device sideways to play." screen with a turning phone.
+  Landscape -> the menu; the first tap goes full screen without browser bars (Android Chrome) and
+  sound plays. iPhone Safari -> "Play in full screen / Tap Share, then Add to Home Screen." at the
+  top for 10 s; started from the Home Screen -> no browser bars. `/manifest.webmanifest` -> JSON
+  with `display: fullscreen`.
 * `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET
   rows, the lobby with its tick time and both players with their ONLINE time and about 0.5 KiB/s upload each, the lobby with MATCH and AGE times; `q`
   quits and restores the terminal. `npm start` without `BOXHEAD_MONITOR_TOKEN` -> `/__monitor`

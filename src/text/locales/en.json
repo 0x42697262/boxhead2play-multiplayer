@@ -1,5 +1,10 @@
 {
   "app.title": "Boxhead: 2Play Rooms",
+  "app.shortTitle": "Boxhead 2Play",
+  "mobile.rotate": "Turn your device sideways to play.",
+  "mobile.homeScreen.title": "Play in full screen",
+  "mobile.homeScreen.body": "Tap Share, then Add to Home Screen.",
+  "mobile.homeScreen.close": "Close",
   "app.copyright": "Original game © Sean Cooper 2007",
   "boot.loading": "Loading…",
   "boot.failed": "The game could not start: {reason}",
