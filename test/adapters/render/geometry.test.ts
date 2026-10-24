@@ -44,6 +44,21 @@ describe('buffer layout (RenderMovieClipAsBitmapObject)', () => {
     expect(layout.matrix).toEqual([1, 0, 0, 0.6, 19, -layout.dispY]);
   });
 
+  it('at a higher resolution is the same layout in device pixels, with the whole clip inside', () => {
+    const bounds = { xMin: -10.5, yMin: -4.2, xMax: 10.5, yMax: 4.2 };
+    const double = bufferLayout(bounds, 1, 0.6, 8, 2);
+    expect(double).toMatchObject({ width: 76, dispX: -38 });
+    for (const resolution of [1, 1.25, 2.25, 3]) {
+      for (const [scaleX, scaleY] of [[1, 1], [1, 0.6], [0.35, 0.35]] as const) {
+        const layout = bufferLayout(bounds, scaleX, scaleY, 8, resolution);
+        expect(bounds.xMin * scaleX * resolution - layout.dispX).toBeGreaterThanOrEqual(0);
+        expect(bounds.yMin * scaleY * resolution - layout.dispY).toBeGreaterThanOrEqual(0);
+        expect(bounds.xMax * scaleX * resolution - layout.dispX).toBeLessThanOrEqual(layout.width);
+        expect(bounds.yMax * scaleY * resolution - layout.dispY).toBeLessThanOrEqual(layout.height);
+      }
+    }
+  });
+
   it('gives empty clips a one pixel bitmap', () => {
     expect(bufferLayout(null, 1, 1, 8)).toMatchObject({ width: 1, height: 1, dispX: 0, dispY: 0 });
   });
