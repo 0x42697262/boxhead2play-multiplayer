@@ -40,8 +40,20 @@ interface FileFacts {
   readonly variants: ReadonlyMap<ContentEncoding, number>;
 }
 
+const NUL = '\0';
+
+function decodedPathname(url: string): string | undefined {
+  try {
+    const pathname = decodeURIComponent(new URL(url, REQUEST_BASE).pathname);
+    return pathname.includes(NUL) ? undefined : pathname;
+  } catch {
+    return undefined;
+  }
+}
+
 export function resolveStaticPath(root: string, url: string): string | undefined {
-  const pathname = decodeURIComponent(new URL(url, REQUEST_BASE).pathname);
+  const pathname = decodedPathname(url);
+  if (pathname === undefined) return undefined;
   const relativePath = normalize(pathname).replace(/^([/\\])+/, '');
   const absoluteRoot = resolve(root);
   const target = resolve(absoluteRoot, relativePath === '' ? INDEX_FILE : relativePath);
@@ -98,12 +110,7 @@ async function serve(root: string, cache: FactsCache, request: IncomingMessage, 
     response.writeHead(HTTP_METHOD_NOT_ALLOWED).end();
     return;
   }
-  let path: string | undefined;
-  try {
-    path = resolveStaticPath(root, request.url ?? URL_SEPARATOR);
-  } catch {
-    path = undefined;
-  }
+  const path = resolveStaticPath(root, request.url ?? URL_SEPARATOR);
   const file = path ? await stat(path).catch(() => undefined) : undefined;
   const target = path && file?.isDirectory() ? join(path, INDEX_FILE) : path;
   const found = target ? await stat(target).catch(() => undefined) : undefined;

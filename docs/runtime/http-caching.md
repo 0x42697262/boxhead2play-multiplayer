@@ -18,6 +18,11 @@ first visits about 4x smaller.
 The variant file names (`.br`, `.gz`) come from one place, `PRECOMPRESSED_SUFFIX` in
 `httpCaching.ts`, which both the precompress tool and the server import.
 
+`resolveStaticPath` decodes the request path once, refuses malformed `%` escapes and NUL
+bytes, and never resolves outside the served directory; encoded dot segments (`%2e%2e`,
+`..%2f`, `..%5c`) end up inside it and answer `404`. Both the production handler and the
+dev middleware have table tests for these paths.
+
 A read error before the headers are sent answers `500`. A read error after that, or a
 client that disconnects mid-download, ends the response and closes the file
 (`stream.pipeline`), so aborted downloads do not leak file descriptors.

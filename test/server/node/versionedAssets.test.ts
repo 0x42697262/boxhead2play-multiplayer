@@ -10,6 +10,17 @@ import { CachePolicy } from '../../../src/server/node/httpCaching.ts';
 import { versionedAssetMiddleware } from '../../../src/server/node/versionedAssets.ts';
 
 const FALLTHROUGH_STATUS = 299;
+const NOT_FOUND = 404;
+const SECRET_FILE = 'secret.txt';
+const TRAVERSALS: readonly string[] = [
+  `/assets/..%2f..%2f${SECRET_FILE}`,
+  `/assets/%2e%2e%2f%2e%2e%2f${SECRET_FILE}`,
+  `/assets/..%5c..%5c${SECRET_FILE}`,
+  `/assets/shapes/..%2f..%2f..%2f${SECRET_FILE}`,
+  `/assets/${SECRET_FILE}%00`,
+  '/assets/%',
+  '/assets/%E0%A4%A',
+];
 const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
 const version = contentVersion(createHash('sha256').update(svg).digest('hex'));
 let root = '';
@@ -28,7 +39,9 @@ function get(path: string, headers: Record<string, string> = {}): Promise<{ stat
 }
 
 beforeAll(async () => {
-  root = mkdtempSync(join(tmpdir(), 'versioned-assets-'));
+  const parent = mkdtempSync(join(tmpdir(), 'versioned-assets-'));
+  writeFileSync(join(parent, SECRET_FILE), svg);
+  root = join(parent, 'public');
   mkdirSync(join(root, 'assets', 'shapes'), { recursive: true });
   writeFileSync(join(root, 'assets', 'shapes', '1.svg'), svg);
   const middleware = versionedAssetMiddleware(root);
@@ -39,7 +52,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   server.close();
-  rmSync(root, { recursive: true, force: true });
+  rmSync(join(root, '..'), { recursive: true, force: true });
 });
 
 describe('dev server versioned assets', () => {
@@ -55,5 +68,15 @@ describe('dev server versioned assets', () => {
     expect((await get('/assets/shapes/1.svg')).status).toBe(FALLTHROUGH_STATUS);
     expect((await get('/assets/manifest.json')).status).toBe(FALLTHROUGH_STATUS);
     expect((await get('/node_modules/.vite/deps/zod.js?v=34b489e6')).status).toBe(FALLTHROUGH_STATUS);
+  });
+});
+
+describe('dev server versioned asset traversal', () => {
+  it.each(TRAVERSALS)('answers %s?v=... with 404', async (url) => {
+    expect((await get(`${url}?v=${version}`)).status).toBe(NOT_FOUND);
+  });
+
+  it('leaves a dot segment that leaves /assets/ to Vite', async () => {
+    expect((await get(`/assets/%2e%2e/${SECRET_FILE}?v=${version}`)).status).toBe(FALLTHROUGH_STATUS);
   });
 });

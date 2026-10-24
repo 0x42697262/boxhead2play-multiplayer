@@ -5,13 +5,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve as resolvePath, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { contentVersion } from '../../../src/adapters/assets/urls.ts';
 import { CachePolicy } from '../../../src/server/node/httpCaching.ts';
-import { staticFileHandler } from '../../../src/server/node/staticFiles.ts';
+import { resolveStaticPath, staticFileHandler } from '../../../src/server/node/staticFiles.ts';
 
 const failures = vi.hoisted(() => ({ read: false, hash: false }));
 
@@ -52,6 +52,20 @@ interface Reply {
   readonly body: Buffer;
 }
 
+const SECRET = 'outside the root';
+const SECRET_FILE = 'secret.txt';
+const TRAVERSALS: readonly string[] = [
+  `/../${SECRET_FILE}`,
+  `/%2e%2e/${SECRET_FILE}`,
+  `/%2E%2E%2F${SECRET_FILE}`,
+  `/..%2f${SECRET_FILE}`,
+  `/..%2f..%2f${SECRET_FILE}`,
+  `/..%5c${SECRET_FILE}`,
+  `/..%5c..%5c${SECRET_FILE}`,
+  `//..%2f${SECRET_FILE}`,
+  `/assets/..%2f..%2f..%2f${SECRET_FILE}`,
+];
+const UNREADABLE: readonly string[] = ['/index.html%00', '/%00', '/%', '/%E0%A4%A', '/%zz', '//['];
 const symbolsJson = JSON.stringify({ shapes: 'x'.repeat(4000) });
 const symbolsSha = createHash('sha256').update(symbolsJson).digest('hex');
 let root = '';
@@ -71,7 +85,9 @@ function get(path: string, headers: Record<string, string> = {}, method = 'GET')
 }
 
 beforeAll(async () => {
-  root = mkdtempSync(join(tmpdir(), 'static-files-'));
+  const parent = mkdtempSync(join(tmpdir(), 'static-files-'));
+  writeFileSync(join(parent, SECRET_FILE), SECRET);
+  root = join(parent, 'public');
   mkdirSync(join(root, 'assets', 'library'), { recursive: true });
   writeFileSync(join(root, 'index.html'), '<!doctype html>');
   writeFileSync(join(root, 'assets', 'index-BVrz_ycd.js'), 'console.log(1)');
@@ -85,7 +101,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
-  rmSync(root, { recursive: true, force: true });
+  rmSync(join(root, '..'), { recursive: true, force: true });
 });
 
 describe('static file caching', () => {
@@ -131,6 +147,25 @@ describe('static file caching', () => {
     expect(head.body.length).toBe(0);
     expect((await get('/', {}, 'POST')).status).toBe(405);
     expect((await get('/missing.json')).status).toBe(404);
+  });
+});
+
+describe('static path traversal', () => {
+  const base = resolvePath('/srv/www');
+
+  it.each(TRAVERSALS)('keeps %s inside the root', (url) => {
+    const target = resolveStaticPath(base, url);
+    expect(target === undefined || target.startsWith(base + sep)).toBe(true);
+  });
+
+  it.each(UNREADABLE)('resolves %s to nothing', (url) => {
+    expect(resolveStaticPath(base, url)).toBeUndefined();
+  });
+
+  it.each([...TRAVERSALS, ...UNREADABLE])('answers %s with 404', async (url) => {
+    const reply = await get(url);
+    expect(reply.status).toBe(404);
+    expect(reply.body.toString()).not.toContain(SECRET);
   });
 });
 

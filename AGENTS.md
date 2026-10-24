@@ -162,6 +162,8 @@ Add one line per behavior change: what to do, and the result you expect.
   second later 120 more pass; client 257 and lobby 257 are refused.
 * `npx vitest run test/server/Hub.test.ts` -> clients in the JOIN list get a new `lobbies` only
   when a listed field changes (host name, room, state, player count), built once per change.
+* `npm start`, `curl --path-as-is -i 'http://localhost:8080/..%2f..%2fetc%2fpasswd'`, `.../%2e%2e/package.json`,
+  `.../index.html%00` and `.../%E0%A4%A` -> 404 each; the server keeps running.
 * `npx vitest run test/server` -> a 17th player gets `lobbyFull`; a death match starts with 16
   players at 16 different indices. The lobby room lists at most 11 players, your own line and
   "+N MORE", under "PLAYERS: n/16".
