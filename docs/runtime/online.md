@@ -126,7 +126,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 7)
+## Protocol (`src/net/protocol.ts`, version 8)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
@@ -141,7 +141,9 @@ or a text key a frame may carry, bumps `PROTOCOL_VERSION` (`src/net/tuning.ts`).
 added the `joined` message tone (`hud.joined`) and the `serverFull` error. Version 6 added
 `latencyMs` to `ping` and the `latencies` message for the player list. Version 7 added the
 `addressLimit` and `addressLobbyLimit` errors: an older client would drop such an `error`
-as undecodable and show nothing.
+as undecodable and show nothing. Version 8 added the wire string reset: every `gameStarted`
+clears the string table and the baselines on both sides (ADR 0007, "Update: string reset at
+match start"); an older decoder would read the reset marker as a string id.
 
 | Client -> server | Purpose |
 |---|---|

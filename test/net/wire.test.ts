@@ -5,8 +5,8 @@ import { WireDecoder, WireEncoder, WireError } from '../../src/net/wire.ts';
 
 type Message = { readonly type: string; readonly [key: string]: unknown };
 
-function pair(): { send: (message: Message) => { bytes: number; decoded: unknown } } {
-  const encoder = new WireEncoder();
+function pair(resetTypes: ReadonlySet<string> = new Set()): { send: (message: Message) => { bytes: number; decoded: unknown } } {
+  const encoder = new WireEncoder(resetTypes);
   const decoder = new WireDecoder();
   return {
     send(message) {
@@ -71,6 +71,26 @@ describe('wire codec', () => {
     expect(send({ type: 'names', names: [...names].reverse() }).decoded).toEqual({ type: 'names', names: [...names].reverse() });
   });
 
+  it('clears the string table on both sides at a reset message type and interns again after a full table', () => {
+    const encoder = new WireEncoder(new Set(['start']));
+    const decoder = new WireDecoder();
+    const send = (message: Message): unknown => decoder.decode(encoder.encode(message));
+    const names = Array.from({ length: WIRE_STRING_TABLE_LIMIT + 10 }, (_unused, index) => `name${index}`);
+    send({ type: 'names', names });
+    expect(encoder.stringCount).toBe(WIRE_STRING_TABLE_LIMIT);
+    expect(send({ type: 'start', room: 'ROOM_Single_0001' })).toEqual({ type: 'start', room: 'ROOM_Single_0001' });
+    expect(encoder.stringCount).toBe(4);
+    expect(send({ type: 'names', names: names.slice(0, 2) })).toEqual({ type: 'names', names: names.slice(0, 2) });
+    expect(encoder.stringCount).toBe(7);
+    expect(send({ type: 'names', names: names.slice(1, 3) })).toEqual({ type: 'names', names: names.slice(1, 3) });
+  });
+
+  it('rejects a string reset anywhere but the start of a message', () => {
+    const start: Message = { type: 'start', text: 'a' };
+    const reset = new WireEncoder(new Set([start.type])).encode(start);
+    expect(() => new WireDecoder().decode(new Uint8Array([0, 1, 97, 9, ...reset.slice(0, 1)]))).toThrow(WireError);
+  });
+
   it('rejects truncated, unknown and out-of-range input', () => {
     const message: Message = { type: 'frame', tick: 1, text: 'hello' };
     const encoded = new WireEncoder().encode(message);
@@ -82,10 +102,10 @@ describe('wire codec', () => {
     expect(() => new WireDecoder().decode(new Uint8Array([...encoded, 1]))).toThrow(WireError);
   });
 
-  it('decodes seeded random message sequences exactly like JSON', () => {
+  it('decodes seeded random message sequences with string resets exactly like JSON', () => {
     for (const seed of PROPERTY_SEEDS) {
       const generator = new MessageGenerator(new SeededRng(seed));
-      const { send } = pair();
+      const { send } = pair(new Set([RESET_TYPE]));
       const last = new Map<string, Message>();
       for (let step = 0; step < PROPERTY_STEPS; step++) {
         const type = generator.pick(MESSAGE_TYPES);
@@ -103,7 +123,8 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 
 const PROPERTY_SEEDS = [1, 7, 42, 2026, 65537];
 const PROPERTY_STEPS = 400;
-const MESSAGE_TYPES = ['frame', 'lobby', 'lobbies'] as const;
+const RESET_TYPE = 'start';
+const MESSAGE_TYPES = ['frame', 'lobby', 'lobbies', RESET_TYPE] as const;
 const FIELD_NAMES = ['x', 'y', 'z', 'tick', 'name', 'entries', 'hud', 'list', 'flag', 'visual'] as const;
 const KEY_POOL = 12;
 const MAX_DEPTH = 4;

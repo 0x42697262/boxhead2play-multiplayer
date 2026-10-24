@@ -19,7 +19,8 @@ const Tag = {
 const StringSlot = {
   New: 0,
   Raw: 1,
-  FirstId: 2,
+  Reset: 2,
+  FirstId: 3,
 } as const;
 
 const VARINT_BITS = 128;
@@ -189,8 +190,19 @@ export class WireEncoder {
   private readonly baselines = new Map<string, Json>();
   private writer = new ByteWriter();
 
+  constructor(private readonly stringResetTypes: ReadonlySet<string> = new Set()) {}
+
+  get stringCount(): number {
+    return this.strings.size;
+  }
+
   encode(message: { readonly type: string }): Uint8Array {
     this.writer = new ByteWriter();
+    if (this.stringResetTypes.has(message.type)) {
+      this.strings.clear();
+      this.baselines.clear();
+      this.writer.varint(StringSlot.Reset);
+    }
     const baseline = this.baselines.get(message.type);
     this.string(message.type);
     const { value } = this.value(message as unknown as Json, baseline);
@@ -334,7 +346,7 @@ export class WireDecoder {
 
   decode(bytes: Uint8Array): unknown {
     const reader = new ByteReader(bytes);
-    const type = this.string(reader);
+    const type = this.messageType(reader);
     const value = this.value(reader, this.baselines.get(type));
     if (!reader.done) throw new WireError('trailing bytes');
     this.baselines.set(type, value);
@@ -424,8 +436,20 @@ export class WireDecoder {
     return count;
   }
 
-  private string(reader: ByteReader): string {
+  private messageType(reader: ByteReader): string {
     const slot = reader.varint();
+    if (slot !== StringSlot.Reset) return this.stringAt(reader, slot);
+    this.strings.length = 0;
+    this.baselines.clear();
+    return this.string(reader);
+  }
+
+  private string(reader: ByteReader): string {
+    return this.stringAt(reader, reader.varint());
+  }
+
+  private stringAt(reader: ByteReader, slot: number): string {
+    if (slot === StringSlot.Reset) throw new WireError('unexpected string reset');
     if (slot === StringSlot.New) {
       if (this.strings.length >= WIRE_STRING_TABLE_LIMIT) throw new WireError('string table full');
       const value = textDecoder.decode(reader.raw());

@@ -65,3 +65,34 @@ showed the JSON column.
   new socket starts with a new encoder and decoder.
 * Consumers must not mutate decoded trees: unchanged parts are shared with the decoder's
   baseline. The client hands Zod's copies to the game.
+
+## Update: string reset at match start (protocol 8)
+
+The string table only grows: every thing has a unique `thingKey` (`t<id>`), so a long match
+adds about 10 to 20 strings a minute and fills the 4096 slots after roughly 4 to 5 hours on
+one socket. Past the limit nothing breaks, but new strings travel raw in every frame.
+
+As cheap insurance, the server's encoder takes a set of reset message types
+(`gameStarted`, in `socketGateway`). Before such a message it clears its string table and
+its baselines and writes `StringSlot.Reset` in front of the type. The decoder clears both
+when it reads that marker; the marker anywhere else is a `WireError`. The first messages of
+a match are sent in full once (about 1 to 2 KB).
+
+The baselines are cleared too, not only the strings: an unchanged value is encoded and then
+rewound to a `Same` tag, and encoding it interns its strings. Before a reset that was
+harmless, because a value equal to the baseline was sent earlier. After a reset, the
+encoder would intern strings the decoder never received. The seeded property test in
+`test/net/wire.test.ts` sends reset messages and fails without the baseline clear.
+
+Rejected: leaving `thingKey` out of the table (costs bytes in every frame from the start)
+and least-recently-used eviction (both sides must evict the same slot; more code and test
+surface for little gain in a game of fixed scope).
+
+## Update: encoder CPU cost accepted
+
+Measured in review: with 16 players, encoding every player's frame takes about 6.5 ms per
+tick against about 1 ms for the simulation, so one core runs about 6 full 16-player
+lobbies; smaller lobbies cost proportionally less. The owner chose to keep the generic
+encoder as it is: the game is the stock original and will not grow, a hand-written frame
+codec would need codec changes for every new visual field, and the monitor's LOOP row shows
+when a server gets close to its tick budget.

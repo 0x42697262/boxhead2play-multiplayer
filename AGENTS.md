@@ -420,3 +420,7 @@ Add one line per behavior change: what to do, and the result you expect.
 * Render deploy (`BOXHEAD_TRUST_PROXY=true`), two phones on mobile data plus 8 tabs on one PC ->
   all phones connect; the 9th PC tab gets the address notice (Render's last `X-Forwarded-For`
   entry is the client).
+* `npx vitest run test/net/wire.test.ts` -> a `gameStarted` message clears the wire string
+  table and baselines on both sides; seeded random sequences with resets decode exactly like
+  JSON. Online, play two matches in a row in one tab -> the second starts and runs normally
+  (protocol version 8).
