@@ -65,3 +65,7 @@ export const PLAYER_NAME_OFFSET_Y_PX = 14;
 export const PLAYER_NAME_BOX_WIDTH_PX = 140;
 export const LOCAL_PLAYER_NAME_COLOR = 0x00ff00;
 export const OTHER_PLAYER_NAME_COLOR = 0xffffff;
+
+export const RESPAWN_TEXT_POSITION = { x: 320, y: 200 } as const;
+export const RESPAWN_TEXT_SCALE = 2;
+export const RESPAWN_TEXT_COLOR = 0xffffff;

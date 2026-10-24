@@ -210,6 +210,25 @@ describe('Player kill messages', () => {
   });
 });
 
+describe('Player respawn countdown', () => {
+  it('counts down to the respawn tick from the dead state in coop, and is absent while alive and in single play', () => {
+    const world = makeRealWorld(arena(), { options: { gameMode: GameMode.Coop, playerCharacters: [0, 1] } });
+    const player = playerOf(world, 1);
+    expect(player.hudStatus().respawnTicks).toBeUndefined();
+    kill(world, player);
+    for (let tick = 0; tick < 200 && player.state !== CreatureState.Dead; tick++) world.update();
+    const first = player.hudStatus().respawnTicks ?? 0;
+    expect(first).toBeGreaterThan(4 * 25);
+    let ticks = 0;
+    while (player.state !== CreatureState.PlayerControl && ticks < 400) {
+      world.update();
+      ticks++;
+    }
+    expect(ticks).toBe(first);
+    expect(player.hudStatus().respawnTicks).toBeUndefined();
+  });
+});
+
 describe('Player joining a running world', () => {
   it('gets the weapons unlocked so far in coop and empty ones in deathmatch', () => {
     const coop = makeRealWorld(arena(), { options: { gameMode: GameMode.Coop, difficulty: Difficulty.Expert } });

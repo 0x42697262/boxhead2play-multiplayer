@@ -132,6 +132,7 @@
   "hud.ammo": "{weapon}:{ammo}",
   "hud.playerName": "Player",
   "hud.scoreboard.title": "SCOREBOARD",
+  "hud.respawn": "RESPAWN IN {seconds}",
   "hud.kill.player": "{killer} killed {victim}!",
   "hud.kill.self": "{victim} killed themselves!",
   "hud.kill.zombie": "{victim} was killed by a zombie!",

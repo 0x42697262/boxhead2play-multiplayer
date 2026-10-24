@@ -32,6 +32,9 @@ import {
   MESSAGE_COLORS,
   NEW_WEAPON_UPGRADE_COLOR,
   PAUSED_TITLE_DEPTH,
+  RESPAWN_TEXT_COLOR,
+  RESPAWN_TEXT_POSITION,
+  RESPAWN_TEXT_SCALE,
   SCOREBOARD_COLUMNS,
   SCOREBOARD_TITLE_POSITION,
   UPGRADE_LIST_TITLE_DEPTH,
@@ -66,6 +69,10 @@ export function playerDisplayName(hud: HudFrame, playerIndex: number): string {
   return name ? name : t('hud.playerName');
 }
 
+export function respawnSeconds(ticks: number, ticksPerSecond: number): number {
+  return Math.max(1, Math.ceil(ticks / ticksPerSecond));
+}
+
 export function namedParams(hud: HudFrame, names: Readonly<Record<string, number>> | undefined): Record<string, string> {
   return Object.fromEntries(Object.entries(names ?? {}).map(([param, playerIndex]) => [param, playerDisplayName(hud, playerIndex)]));
 }
@@ -84,6 +91,7 @@ export class HudRenderer {
   private upgradeListKey: string | undefined = undefined;
   private upgradeEntries: readonly MultiplierListEntry[] | undefined = undefined;
   private panelShown = false;
+  private ticksPerSecond = 1;
   private scoreboard: { readonly key: string; readonly surface: Surface | undefined } | undefined = undefined;
   private currentResolution = 1;
 
@@ -128,6 +136,7 @@ export class HudRenderer {
     }
     resetContext(ctx);
     this.totals = hud;
+    this.ticksPerSecond = ticksPerSecond;
   }
 
   updatePlayers(labels: readonly PlayerLabel[]): void {
@@ -147,6 +156,7 @@ export class HudRenderer {
   drawLive(ctx: Context2D): void {
     const totals = this.totals;
     if (totals && this.gameMode !== GameMode.DeathMatch) this.drawScoreTotal(ctx, totals);
+    if (totals) this.drawRespawnCountdown(ctx, totals);
     for (const label of this.labels) {
       if (!label.visible) continue;
       const bitmap = this.playerClip(label);
@@ -186,6 +196,15 @@ export class HudRenderer {
     const key = `total|${totals.totalScore}|${totals.multiplier}|${overrides[HudChild.Timer]?.frame ?? 0}`;
     const bitmap = this.clip(HudSymbol.ScoreTotal, overrides, key, LIVE_CLIP_INFLATE_PX);
     if (bitmap) blit(ctx, bitmap, SCORE_TOTAL_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
+  }
+
+  private drawRespawnCountdown(ctx: Context2D, totals: HudFrame): void {
+    const ticks = totals.players.find((player) => player.playerIndex === totals.localPlayerIndex)?.status.respawnTicks;
+    if (ticks === undefined) return;
+    const text = t('hud.respawn', { seconds: respawnSeconds(ticks, this.ticksPerSecond) });
+    const overrides: Overrides = { [HudChild.MessageText]: { text, textColor: RESPAWN_TEXT_COLOR } };
+    const bitmap = this.clip(HudSymbol.Message, overrides, `respawn|${text}`, HUD_BUFFER_INFLATE_PX, RESPAWN_TEXT_SCALE);
+    if (bitmap) blit(ctx, bitmap, RESPAWN_TEXT_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
   }
 
   private playerClip(label: PlayerLabel): BufferedBitmap | undefined {
@@ -237,13 +256,13 @@ export class HudRenderer {
     return (item ? library.sprite(item.characterId)?.frameCount : undefined) ?? 1;
   }
 
-  private clip(symbol: string, overrides: Overrides, key: string, inflatePx: number): BufferedBitmap | undefined {
+  private clip(symbol: string, overrides: Overrides, key: string, inflatePx: number, scale = 1): BufferedBitmap | undefined {
     const hit = this.cache.get(key);
     if (hit) return hit;
     const id = this.renderer.library.characterId(symbol);
     if (id === undefined) return undefined;
     const resolution = this.currentResolution;
-    const layout = bufferLayout(this.renderer.library.localBounds(id, 0, overrides), 1, 1, inflatePx, resolution);
+    const layout = bufferLayout(this.renderer.library.localBounds(id, 0, overrides), scale, scale, inflatePx, resolution);
     const surface = this.renderer.createSurface(layout.width, layout.height);
     this.renderer.draw(surface.ctx, id, 0, layout.matrix, { overrides, resolution });
     const bitmap = { surface, dispX: layout.dispX, dispY: layout.dispY };

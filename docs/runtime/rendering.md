@@ -178,6 +178,11 @@ Online, each player's name is drawn 14 px below the player with the ammo text's 
 others. Single play has no names and shows none.
 `hitTest` maps clicks on `_Quit` while the list is shown.
 
+Respawn countdown: in coop and deathmatch the local player's `status.respawnTicks`
+(`Player.respawnTicks`: the dead state's remaining ticks plus the 1 s respawn delay, then the
+respawn state's) is drawn as "RESPAWN IN n" (whole seconds, rounded up) with `Hud.Message`
+at twice its size, centered at (320, 200). Single play has no respawn, so no countdown.
+
 Deathmatch scoreboard: TAB shows `HUD.Paused` with both titles (depths 14 and 15) hidden, a
 `Hud.Message` "SCOREBOARD" title at (320, 70) and one row per player in the three upgrade
 columns: rank and name, kills, deaths (`scoreboardRows`: most kills first, then fewer deaths;

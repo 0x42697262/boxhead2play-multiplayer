@@ -133,6 +133,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * Online coop, let a zombie kill a player -> red "<NAME> was killed by a zombie!" at the bottom
   for everyone; deathmatch grenade kill -> red "<KILLER> killed <VICTIM>!" and the frag goes to
   the thrower.
+* Online coop, die while the other player lives -> "RESPAWN IN 5" … "RESPAWN IN 1" in the
+  middle of your view, gone when you respawn.
 * In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
   SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
   screen (online: the lobby room).

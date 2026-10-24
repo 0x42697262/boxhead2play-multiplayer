@@ -1,3 +1,4 @@
+import { respawnSeconds } from '../../../src/adapters/render/hud/HudRenderer.ts';
 import { describe, expect, it } from 'vitest';
 import {
   lifeFrameIndex,
@@ -41,6 +42,14 @@ describe('score popups', () => {
     let draws = first;
     while (popups.count > 0) draws = popups.step();
     expect(draws[0]?.alpha).toBeLessThan(0);
+  });
+});
+
+describe('respawn countdown', () => {
+  it('rounds the remaining ticks up to whole seconds, never below 1', () => {
+    expect(respawnSeconds(126, 25)).toBe(6);
+    expect(respawnSeconds(125, 25)).toBe(5);
+    expect(respawnSeconds(1, 25)).toBe(1);
   });
 });
 

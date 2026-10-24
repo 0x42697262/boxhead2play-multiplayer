@@ -94,7 +94,15 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
       weaponShortName: weapon ? weapon.text.shortName : WEAPON_TEXT.pistol.shortName,
       ammo: ammo === INFINITE_AMMO ? undefined : ammo,
       visible: this.visible && !this.hasFlag(ThingFlag.Dead),
+      respawnTicks: this.respawnTicks(),
     };
+  }
+
+  private respawnTicks(): number | undefined {
+    if (this.world.settings.gameMode === GameMode.Single) return undefined;
+    if (this.states.is(CreatureState.Respawn)) return Math.max(this.stateCount + 1, 0);
+    if (this.states.is(CreatureState.Dead)) return this.stateCount + 1 + PLAYER.respawnDelayTicks + 1;
+    return undefined;
   }
 
   protected override processInit(): void {

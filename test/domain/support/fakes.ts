@@ -77,7 +77,7 @@ export class FakePlayer extends FakeThing implements PlayerThing {
   }
 
   hudStatus(): PlayerHudStatus {
-    return { lifeRatio: this.life / this.maxLife, weaponShortName: 'weapon.pistol.shortName', ammo: undefined, visible: true };
+    return { lifeRatio: this.life / this.maxLife, weaponShortName: 'weapon.pistol.shortName', ammo: undefined, visible: true, respawnTicks: undefined };
   }
 }
 

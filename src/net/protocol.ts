@@ -189,6 +189,7 @@ const PlayerStatusSchema = z.object({
   weaponShortName: TextKeySchema,
   ammo: z.number().optional(),
   visible: z.boolean(),
+  respawnTicks: z.number().int().optional(),
 });
 
 const HudSchema = z.object({

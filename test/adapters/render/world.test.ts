@@ -30,8 +30,8 @@ describe('world projection', () => {
 
   it('labels the weapon with ammo unless it is infinite', () => {
     const base = { playerIndex: 0, position: { x: 0, y: 0, z: 0 } };
-    expect(playerLabelText({ ...base, status: { lifeRatio: 1, weaponShortName: 'weapon.pistol.shortName', ammo: undefined, visible: true } })).toBe('Pistol');
-    expect(playerLabelText({ ...base, status: { lifeRatio: 1, weaponShortName: 'weapon.uzi.shortName', ammo: 42, visible: true } })).toBe('UZI:42');
+    expect(playerLabelText({ ...base, status: { lifeRatio: 1, weaponShortName: 'weapon.pistol.shortName', ammo: undefined, visible: true, respawnTicks: undefined } })).toBe('Pistol');
+    expect(playerLabelText({ ...base, status: { lifeRatio: 1, weaponShortName: 'weapon.uzi.shortName', ammo: 42, visible: true, respawnTicks: undefined } })).toBe('UZI:42');
   });
 
   it.skipIf(assetsMissing)('sizes the room bitmaps by truncating the room size', () => {

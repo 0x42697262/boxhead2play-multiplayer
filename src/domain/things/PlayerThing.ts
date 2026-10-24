@@ -8,6 +8,7 @@ export interface PlayerHudStatus {
   readonly weaponShortName: TextKey;
   readonly ammo: number | undefined;
   readonly visible: boolean;
+  readonly respawnTicks: number | undefined;
 }
 
 export interface PlayerCapabilities {
