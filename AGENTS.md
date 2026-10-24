@@ -104,9 +104,15 @@ Add one line per behavior change: what to do, and the result you expect.
   deathmatch play on ROOM_Single_0001 (a built-in room when assets are missing) with no NaN
   positions and identical traces for the same seed.
 * `npx vitest run test/domain/world/playerSpawns.test.ts` -> 16 players in every room, coop and
-  deathmatch, never stand inside a wall; ROOM_Single_0011 has no spawn point at (16, 9).
-* Start any mode a few times -> player 1 starts in a different open spot each time, never next
-  to a zombie door; 16 online players start spread out, at least 4 cells apart.
+  deathmatch, get their own free cell (8 at the start, 8 late joins) and never stand inside a wall;
+  ROOM_Single_0011 has no spawn point at (16, 9).
+* Start any mode a few times -> player 1 starts in a different open spot each time, at least 5
+  cells from a zombie or devil door; online players may start right next to each other.
+* Coop with zombies on one side of the room, die -> the respawn is on the far side, away from
+  the zombies and their doors. `npx vitest run test/domain/world/World.test.ts
+  test/domain/world/spawning.test.ts` -> with a zombie (or devil) at one end of an open room the
+  respawn is at the other end, dead zombies do not count, with no enemy alive the cell is 5+ cells
+  from every door, a room whose floor is all near a door still spawns, never in a wall.
 * DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> `` ` `` shows one more
   death for him and no kill for anybody.
 * A NixOS host with `services.boxhead2play.environmentFile` holding `BOXHEAD_MONITOR_TOKEN` ->
@@ -334,8 +340,8 @@ Add one line per behavior change: what to do, and the result you expect.
   host rules, a seventeenth player refused, per-player frames, remote input moving a player 0.16
   cells per tick, late join and leave, game over, the 45 s reconnect grace, control masks and
   the protocol codec pass.
-* `npx vitest run test/domain/world test/domain/things` -> 16 players spawn spread out
-  (more than 3 cells apart), every player gets a 640 px camera, late join takes the lowest free index,
+* `npx vitest run test/domain/world test/domain/things` -> 16 players spawn on 16 different
+  free cells, every player gets a 640 px camera, late join takes the lowest free index,
   a deathmatch kill is credited to the shooter, and a coop late joiner gets the unlocked
   weapons.
 * Two tabs on `npm run dev`, COOPERATIVE, HOST in tab 1, JOIN in tab 2 (the room lists both names

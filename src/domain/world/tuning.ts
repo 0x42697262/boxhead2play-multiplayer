@@ -9,8 +9,8 @@ export const KILLS_TO_WIN = [5, 10, 20, 50] as const;
 export const MAX_PLAYERS = 16;
 export const OPEN_SPAWN_SEARCH_CELLS = 64;
 
-export const PLAYER_SPAWN_CLEARANCE_CELLS = 3;
-export const PLAYER_SPAWN_ENEMY_POINT_CELLS = 5;
+export const PLAYER_SPAWN_CANDIDATES = 32;
+export const PLAYER_SPAWN_DOOR_CLEARANCE_CELLS = 5;
 
 export const DROPPED_PICKUP_SECONDS = 10;
 export const PICKUP_EVERY_N_KILLS = 5;

@@ -45,6 +45,23 @@ describe('player spawns in every room', () => {
     expect(points.some((point) => Math.trunc(point.position.x) === 16 && Math.trunc(point.position.y) === 9)).toBe(false);
   });
 
+  it.skipIf(!animations)('give 16 players their own free cell in every room, at the start and on late joins', () => {
+    const problems: string[] = [];
+    for (const id of roomIds()) {
+      const definition = assetRoom(id);
+      if (!definition || !animations) continue;
+      for (const gameMode of [GameMode.Coop, GameMode.DeathMatch]) {
+        const playerCharacters = Array.from({ length: PLAYERS / 2 }, () => PlayerCharacter.Swat);
+        const world = World.create(definition, settingsWith({ gameMode, playerCharacters }), { rng: new SeededRng(3), factory: createThingFactory(), animations });
+        for (let index = PLAYERS / 2; index < PLAYERS; index++) world.joinPlayer(index, PlayerCharacter.Bambo);
+        const cells = new Set(world.players().map((player) => `${player.position.cellX},${player.position.cellY}`));
+        if (world.players().length !== PLAYERS || cells.size !== PLAYERS) problems.push(`${id} ${gameMode}: ${world.players().length} players on ${cells.size} cells`);
+        problems.push(...playersInWalls(world).map((stuck) => `${id} ${gameMode}: ${stuck}`));
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
   it.skipIf(!animations)('never place or move a player inside a wall, also on spawn markers that the room art covers (ROOM_Single_0011)', () => {
     const stuck: string[] = [];
     for (const id of roomIds()) {

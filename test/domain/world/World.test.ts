@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { DomainEventType, MessageTone, type DomainEvent } from '../../../src/domain/events.ts';
-import { CollideFlag } from '../../../src/domain/map/CollideFlag.ts';
+import { CollideFlag, CollideMask } from '../../../src/domain/map/CollideFlag.ts';
 import { SeededRng } from '../../../src/domain/math/Rng.ts';
 import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import { ThingFlag } from '../../../src/domain/things/ThingFlag.ts';
 import { CompletionState } from '../../../src/domain/world/CompletionState.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { IDLE_TICK_INPUT } from '../../../src/domain/world/input.ts';
-import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
+import { InitKind, type RoomInitObject } from '../../../src/domain/world/RoomDefinition.ts';
 import { GameAmount, GameSpeed, LOCAL_SIMULATION_HOST, SERVER_SIMULATION_HOST, type SimulationHost } from '../../../src/domain/world/SimulationSettings.ts';
-import { MAX_PLAYERS, PLAYER_SPAWN_CLEARANCE_CELLS } from '../../../src/domain/world/tuning.ts';
+import { cellDistance } from '../../../src/domain/world/spawning.ts';
+import { MAX_PLAYERS, PLAYER_SPAWN_DOOR_CLEARANCE_CELLS } from '../../../src/domain/world/tuning.ts';
 import type { World } from '../../../src/domain/world/World.ts';
 import type { FakePlayer } from '../support/fakes.ts';
 import { FakeThing, at, cellObject, makeWorld, place, room, solid, cellOf } from '../support/fakes.ts';
@@ -269,20 +270,23 @@ describe('World screen effects per camera', () => {
 
 describe('World random player spawns', () => {
   const spawnRoom = () => room(40, 30, [cellObject(InitKind.Player1, 5, 5), cellObject(InitKind.Player2, 6, 5), cellObject(InitKind.Zombie, 30, 20), solid(20, 0, 1, 30)]);
+  const openRoom = (doors: RoomInitObject[] = []) => room(40, 10, [cellObject(InitKind.Player1, 20, 5), ...doors]);
   const cells = (world: World): string[] => world.things.players().map((player) => `${Math.trunc(player.position.x)},${Math.trunc(player.position.y)}`);
+  const SEEDS = Array.from({ length: 10 }, (_unused, index) => index + 1);
+  const FAR_END_CELLS = 10;
 
-  it.each([GameMode.Single, GameMode.Coop, GameMode.DeathMatch])('spreads 16 %s players over the floor reachable from the markers, away from each other and enemy spawns', (gameMode) => {
+  it.each([GameMode.Single, GameMode.Coop, GameMode.DeathMatch])('puts all %s players on different free cells of the floor reachable from the markers', (gameMode) => {
     const count = gameMode === GameMode.Single ? 1 : MAX_PLAYERS;
     const { world } = makeWorld(spawnRoom(), { options: { gameMode, playerCharacters: Array.from({ length: count }, () => 0) }, spawnRng: new SeededRng(11) });
     const players = world.things.players();
     expect(players).toHaveLength(count);
-    for (const player of players) {
-      expect(player.position.x).toBeLessThan(20);
-      for (const other of players) {
-        if (other === player) continue;
-        expect(Math.max(Math.abs(other.position.x - player.position.x), Math.abs(other.position.y - player.position.y))).toBeGreaterThan(PLAYER_SPAWN_CLEARANCE_CELLS);
-      }
-    }
+    expect(new Set(cells(world)).size).toBe(count);
+    for (const player of players) expect(player.position.x).toBeLessThan(20);
+  });
+
+  it('lets 16 players start next to each other when the room is small', () => {
+    const { world } = makeWorld(room(6, 6, [cellObject(InitKind.Player1, 2, 2)]), { options: { gameMode: GameMode.Coop, playerCharacters: Array.from({ length: MAX_PLAYERS }, () => 0) }, spawnRng: new SeededRng(2) });
+    expect(new Set(cells(world)).size).toBe(MAX_PLAYERS);
   });
 
   it('puts players in different places for different seeds, the same places for the same seed', () => {
@@ -292,13 +296,42 @@ describe('World random player spawns', () => {
     expect(run(3)).not.toEqual(run(4));
   });
 
-  it('respawns on a random free cell, not next to the other players', () => {
-    const { world } = makeWorld(spawnRoom(), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(5) });
+  it.each(SEEDS)('respawns at the far end of an open room when a zombie stands at the other end (seed %i)', (seed) => {
+    const { world } = makeWorld(openRoom(), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(seed) });
+    place(world, new FakeThing(world, at(38.5, 5.5), ThingClass.Zombie));
+    expect(world.playerRespawnPoint()?.cell.x).toBeLessThan(FAR_END_CELLS);
+  });
+
+  it.each(SEEDS)('ignores dead zombies and keeps away from devils too (seed %i)', (seed) => {
+    const { world } = makeWorld(openRoom(), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(seed) });
+    place(world, new FakeThing(world, at(1.5, 5.5), ThingClass.Zombie), undefined, ThingFlag.Dead);
+    place(world, new FakeThing(world, at(38.5, 5.5), ThingClass.Devil));
+    expect(world.playerRespawnPoint()?.cell.x).toBeLessThan(FAR_END_CELLS);
+  });
+
+  it.each(SEEDS)('spawns away from zombie and devil doors when no enemy is alive (seed %i)', (seed) => {
+    const doors = [cellObject(InitKind.Zombie, 3, 5), cellObject(InitKind.Devil, 36, 5)];
+    const { world } = makeWorld(openRoom(doors), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(seed) });
     const point = world.playerRespawnPoint();
-    expect(point).toBeDefined();
-    for (const player of world.things.players()) {
-      expect(point && Math.max(Math.abs(point.position.x - player.position.x), Math.abs(point.position.y - player.position.y))).toBeGreaterThan(PLAYER_SPAWN_CLEARANCE_CELLS);
+    for (const door of [...world.spawnPoints.zombies, ...world.spawnPoints.devils]) {
+      expect(point && cellDistance(point.cell, door.cell)).toBeGreaterThanOrEqual(PLAYER_SPAWN_DOOR_CLEARANCE_CELLS);
     }
+  });
+
+  it('still spawns when every floor cell is next to a door', () => {
+    const { world } = makeWorld(room(8, 8, [cellObject(InitKind.Player1, 1, 1), cellObject(InitKind.Zombie, 4, 4)]), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(1) });
+    expect(world.spawnPoints.zombies).toHaveLength(1);
+    expect(world.things.players()).toHaveLength(2);
+    expect(world.playerRespawnPoint()).toBeDefined();
+  });
+
+  it.each(SEEDS)('never respawns inside a wall (seed %i)', (seed) => {
+    const { world } = makeWorld(room(20, 12, [cellObject(InitKind.Player1, 1, 1), solid(4, 0, 2, 9), solid(10, 3, 2, 9), solid(15, 0, 1, 9)]), {
+      options: { gameMode: GameMode.Coop },
+      spawnRng: new SeededRng(seed),
+    });
+    const point = world.playerRespawnPoint();
+    expect(point && point.cell.collide & CollideMask.StaticImpassable).toBe(0);
   });
 });
 

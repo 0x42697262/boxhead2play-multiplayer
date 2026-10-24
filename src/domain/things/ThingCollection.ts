@@ -33,6 +33,12 @@ export class ThingCollection {
     return false;
   }
 
+  filter(predicate: (thing: Thing) => boolean): Thing[] {
+    const matches: Thing[] = [];
+    for (const thing of this.living.values()) if (predicate(thing)) matches.push(thing);
+    return matches;
+  }
+
   players(): PlayerThing[] {
     return [...this.playerThings.values()].reverse();
   }

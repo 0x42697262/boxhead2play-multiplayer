@@ -63,11 +63,58 @@ export function reachableFloor(starts: readonly MapCell[]): MapCell[] {
   return floor;
 }
 
-export function pickPlayerSpawnCell(floor: readonly MapCell[], rng: Rng, clear: (cell: MapCell) => boolean): MapCell | undefined {
-  const free = floor.filter((cell) => !(cell.collide & CollideMask.NonMovablePlayer));
-  const cleared = free.filter(clear);
-  const pool = cleared.length > 0 ? cleared : free;
-  return pool.length > 0 ? pool[rng.int(pool.length)] : undefined;
+export interface CellPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface PlayerSpawnFloor {
+  readonly awayFromDoors: readonly MapCell[];
+  readonly all: readonly MapCell[];
+}
+
+export interface PlayerSpawnSearch {
+  readonly floor: PlayerSpawnFloor;
+  readonly rng: Rng;
+  readonly enemies: readonly CellPoint[];
+  readonly candidates: number;
+}
+
+export function cellDistance(first: CellPoint, second: CellPoint): number {
+  return Math.max(Math.abs(first.x - second.x), Math.abs(first.y - second.y));
+}
+
+export function playerSpawnFloor(floor: readonly MapCell[], doors: readonly CellPoint[], doorClearanceCells: number): PlayerSpawnFloor {
+  const awayFromDoors = floor.filter((cell) => doors.every((door) => cellDistance(door, cell) >= doorClearanceCells));
+  return { awayFromDoors, all: floor };
+}
+
+function freeCells(cells: readonly MapCell[]): MapCell[] {
+  return cells.filter((cell) => !(cell.collide & CollideMask.NonMovablePlayer));
+}
+
+function nearestEnemyDistance(cell: CellPoint, enemies: readonly CellPoint[]): number {
+  let nearest = Number.POSITIVE_INFINITY;
+  for (const enemy of enemies) nearest = Math.min(nearest, cellDistance(enemy, cell));
+  return nearest;
+}
+
+export function pickPlayerSpawnCell(search: PlayerSpawnSearch): MapCell | undefined {
+  const awayFromDoors = freeCells(search.floor.awayFromDoors);
+  const pool = awayFromDoors.length > 0 ? awayFromDoors : freeCells(search.floor.all);
+  if (pool.length === 0) return undefined;
+  let best: MapCell | undefined;
+  let bestDistance = Number.NEGATIVE_INFINITY;
+  for (let draw = 0; draw < search.candidates; draw++) {
+    const cell = pool[search.rng.int(pool.length)];
+    if (!cell) continue;
+    const distance = nearestEnemyDistance(cell, search.enemies);
+    if (distance > bestDistance) {
+      best = cell;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 export function openSpawnNear(origin: SpawnPoint, occupied: ReadonlySet<MapCell>, searchCells: number): SpawnPoint | undefined {
