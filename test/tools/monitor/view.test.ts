@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClientActivity, MONITOR_FORMAT_VERSION, type MonitorClient, type MonitorSnapshot } from '../../../src/server/monitorProtocol.ts';
-import { clientRates, cpuPercent, fit, formatBytes, formatDuration, httpErrorText, renderView } from '../../../tools/monitor/view.ts';
+import { clientRates, cpuPercent, fit, formatBytes, formatDuration, httpErrorText, isNewerSample, renderView } from '../../../tools/monitor/view.ts';
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
@@ -24,6 +24,12 @@ function snapshot(timeMs: number, cpuMicros: number, clients: readonly MonitorCl
 }
 
 describe('monitor view', () => {
+  it('accepts only samples newer than the shown one', () => {
+    expect(isNewerSample(snapshot(1000, 0, []), snapshot(2000, 0, []))).toBe(true);
+    expect(isNewerSample(snapshot(2000, 0, []), snapshot(2000, 0, []))).toBe(false);
+    expect(isNewerSample(snapshot(2000, 0, []), snapshot(1000, 0, []))).toBe(false);
+  });
+
   it('formats bytes, durations and CPU time as htop-like numbers', () => {
     expect(formatBytes(512)).toBe('512 B');
     expect(formatBytes(1536)).toBe('1.5 KiB');

@@ -1,6 +1,6 @@
 import type { MonitorSnapshot } from '../../src/server/monitorProtocol.ts';
 import { MONITOR_FORMAT_VERSION, MONITOR_PATH, MONITOR_TOKEN_SCHEME } from '../../src/server/monitorProtocol.ts';
-import { httpErrorText, renderView } from './view.ts';
+import { httpErrorText, isNewerSample, renderView } from './view.ts';
 
 const DEFAULT_URL = 'http://localhost:5173';
 const DEFAULT_INTERVAL_MS = 1000;
@@ -73,20 +73,24 @@ function runLive(options: Options): void {
     const lines = renderView({ url: options.url, previous, current, error, width: process.stdout.columns || FALLBACK_COLUMNS, height: process.stdout.rows || FALLBACK_ROWS });
     process.stdout.write(`${HOME}${lines.join(`${CLEAR_LINE_END}\n`)}${CLEAR_LINE_END}${CLEAR_SCREEN_END}`);
   };
+  let timer: NodeJS.Timeout | undefined;
   const poll = async (): Promise<void> => {
+    const startedMs = performance.now();
     try {
       const next = await sample(options);
-      previous = current;
-      current = next;
+      if (!current || isNewerSample(current, next)) {
+        previous = current;
+        current = next;
+      }
       error = undefined;
     } catch (failure) {
       error = `No sample: ${errorText(failure)}`;
     }
     draw();
+    timer = setTimeout(() => void poll(), Math.max(0, options.intervalMs - (performance.now() - startedMs)));
   };
-  const timer = setInterval(() => void poll(), options.intervalMs);
   const quit = (): void => {
-    clearInterval(timer);
+    clearTimeout(timer);
     process.stdout.write(LEAVE_SCREEN);
     process.exit(0);
   };

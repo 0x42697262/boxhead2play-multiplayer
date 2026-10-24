@@ -153,6 +153,9 @@ Add one line per behavior change: what to do, and the result you expect.
   card; click the code line -> "LINK COPIED!". Paste the link in tab 2 -> tab 2 opens in tab 1's room. Main menu JOIN BY CODE
   (bottom right), type the code in lower case, Enter -> the same room; a wrong code -> "No game
   has that code.". In the game, Esc -> COPY LINK: XXXXX copies the link.
+* `npm run monitor` against a server whose `/__monitor` answers take 1.5 s -> one request at a
+  time, rates stay plausible (no negative or huge KiB/s); `npx vitest run test/tools/monitor`
+  passes.
 * `npx vitest run test/adapters/net test/services/online/OnlineClient.test.ts` -> reconnect
   delays 1.5 s, 3 s, 6 s … capped at 30 s and back to 1.5 s after a `welcome`; an undecodable
   frame closes the socket and the next socket decodes from scratch; `versionMismatch` stops

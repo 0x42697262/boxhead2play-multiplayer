@@ -36,6 +36,12 @@ Pointing the tool at a server nobody plays on shows 0 lobbies and 0 players.
 Rates come from the difference between two samples. A reconnect resets a player's
 counters; the tool then counts from zero instead of showing a negative rate.
 
+The tool sends one request at a time: the next one starts an interval after the previous
+one started, or right after it ended when it took longer (the request timeout, 2 s, is
+longer than the 1 s interval). A sample whose server `timeMs` is not newer than the shown
+one is dropped (`isNewerSample`), so a late answer never yields a negative or near-zero
+time span and absurd rates.
+
 ## Endpoint and access
 
 The server answers `GET /__monitor` (`MONITOR_PATH`) with a `MonitorSnapshot` JSON object

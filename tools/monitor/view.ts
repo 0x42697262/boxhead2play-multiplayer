@@ -96,6 +96,10 @@ export function bar(fraction: number, width = BAR_WIDTH): string {
   return `[${levelColor(clamped)}${BAR_FULL.repeat(filled)}${Style.Dim}${BAR_EMPTY.repeat(width - filled)}${Style.Reset}]`;
 }
 
+export function isNewerSample(current: MonitorSnapshot, next: MonitorSnapshot): boolean {
+  return next.timeMs > current.timeMs;
+}
+
 function elapsedSeconds(previous: MonitorSnapshot, current: MonitorSnapshot): number {
   return Math.max(1, current.timeMs - previous.timeMs) / MS_PER_SECOND;
 }
