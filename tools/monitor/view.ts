@@ -168,7 +168,7 @@ function systemLines(previous: MonitorSnapshot | undefined, current: MonitorSnap
   return [
     `${Style.Bold}CPU ${Style.Reset} ${bar(cpu / PERCENT)} ${cpu.toFixed(1).padStart(6)}% of one core (${current.cpu.cores} cores)   load ${load}`,
     `${Style.Bold}MEM ${Style.Reset} ${bar(memory.rss / memory.systemTotal)} RSS ${formatBytes(memory.rss)}   heap ${formatBytes(memory.heapUsed)} / ${formatBytes(memory.heapTotal)}   system ${formatBytes(usedSystem)} / ${formatBytes(memory.systemTotal)}`,
-    `${Style.Bold}LOOP${Style.Reset} delay mean ${delay.mean.toFixed(DELAY_DIGITS)} ms   p99 ${delay.p99.toFixed(DELAY_DIGITS)} ms   max ${delay.max.toFixed(DELAY_DIGITS)} ms`,
+    `${Style.Bold}LOOP${Style.Reset} delay over the last ${delay.windowMs / MS_PER_SECOND} s   mean ${delay.mean.toFixed(DELAY_DIGITS)} ms   p99 ${delay.p99.toFixed(DELAY_DIGITS)} ms   max ${delay.max.toFixed(DELAY_DIGITS)} ms`,
     `${Style.Bold}NET ${Style.Reset} ${Style.Green}↑ ${formatRate(sent)}${Style.Reset}   ${Style.Cyan}↓ ${formatRate(received)}${Style.Reset}   total ↑ ${formatBytes(traffic.bytesSent)}  ↓ ${formatBytes(traffic.bytesReceived)}`,
   ];
 }

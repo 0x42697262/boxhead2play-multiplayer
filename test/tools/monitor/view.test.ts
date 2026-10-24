@@ -16,7 +16,7 @@ function snapshot(timeMs: number, cpuMicros: number, clients: readonly MonitorCl
     cpu: { userMicros: cpuMicros, systemMicros: 0, cores: 8 },
     memory: { rss: 150 * 1024 * 1024, heapUsed: 40 * 1024 * 1024, heapTotal: 80 * 1024 * 1024, systemTotal: 16 * 1024 ** 3, systemFree: 8 * 1024 ** 3 },
     loadAverage: [0.5, 0.4, 0.3],
-    eventLoopDelayMs: { mean: 0.2, p99: 1.5, max: 2 },
+    eventLoopDelayMs: { mean: 0.2, p99: 1.5, max: 2, windowMs: 1000 },
     traffic: { bytesSent: clients.reduce((sum, item) => sum + item.bytesSent, 0), bytesReceived: 0 },
     clients,
     lobbies: [{ id: 'l1', name: "Ann's game", mode: 'coop', state: 'playing', members: 2, tickMs: 1.25, ageSeconds: 4000, matchSeconds: 95 }],

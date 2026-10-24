@@ -1,12 +1,57 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GameMode } from '../../src/domain/world/GameMode.ts';
 import { ClientActivity, MONITOR_PATH, type MonitorSnapshot } from '../../src/server/monitorProtocol.ts';
 import { createMonitor, monitorAllowed, type MonitorAccess } from '../../src/server/node/monitor.ts';
+import { EVENT_LOOP_WINDOW_MS } from '../../src/server/tuning.ts';
 import { OPTIONS, ROOM_ID, testHub } from './support.ts';
+
+const histograms = vi.hoisted(() => ({
+  created: 0,
+  resets: 0,
+  enabled: false,
+  count: 0,
+  meanNanos: 0,
+  p99Nanos: 0,
+  maxNanos: 0,
+}));
+
+vi.mock('node:perf_hooks', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  monitorEventLoopDelay: () => {
+    histograms.created++;
+    return {
+      enable: () => {
+        histograms.enabled = true;
+      },
+      disable: () => {
+        histograms.enabled = false;
+      },
+      reset: () => {
+        histograms.resets++;
+      },
+      percentile: () => histograms.p99Nanos,
+      get count() {
+        return histograms.count;
+      },
+      get mean() {
+        return histograms.meanNanos;
+      },
+      get max() {
+        return histograms.maxNanos;
+      },
+    };
+  },
+}));
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const TOKEN = 'a-long-monitor-token';
 const LOOPBACK: MonitorAccess = { token: undefined, loopbackWithoutToken: true };
+const DISABLED: MonitorAccess = { token: undefined, loopbackWithoutToken: false };
+const NANOS_PER_MS = 1_000_000;
 
 interface Captured {
   status: number | undefined;
@@ -70,5 +115,42 @@ describe('server monitor', () => {
     expect(snapshot.lobbies[0]?.matchSeconds).toBeGreaterThan(0);
     expect(snapshot.lobbies[0]?.ageSeconds).toBeGreaterThan(snapshot.lobbies[0]?.matchSeconds ?? 0);
     expect(ann?.onlineSeconds).toBeGreaterThan(0);
+  });
+
+  it('does not exist without a token or loopback access: no histogram, other handlers answer its path', () => {
+    const created = histograms.created;
+    const monitor = createMonitor({ hub: testHub().hub, traffic: () => ({ bytesSent: 0, bytesReceived: 0 }) }, DISABLED);
+    const captured: Captured = { status: undefined, body: '' };
+    expect(monitor.handle(request(MONITOR_PATH, '127.0.0.1'), response(captured))).toBe(false);
+    expect(captured.status).toBeUndefined();
+    monitor.close();
+    expect(histograms.created).toBe(created);
+  });
+
+  it('reports the event loop delay of the last full window, the same for every request', () => {
+    vi.useFakeTimers();
+    const resets = histograms.resets;
+    const monitor = createMonitor({ hub: testHub().hub, traffic: () => ({ bytesSent: 0, bytesReceived: 0 }) }, LOOPBACK);
+    const delay = (): MonitorSnapshot['eventLoopDelayMs'] => {
+      const captured: Captured = { status: undefined, body: '' };
+      monitor.handle(request(MONITOR_PATH, '127.0.0.1'), response(captured));
+      return (JSON.parse(captured.body) as MonitorSnapshot).eventLoopDelayMs;
+    };
+    expect(delay()).toEqual({ mean: 0, p99: 0, max: 0, windowMs: EVENT_LOOP_WINDOW_MS });
+    Object.assign(histograms, { count: 3, meanNanos: 12 * NANOS_PER_MS, p99Nanos: 20 * NANOS_PER_MS, maxNanos: 30 * NANOS_PER_MS });
+    vi.advanceTimersByTime(EVENT_LOOP_WINDOW_MS);
+    const first = delay();
+    const second = delay();
+    expect(first).toEqual({ mean: 2, p99: 10, max: 20, windowMs: EVENT_LOOP_WINDOW_MS });
+    expect(second).toEqual(first);
+    expect(histograms.resets - resets).toBe(1);
+    monitor.close();
+    expect(histograms.enabled).toBe(false);
+  });
+
+  it('ignores a request URL it cannot parse', () => {
+    const monitor = createMonitor({ hub: testHub().hub, traffic: () => ({ bytesSent: 0, bytesReceived: 0 }) }, LOOPBACK);
+    expect(monitor.handle(request('//[', '127.0.0.1'), response({ status: undefined, body: '' }))).toBe(false);
+    monitor.close();
   });
 });

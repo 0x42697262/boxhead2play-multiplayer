@@ -1,5 +1,5 @@
 export const MONITOR_PATH = '/__monitor';
-export const MONITOR_FORMAT_VERSION = 2;
+export const MONITOR_FORMAT_VERSION = 3;
 export const MONITOR_TOKEN_HEADER = 'authorization';
 export const MONITOR_TOKEN_SCHEME = 'Bearer ';
 
@@ -37,6 +37,13 @@ export interface MonitorLobby {
   readonly matchSeconds: number | null;
 }
 
+export interface EventLoopDelay {
+  readonly mean: number;
+  readonly p99: number;
+  readonly max: number;
+  readonly windowMs: number;
+}
+
 export interface MonitorSnapshot {
   readonly formatVersion: number;
   readonly timeMs: number;
@@ -44,7 +51,7 @@ export interface MonitorSnapshot {
   readonly cpu: { readonly userMicros: number; readonly systemMicros: number; readonly cores: number };
   readonly memory: { readonly rss: number; readonly heapUsed: number; readonly heapTotal: number; readonly systemTotal: number; readonly systemFree: number };
   readonly loadAverage: readonly number[];
-  readonly eventLoopDelayMs: { readonly mean: number; readonly p99: number; readonly max: number };
+  readonly eventLoopDelayMs: EventLoopDelay;
   readonly traffic: Traffic;
   readonly clients: readonly MonitorClient[];
   readonly lobbies: readonly MonitorLobby[];

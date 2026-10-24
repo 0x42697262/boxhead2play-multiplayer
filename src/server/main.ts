@@ -19,9 +19,8 @@ async function main(): Promise<void> {
   const logger = createLogger(settings.logLevel, SERVER_LOG_SESSION);
   const content = await loadGameContent(settings.assetDir);
   const serveStatic = staticFileHandler(settings.staticDir);
-  const monitorEnabled = settings.monitorToken !== undefined;
   const server = createServer((request, response) => {
-    if (monitorEnabled && game.monitor.handle(request, response)) return;
+    if (game.monitor.handle(request, response)) return;
     serveStatic(request, response);
   });
   const game = attachGameServer(server, content, logger, { token: settings.monitorToken, loopbackWithoutToken: false }, GATEWAY);

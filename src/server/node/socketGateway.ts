@@ -7,9 +7,9 @@ import { WireEncoder } from '../../net/wire.ts';
 import type { Hub } from '../Hub.ts';
 import type { Traffic } from '../monitorProtocol.ts';
 import type { Connection } from '../ports.ts';
+import { requestPathname } from './requestPath.ts';
 import { MAX_MESSAGE_BYTES, PING_INTERVAL_MS } from '../tuning.ts';
 
-const REQUEST_BASE = 'http://localhost';
 const OPEN = 1;
 
 interface Watched {
@@ -40,14 +40,6 @@ function text(data: RawData): string {
   return Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data).toString('utf8');
 }
 
-function pathname(url: string | undefined): string | undefined {
-  try {
-    return new URL(url ?? '', REQUEST_BASE).pathname;
-  } catch {
-    return undefined;
-  }
-}
-
 export interface SocketGatewayOptions {
   readonly rejectForeignUpgrades: boolean;
 }
@@ -61,7 +53,7 @@ export function attachSocketGateway(server: Server, hub: Hub, options: SocketGat
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_BYTES, perMessageDeflate: true });
   const watched = new WeakMap<WebSocket, Watched>();
   const upgrade = (request: IncomingMessage, socket: Duplex, head: Buffer): void => {
-    if (pathname(request.url) !== SOCKET_PATH) {
+    if (requestPathname(request.url) !== SOCKET_PATH) {
       if (options.rejectForeignUpgrades) socket.destroy();
       return;
     }
