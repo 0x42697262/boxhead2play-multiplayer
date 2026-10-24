@@ -66,6 +66,20 @@ PORT=8080 npm start
 Players open `http://<your host>:8080`. Behind HTTPS, the page connects with `wss://` on
 the same host. Server settings and the protocol are in `docs/runtime/online.md`.
 
+## Nix
+
+The repository is a Nix flake with a package, a `nix run` app, a dev shell and a NixOS
+module (`services.boxhead2play`).
+
+```sh
+nix run github:0x42697262/boxhead2play-multiplayer   # then open http://localhost:8080
+nix develop                                         # Node 24 + Java + FFDec, then npm install && npm run dev
+```
+
+The package extracts the assets at build time with a Nix-fetched FFDec, so the result
+needs no Java. Module options, the deployment example and the `npmDepsHash` update step are
+in `docs/deployment/nix.md`.
+
 ## Documentation
 
 Start with `docs/architecture.md` and `AGENTS.md` (working rules, confirmed facts and the

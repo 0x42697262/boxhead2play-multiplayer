@@ -52,6 +52,8 @@ hashes.
    regenerates and also writes the stamp.
 
 Pinned values live in `tools/setup/tuning.ts`; messages in `tools/setup/messages.ts`.
+The Nix flake reads the same two pins (see `docs/deployment/nix.md`) and provides
+`FFDEC_JAR`, so Nix builds and `nix develop` never download FFDec.
 To upgrade FFDec, change `FFDEC_VERSION` and `FFDEC_ARCHIVE_SHA256` together. The version
 change marks existing assets stale.
 

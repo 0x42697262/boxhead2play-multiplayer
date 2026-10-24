@@ -11,3 +11,5 @@ scripts/local/
 !boxhead2play.swf
 *.log
 .cache/
+result
+result-*

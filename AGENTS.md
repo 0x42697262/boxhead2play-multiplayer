@@ -82,6 +82,11 @@ application of the team architecture rules.
   `public/assets/` after it started. It answers them with `index.html` (`text/html`, status
   200). Restart `npm run dev` after re-extracting. Verified 2026-10-23 with
   `morphs/569_0.svg`.
+* The Nix package (`nix/package.nix`) needs `npmDepsHash` updated after every
+  `package-lock.json` change (`nix develop -c prefetch-npm-deps package-lock.json`).
+  `nix/ffdec.nix` reads `FFDEC_VERSION` and `FFDEC_ARCHIVE_SHA256` from
+  `tools/setup/tuning.ts` by regex; keep them as single-quoted `export const` lines.
+  Verified 2026-10-23 with Nix 2.34.7.
 
 ## Verification checklist
 
@@ -227,3 +232,5 @@ Add one line per behavior change: what to do, and the result you expect.
   frames per second of about 4 KB.
 * Two tabs on `npm run dev`, start a coop game while the guest tab is in the background, switch
   to it and press TAB before any upgrade -> the full upgrade list shows (pistol rows faded).
+* `nix build` then `PORT=8391 ./result/bin/boxhead2play` -> `server.started` with 18 rooms;
+  http://localhost:8391 shows the main menu. `nix flake check` -> all checks passed.
