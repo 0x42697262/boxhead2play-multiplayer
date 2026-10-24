@@ -6,6 +6,7 @@ import { createLogger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import { loadGameContent } from './node/content.ts';
 import { attachGameServer } from './node/gameServer.ts';
+import { monitorEnabled, type MonitorAccess } from './node/monitor.ts';
 import { staticFileHandler } from './node/staticFiles.ts';
 
 const SERVER_LOG_SESSION = 'server';
@@ -21,13 +22,20 @@ async function main(): Promise<void> {
     if (game.monitor.handle(request, response)) return;
     serveStatic(request, response);
   });
+  const monitorAccess: MonitorAccess = { token: settings.monitorToken, loopbackWithoutToken: false };
   const game = attachGameServer(server, content, logger, {
-    monitor: { token: settings.monitorToken, loopbackWithoutToken: false },
+    monitor: monitorAccess,
     gateway: { rejectForeignUpgrades: true, trustProxy: settings.trustProxy },
     limits: settings.addressLimits,
   });
   server.listen(settings.port, settings.host, () => {
-    logger.info(LogEvent.ServerStarted, { host: settings.host, port: settings.port, rooms: content.rooms.size, assets: join(settings.assetDir) });
+    logger.info(LogEvent.ServerStarted, {
+      host: settings.host,
+      port: settings.port,
+      rooms: content.rooms.size,
+      assets: join(settings.assetDir),
+      monitor: monitorEnabled(monitorAccess),
+    });
   });
   for (const signal of SHUTDOWN_SIGNALS) {
     process.once(signal, () => {

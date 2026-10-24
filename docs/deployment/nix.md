@@ -11,7 +11,7 @@ The repository is a Nix flake (`flake.nix`, `nix/`).
 | `nixosModules.default` | `services.boxhead2play`. |
 | `overlays.default` | Adds `pkgs.boxhead2play`. |
 | `checks.<linux>.package` | `nix flake check` builds the package. |
-| `checks.<linux>.nixos` | A NixOS VM test (`nix/vmTest.nix`, needs KVM): the service on port 81 bound to `::`, Caddy in front on `http://localhost:8000`; it curls `/`, `/assets/manifest.json` directly and through Caddy, and `/__monitor` with the token from `environmentFile`, and checks that the unit has `BOXHEAD_TRUST_PROXY=true`. |
+| `checks.<linux>.nixos` | A NixOS VM test (`nix/vmTest.nix`, needs KVM): the service on port 81 bound to `::`, Caddy in front on `http://localhost:8000`; it curls `/`, `/assets/manifest.json` directly and through Caddy, and `/__monitor` with the token from `environmentFile`, and checks that the unit has `BOXHEAD_TRUST_PROXY=true` and that `server.started` says `"monitor":true`. A second VM (`withoutSecrets`) points `environmentFile` at a missing file: the service still serves `/`, `/__monitor` fails, `server.started` says `"monitor":false`, and `journalctl -p warning` has the missing-file warning. |
 | `formatter` | `nix fmt` runs nixfmt. |
 
 ## How the package builds
@@ -85,7 +85,7 @@ Paste the printed hash into `nix/package.nix`.
 | `limits.lobbiesPerAddress` | `null` | `BOXHEAD_MAX_LOBBIES_PER_ADDRESS` (server default 4). |
 | `openFirewall` | `false` | Opens 80 and 443 with Caddy, otherwise `port`. |
 | `extraEnvironment` | `{}` | Extra environment variables. They end up in the world-readable Nix store, so no secrets. |
-| `environmentFile` | `null` | Absolute path on the host, given as a string, with `KEY=value` lines, for example `BOXHEAD_MONITOR_TOKEN`. systemd reads it as root before starting the service. A missing file is skipped, so the game still starts, only without the monitor. The type is `pathWith { inStore = false; absolute = true; }`: a path literal (`/etc/x` without quotes, `./secrets.env`) or a store path fails the evaluation, because interpolating a path literal copies the file into the world-readable Nix store. |
+| `environmentFile` | `null` | Absolute path on the host, given as a string, with `KEY=value` lines, for example `BOXHEAD_MONITOR_TOKEN`. systemd reads it as root before starting the service. A missing file is skipped (the `-` prefix on `EnvironmentFile`), so the game still starts, only without the monitor. A `+` `ExecStartPre` script (root, outside the sandbox, so it sees root-only paths despite `DynamicUser`) then writes `boxhead2play: environmentFile <path> not found; starting without it (BOXHEAD_MONITOR_TOKEN unset, /__monitor disabled)` to the journal at warning priority (`journalctl -u boxhead2play -p warning`) and exits 0. The type is `pathWith { inStore = false; absolute = true; }`: a path literal (`/etc/x` without quotes, `./secrets.env`) or a store path fails the evaluation, because interpolating a path literal copies the file into the world-readable Nix store. |
 | `caddy.enable` | `false` | Caddy reverse proxy with automatic HTTPS. Caddy proxies WebSocket upgrades on its own. |
 | `caddy.domain` | `""` | Required with Caddy. |
 | `caddy.extraConfig` | `""` | Appended inside the Caddy site block. |
@@ -133,3 +133,10 @@ Caddy forwards `/__monitor` like every other path.
   81 on `::` with only `CAP_NET_BIND_SERVICE`, Caddy reaches it at `[::1]:81`, and the
   monitor reports nonzero `systemTotal`, `systemFree` and three load averages under
   `ProtectProc=invisible`.
+
+## Verified (2026-10-24, Nix 2.34.7, nixpkgs nixos-unstable 02c087f), missing environmentFile
+
+* `nix build -L .#checks.x86_64-linux.nixos` passes in about 1 minute with the store warm. On
+  `withoutSecrets` the service starts, the journal has the missing-file warning at warning
+  priority and `server.started` with `"monitor":false`; on `machine` it has
+  `"monitor":true` and no such warning.

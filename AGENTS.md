@@ -113,6 +113,11 @@ Add one line per behavior change: what to do, and the result you expect.
   `npm run monitor -- --url https://<domain> --token <token>` shows the server; the token is not
   in `/nix/store`. `environmentFile = ./secrets.env;` (a path literal, not a string) -> the
   evaluation fails with "absolute path not in the Nix store".
+* `services.boxhead2play.environmentFile = "/etc/boxhead2play/missing.env";` with no such file ->
+  the service starts, `journalctl -u boxhead2play -p warning` shows "boxhead2play: environmentFile
+  /etc/boxhead2play/missing.env not found; starting without it (BOXHEAD_MONITOR_TOKEN unset,
+  /__monitor disabled)" and `server.started` has `"monitor":false`. `npm start` without the token
+  logs no warning. `nix build -L .#checks.x86_64-linux.nixos` checks both VMs.
 * `docker build -t boxhead2play .`, `docker run --memory 512m -e PORT=10000 -p 10000:10000
   boxhead2play` -> `server.started` with 18 rooms on port 10000; the page loads and a two-tab coop
   game runs. Render: New > Blueprint with `render.yaml` -> the same at `https://<service>.onrender.com`.

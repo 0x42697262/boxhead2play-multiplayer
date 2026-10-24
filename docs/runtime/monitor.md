@@ -61,5 +61,11 @@ is on (`monitorEnabled`: a token is set, or loopback access in the dev server); 
   address. Loopback alone is not trusted because a reverse proxy on the same host would
   make every visitor look local.
 
+`npm start` reports the result in its `server.started` line as `"monitor": true` or
+`false`. The server does not warn about an unset token: running without the monitor is a
+normal setup (local runs, Docker without the variable). The NixOS module warns instead when
+its configured `environmentFile` is missing, because there an unset token is a deployment
+mistake (`docs/deployment/nix.md`).
+
 The tool uses only Node built-ins (`tools/monitor/main.ts` for fetching, keys and the
 screen; `tools/monitor/view.ts` for the pure layout), so `node` runs it without a build.

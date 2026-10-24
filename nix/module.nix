@@ -23,6 +23,15 @@ let
   upstreamHost = wildcardLoopback.${cfg.host} or cfg.host;
   upstreamAddress = if lib.hasInfix ":" upstreamHost then "[${upstreamHost}]" else upstreamHost;
   portCapability = "CAP_NET_BIND_SERVICE";
+  privilegedExecPrefix = "+";
+  optionalFilePrefix = "-";
+  journalWarningPrefix = "<4>";
+  environmentFileCheck = pkgs.writeShellScript "boxhead2play-environment-file-check" ''
+    if [ ! -e ${lib.escapeShellArg cfg.environmentFile} ]; then
+      echo ${lib.escapeShellArg "${journalWarningPrefix}boxhead2play: environmentFile ${cfg.environmentFile} not found; starting without it (BOXHEAD_MONITOR_TOKEN unset, /__monitor disabled)"} >&2
+    fi
+    exit 0
+  '';
   limitVariables = {
     socketsPerAddress = "BOXHEAD_MAX_SOCKETS_PER_ADDRESS";
     sessionsPerAddress = "BOXHEAD_MAX_SESSIONS_PER_ADDRESS";
@@ -171,7 +180,8 @@ in
 
         serviceConfig = {
           ExecStart = lib.getExe cfg.package;
-          EnvironmentFile = mkIf (cfg.environmentFile != null) "-${cfg.environmentFile}";
+          EnvironmentFile = mkIf (cfg.environmentFile != null) "${optionalFilePrefix}${cfg.environmentFile}";
+          ExecStartPre = mkIf (cfg.environmentFile != null) "${privilegedExecPrefix}${environmentFileCheck}";
           Restart = "on-failure";
           RestartSec = 2;
 
