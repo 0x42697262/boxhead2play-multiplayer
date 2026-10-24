@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: boxhead2play
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: BOXHEAD_MONITOR_TOKEN
+        generateValue: true

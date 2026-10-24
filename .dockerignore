@@ -1,0 +1,13 @@
+.git
+node_modules
+dist
+dist-server
+public/assets
+.cache
+re
+result
+result-*
+scripts/local
+*.log
+.env
+.env.*

@@ -70,6 +70,18 @@ The server sends precompressed (brotli or gzip) files and long-lived cache heade
 content-versioned assets: a first visit downloads about 2.6 MiB, later visits only
 revalidate `index.html` and `manifest.json`. See `docs/runtime/http-caching.md`.
 
+## Render.com and Docker
+
+`render.yaml` deploys the `Dockerfile` as one free web service: push the repo, then in Render
+**New > Blueprint** and pick the repository. Docker is required because the build extracts
+the assets with FFDec, which needs Java, and Render's Node runtime has none. Details,
+limits of the free plan and the monitor token are in `docs/deployment/render.md`.
+
+```sh
+docker build -t boxhead2play .
+docker run -p 8080:8080 boxhead2play                 # then open http://localhost:8080
+```
+
 ## Nix
 
 The repository is a Nix flake with a package, a `nix run` app, a dev shell and a NixOS
