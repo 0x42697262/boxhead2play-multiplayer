@@ -19,6 +19,8 @@ export interface JoinRow {
 export interface JoinList {
   readonly rows: readonly JoinRow[];
   readonly info: string;
+  readonly page: number;
+  readonly pages: number;
 }
 
 export interface RoomPanel {
@@ -95,23 +97,35 @@ export function menuStatus(mode: OnlineMode, state: OnlineState, result: OnlineS
 
 function joinAction(summary: LobbySummary, joiningId: string | undefined): string {
   if (summary.id === joiningId) return t('online.join.joining');
-  if (summary.players >= summary.maxPlayers) return t('online.join.full');
-  return t('online.join.join');
+  const counts = { players: summary.players, max: summary.maxPlayers };
+  if (summary.players >= summary.maxPlayers) return t('online.join.full', counts);
+  return t('online.join.join', counts);
 }
 
-export function joinList(mode: OnlineMode, state: OnlineState, joiningId: string | undefined, slots: number): JoinList {
+export function pageCount(total: number, perPage: number): number {
+  return Math.max(1, Math.ceil(total / perPage));
+}
+
+export function clampPage(page: number, pages: number): number {
+  return Math.min(Math.max(page, 0), pages - 1);
+}
+
+export function joinList(mode: OnlineMode, state: OnlineState, joiningId: string | undefined, slots: number, requestedPage = 0): JoinList {
   const online = state.status === OnlineStatus.Online;
   const games = state.lobbies.filter((lobby) => lobby.mode === mode);
-  const rows = games.slice(0, slots).map((summary) => ({
+  const pages = pageCount(games.length, slots);
+  const page = clampPage(requestedPage, pages);
+  const rows = games.slice(page * slots, (page + 1) * slots).map((summary) => ({
     lobbyId: summary.id,
-    label: t('online.join.row', { name: summary.name.toUpperCase(), players: summary.players, max: summary.maxPlayers }),
+    label: t('online.join.row', { name: summary.name.toUpperCase() }),
     action: joinAction(summary, joiningId),
     joinable: online && joiningId === undefined && summary.players < summary.maxPlayers,
     running: summary.state === LobbyState.Playing,
   }));
   const notice = state.error ? t(`online.error.${state.error}`) : undefined;
-  const info = notice ?? (!online ? t(`online.status.${state.status}`) : games.length === 0 ? t('online.join.none') : t('online.join.info'));
-  return { rows, info };
+  const listInfo = pages > 1 ? t('online.join.paged', { page: page + 1, pages }) : t('online.join.info');
+  const info = notice ?? (!online ? t(`online.status.${state.status}`) : games.length === 0 ? t('online.join.none') : listInfo);
+  return { rows, info, page, pages };
 }
 
 function memberLine(lobby: LobbyDto, index: number, clientId: string | undefined): string {

@@ -155,7 +155,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * Lobby room (HOST), open OPTIONS or CONTROLS -> the window covers the player list and the
   options line; nothing draws over it.
 * Online menu, click NAME, type "Ann", Enter -> "NAME: ANN", kept after a reload. JOIN -> the
-  controls window titled "SELECT A GAME TO JOIN!" with rows like "ANN'S GAME 1/4:" and JOIN.
+  controls window titled "SELECT A GAME TO JOIN!" with rows like "ANN'S GAME" and "JOIN 1/16".
+  With more than 14 games (for example 30 WebSocket clients that each send `hello` and `createLobby`) ->
+  "Page 1 of 3", NEXT > and < PREV step through the pages, faded at the ends.
 * Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),
   kept after a reload; the game uses the chosen characters. Every level starts (no exclusive lock).
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET

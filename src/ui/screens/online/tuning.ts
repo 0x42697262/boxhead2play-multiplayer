@@ -1,3 +1,4 @@
+import type { TextKey } from '../../../text/i18n.ts';
 import type { TextStyle } from './stageText.ts';
 
 export const EditTextAsset = {
@@ -92,6 +93,24 @@ export const JOIN_ROWS: readonly JoinRowSpec[] = [
 ];
 
 export const JOIN_SLOTS = JOIN_PANELS.length * JOIN_ROWS.length;
+
+export interface JoinPagerButton {
+  readonly name: string;
+  readonly depth: number;
+  readonly x: number;
+  readonly step: number;
+  readonly text: TextKey;
+}
+
+export const JOIN_PAGER_BUTTONS: readonly JoinPagerButton[] = [
+  { name: 'joinPrevious', depth: 122, x: -85, step: -1, text: 'online.join.previous' },
+  { name: 'joinNext', depth: 123, x: 85, step: 1, text: 'online.join.next' },
+];
+export const JOIN_PAGER_LABEL = 'pagerLabel';
+export const JOIN_PAGER_LABEL_DEPTH = 6;
+export const JOIN_PAGER_ATTACHED_LABEL_DEPTH = 7;
+export const JOIN_PAGER_LABEL_COLOR = 0xffffff;
+export const JOIN_PAGER_DISABLED_ALPHA = 0.3;
 
 export const CARET_BLINK_TICKS = 25;
 

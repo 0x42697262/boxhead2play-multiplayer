@@ -17,7 +17,25 @@ const ONLINE: OnlineState = { status: OnlineStatus.Online, clientId: 'c2', lobbi
 
 const SLOTS = 14;
 
-import { visibleMemberIndices } from '../../../src/ui/screens/online/lobbyModel.ts';
+import { clampPage, pageCount, visibleMemberIndices } from '../../../src/ui/screens/online/lobbyModel.ts';
+
+describe('join list pages', () => {
+  it('splits hundreds of games into pages of the slot count and clamps the page', () => {
+    expect(pageCount(0, 14)).toBe(1);
+    expect(pageCount(14, 14)).toBe(1);
+    expect(pageCount(300, 14)).toBe(22);
+    expect(clampPage(-1, 3)).toBe(0);
+    expect(clampPage(5, 3)).toBe(2);
+  });
+
+  it('shows the requested page and says which page it is', () => {
+    const lobbies = Array.from({ length: 30 }, (_unused, index) => ({ id: `l${index}`, name: `G${index}`, mode: GameMode.Coop, roomId: 'ROOM_Single_0001', state: 'waiting' as const, players: 1, maxPlayers: 16 }));
+    const list = joinList(GameMode.Coop, { ...ONLINE, lobbies }, undefined, 14, 2);
+    expect(list.rows.map((row) => row.lobbyId)).toEqual(['l28', 'l29']);
+    expect(list.info).toBe('Page 3 of 3. Click JOIN next to a game.');
+    expect(joinList(GameMode.Coop, { ...ONLINE, lobbies: lobbies.slice(0, 3) }, undefined, 14, 2).page).toBe(0);
+  });
+});
 
 describe('lobby member list', () => {
   it('shows everyone up to the line limit, else the first players, your own line and a +N MORE line', () => {
@@ -28,7 +46,7 @@ describe('lobby member list', () => {
 });
 
 describe('online menu and join list', () => {
-  it('lists the games of the mode as "<NAME> n/max:" rows with JOIN, FULL or JOINING', () => {
+  it('lists the games of the mode as "<NAME>" rows with "JOIN n/max", "FULL n/max" or JOINING', () => {
     const state: OnlineState = {
       ...ONLINE,
       lobbies: [
@@ -40,15 +58,15 @@ describe('online menu and join list', () => {
     };
     const list = joinList(GameMode.Coop, state, undefined, SLOTS);
     expect(list.rows).toEqual([
-      { lobbyId: 'l1', label: "ANN'S GAME 2/4:", action: 'JOIN', joinable: true, running: false },
-      { lobbyId: 'l2', label: 'FULL 4/4:', action: 'FULL', joinable: false, running: true },
-      { lobbyId: 'l4', label: 'RUNNING 1/4:', action: 'JOIN', joinable: true, running: true },
+      { lobbyId: 'l1', label: "ANN'S GAME", action: 'JOIN 2/4', joinable: true, running: false },
+      { lobbyId: 'l2', label: 'FULL', action: 'FULL 4/4', joinable: false, running: true },
+      { lobbyId: 'l4', label: 'RUNNING', action: 'JOIN 1/4', joinable: true, running: true },
     ]);
     const joining = joinList(GameMode.Coop, state, 'l1', SLOTS);
     expect(joining.rows.map((row) => [row.action, row.joinable])).toEqual([
       ['JOINING…', false],
-      ['FULL', false],
-      ['JOIN', false],
+      ['FULL 4/4', false],
+      ['JOIN 1/4', false],
     ]);
     expect(joinList(GameMode.Coop, state, undefined, 1).rows).toHaveLength(1);
     expect(menuStatus(GameMode.Coop, state, undefined)).toBe('COOPERATIVE ONLINE · Open games: 3');

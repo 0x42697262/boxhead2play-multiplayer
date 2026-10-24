@@ -49,8 +49,11 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   OPTIONS values, then opens the lobby room.
 * **Join window.** JOIN opens the CONTROLS window (`mcWindow_Controls`) as a list: "SELECT A
   GAME TO JOIN!", the 7 key rows of both player panels as 14 game slots. The row label
-  shows `<GAME NAME> players/max:` and the key cell `JOIN`, `FULL` or `JOINING…`;
-  clicking the key cell joins. Joining a running game also asks to enter the match
+  shows `<GAME NAME>` and the key cell `JOIN n/max`, `FULL n/max` or `JOINING…`;
+  clicking the key cell joins. More than 14 games are split into pages: two clones of the
+  hidden RESET button (`< PREV`, `NEXT >`, 85 px left and right of the centered CLOSE) step
+  through them, faded at the first and last page, and the info line says "Page n of m". The
+  server allows up to 256 lobbies (`MAX_LOBBIES`). Entering a lobby code is not built yet. Joining a running game also asks to enter the match
   (`OnlineClient.joinLobby(..., enterMatch)`), so the player goes straight into it.
 * **Lobby room** (`SelectWorldScreen` with a `LobbyRoom`). The OBJECTIVE screen of the mode
   with the player list under the character card and the options summary under the level.

@@ -16,13 +16,21 @@ import { OverrideTree } from '../menu/overrideTree.ts';
 import { rollOverFilters } from '../menu/rollOver.ts';
 import { menuButtonLabelFrame, sceneMenuButton } from '../menu/menuButtonLabel.ts';
 import { MAIN_MENU_BACKGROUND_DEPTH, MAIN_MENU_TITLE_DEPTH, MENU_TICKS_PER_SECOND, MenuSymbol } from '../menu/tuning.ts';
-import { joinList, menuStatus, roomIdForLevel, type JoinRow } from './lobbyModel.ts';
+import { itemMatrix } from '../menu/MainMenuScreen.ts';
+import { joinList, menuStatus, roomIdForLevel, type JoinList, type JoinRow } from './lobbyModel.ts';
 import { editName, NameEntryOutcome } from './nameEntry.ts';
 import { placedText, staticTextFrame, textOverride, type StaticTextFrame, type TextStyle } from './stageText.ts';
 import {
   BACK_TAB_DEPTH,
   CARET_BLINK_TICKS,
   JOIN_ATTACHED_DEPTH,
+  JOIN_PAGER_ATTACHED_LABEL_DEPTH,
+  JOIN_PAGER_BUTTONS,
+  JOIN_PAGER_DISABLED_ALPHA,
+  JOIN_PAGER_LABEL,
+  JOIN_PAGER_LABEL_COLOR,
+  JOIN_PAGER_LABEL_DEPTH,
+  type JoinPagerButton,
   JOIN_HIDDEN_DEPTHS,
   JOIN_INFO_DEPTH,
   JOIN_LABEL_CELL_WIDTH_PX,
@@ -58,6 +66,7 @@ export const OnlineMenuAction = {
   EditName: 'editName',
   Back: 'back',
   Join: 'join',
+  Page: 'page',
 } as const;
 
 export type OnlineMenuAction =
@@ -66,7 +75,8 @@ export type OnlineMenuAction =
   | { readonly kind: typeof OnlineMenuAction.CloseJoin }
   | { readonly kind: typeof OnlineMenuAction.EditName }
   | { readonly kind: typeof OnlineMenuAction.Back }
-  | { readonly kind: typeof OnlineMenuAction.Join; readonly row: JoinRow };
+  | { readonly kind: typeof OnlineMenuAction.Join; readonly row: JoinRow }
+  | { readonly kind: typeof OnlineMenuAction.Page; readonly step: number };
 
 const MENU_BUTTONS = [Child.Host, Child.Join, Child.Name] as const;
 type MenuButton = (typeof MENU_BUTTONS)[number];
@@ -89,6 +99,21 @@ export interface OnlineMenuLayout {
   readonly title: StaticTextFrame | undefined;
   readonly info: StaticTextFrame | undefined;
   readonly slots: readonly JoinRowSlot[];
+  readonly pager: JoinPagerLayout;
+}
+
+export interface JoinPagerLayout {
+  readonly template: DisplayItem | undefined;
+  readonly close: DisplayItem | undefined;
+  readonly label: StaticTextFrame | undefined;
+  readonly labelFilters: readonly Filter[] | undefined;
+}
+
+function joinPagerLayout(library: SymbolLibrary, windowItems: readonly DisplayItem[]): JoinPagerLayout {
+  const template = windowItems.find((item) => item.name === JoinWindowChild.Reset);
+  const text = template ? library.frameItems(template.characterId, 0).find((item) => item.depth === JOIN_PAGER_LABEL_DEPTH) : undefined;
+  const close = windowItems.find((item) => item.name === JoinWindowChild.Close);
+  return { template, close, label: staticTextFrame(library, text), labelFilters: text?.filters };
 }
 
 export function onlineMenuLayout(library: SymbolLibrary): OnlineMenuLayout {
@@ -123,7 +148,13 @@ export function onlineMenuLayout(library: SymbolLibrary): OnlineMenuLayout {
     title: staticTextFrame(library, byDepth(JOIN_TITLE_DEPTH)),
     info: staticTextFrame(library, byDepth(JOIN_INFO_DEPTH)),
     slots,
+    pager: joinPagerLayout(library, windowItems),
   };
+}
+
+function pagerEnabled(button: JoinPagerButton, list: JoinList): boolean {
+  const target = list.page + button.step;
+  return target >= 0 && target < list.pages;
 }
 
 export class OnlineMenuScreen implements Screen {
@@ -135,6 +166,7 @@ export class OnlineMenuScreen implements Screen {
   private rolledOver: { readonly name: string; readonly filters: readonly Filter[] } | undefined = undefined;
   private joinOpen = false;
   private joiningId: string | undefined = undefined;
+  private joinPage = 0;
   private awaitingLobby = false;
   private draft: string | undefined = undefined;
   private result: LobbyEntry['result'];
@@ -217,6 +249,10 @@ export class OnlineMenuScreen implements Screen {
         return;
       case OnlineMenuAction.OpenJoin:
         this.joinOpen = true;
+        this.joinPage = 0;
+        return;
+      case OnlineMenuAction.Page:
+        this.joinPage = this.currentJoinList().page + action.step;
         return;
       case OnlineMenuAction.CloseJoin:
         this.joinOpen = false;
@@ -244,8 +280,15 @@ export class OnlineMenuScreen implements Screen {
         .map((row, index) => ({ row, slot: this.layout.slots[index] }))
         .filter(({ row, slot }) => row.joinable && slot !== undefined)
         .map(({ row, slot }) => ({ path: [...WINDOW, slot?.panel ?? '', slot?.button ?? ''], trigger: Trigger.Release, action: { kind: OnlineMenuAction.Join, row } as const }));
+      const list = this.currentJoinList();
+      const pager = JOIN_PAGER_BUTTONS.filter((button) => pagerEnabled(button, list)).map((button) => ({
+        path: [...WINDOW, button.name, JoinWindowChild.Button],
+        trigger: Trigger.Release,
+        action: { kind: OnlineMenuAction.Page, step: button.step } as const,
+      }));
       return [
         { path: CLOSE, trigger: Trigger.Release, action: { kind: OnlineMenuAction.CloseJoin } },
+        ...pager,
         ...rows,
         { path: [...WINDOW, JoinWindowChild.Lock], trigger: Trigger.Block },
       ];
@@ -300,7 +343,13 @@ export class OnlineMenuScreen implements Screen {
   }
 
   private joinRows(): readonly JoinRow[] {
-    return joinList(this.mode, this.deps.client.state, this.joiningId, JOIN_SLOTS).rows;
+    return this.currentJoinList().rows;
+  }
+
+  private currentJoinList(): JoinList {
+    const list = joinList(this.mode, this.deps.client.state, this.joiningId, JOIN_SLOTS, this.joinPage);
+    this.joinPage = list.page;
+    return list;
   }
 
   private labelText(name: MenuButton): string {
@@ -334,10 +383,11 @@ export class OnlineMenuScreen implements Screen {
     for (const name of [JoinWindowChild.Cover, JoinWindowChild.PressKey, JoinWindowChild.Reset]) tree.set([...WINDOW, name], { visible: false });
     tree.set([...WINDOW, JoinWindowChild.Close, JoinWindowChild.Selected], { visible: false });
     tree.set(CLOSE, { buttonState: this.core.pointer.buttonState(CLOSE) });
-    const list = joinList(this.mode, this.deps.client.state, this.joiningId, JOIN_SLOTS);
+    const list = this.currentJoinList();
     const attached = [
       this.windowText(JoinWindowChild.Title, JOIN_ATTACHED_DEPTH, TextStyles.WindowTitle, this.layout.title, t('online.join.title'), tree),
       this.windowText(JoinWindowChild.Info, JOIN_ATTACHED_DEPTH + 1, TextStyles.Small, this.layout.info, list.info, tree),
+      ...this.scenePager(tree, list),
     ].filter((item): item is DisplayItem => item !== undefined);
     tree.set(WINDOW, { attach: attached });
     const perPanel = new Map<string, DisplayItem[]>();
@@ -364,6 +414,33 @@ export class OnlineMenuScreen implements Screen {
       tree.set([...path, name], { ...textOverride(label, row.label, ROW_LABEL_COLOR), clip: label.bounds });
     });
     for (const [panel, items] of perPanel) tree.set([...WINDOW, panel], { attach: items });
+  }
+
+  private scenePager(tree: OverrideTree, list: JoinList): DisplayItem[] {
+    const { template, close, label: frame, labelFilters } = this.layout.pager;
+    if (!template) return [];
+    const [a = 1, b = 0, c = 0, d = 1, , ty = 0] = template.matrix;
+    if (close) {
+      const [ca = 1, cb = 0, cc = 0, cd = 1, , cty = 0] = close.matrix;
+      tree.set([...WINDOW, JoinWindowChild.Close], { matrix: itemMatrix([ca, cb, cc, cd, 0, cty]) });
+    }
+    if (list.pages <= 1) return [];
+    const library = this.deps.kit.renderer.library;
+    return JOIN_PAGER_BUTTONS.map((button) => {
+      const path = [...WINDOW, button.name];
+      const enabled = pagerEnabled(button, list);
+      tree.set([...path, JoinWindowChild.Selected], { visible: false });
+      tree.set([...path, JoinWindowChild.Button], { buttonState: enabled ? this.core.pointer.buttonState([...path, JoinWindowChild.Button]) : ButtonState.Up });
+      const label = frame
+        ? placedText(library, { name: JOIN_PAGER_LABEL, depth: JOIN_PAGER_ATTACHED_LABEL_DEPTH, style: TextStyles.OptionButton, anchorX: frame.centerX, top: frame.top })
+        : undefined;
+      tree.set(path, { ...(enabled ? {} : { alpha: JOIN_PAGER_DISABLED_ALPHA }), ...(label ? { attach: [label.item] } : {}) });
+      if (label) {
+        tree.set([...path, depthKey(JOIN_PAGER_LABEL_DEPTH)], { visible: false });
+        tree.set([...path, JOIN_PAGER_LABEL], { ...textOverride(label, t(button.text), JOIN_PAGER_LABEL_COLOR), ...(labelFilters ? { filters: labelFilters } : {}) });
+      }
+      return { ...template, name: button.name, depth: button.depth, matrix: itemMatrix([a, b, c, d, button.x, ty]) };
+    });
   }
 
   private windowText(name: string, depth: number, style: TextStyle, frame: StaticTextFrame | undefined, text: string, tree: OverrideTree): DisplayItem | undefined {
