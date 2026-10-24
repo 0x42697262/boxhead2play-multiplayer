@@ -35,7 +35,7 @@ consumed the release. The port:
   `heldTicks` (consecutive ticks held). It then clears the edges. A tap between two ticks
   arrives as `pressed` and `released` with `down` false. The domain's `LatchedControl`
   keeps an edge until game code consumes it, which is the `IsPressed` contract.
-* `sample` returns the `TickInput` and `upgradeListPressed`, the P key's press edge. The
+* `sample` returns the `TickInput` and `upgradeListPressed`, the Tab key's press edge (`UPGRADE_LIST_KEY_CODE`). The
   session toggles the list; the world never sees the key.
 
 The entry listener calls `preventDefault` for bound keys so arrows, Space and `/` do not

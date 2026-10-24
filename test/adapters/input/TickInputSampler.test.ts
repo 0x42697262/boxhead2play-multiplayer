@@ -29,7 +29,7 @@ describe('legacy key codes', () => {
     expect(bindings.player.nextWeapon).toEqual(['KeyE']);
     expect(bindings.player.prevWeapon).toEqual(['KeyQ']);
     expect(bindings.player.select3).toEqual(['Digit3']);
-    expect(bindings.upgradeList).toEqual(['KeyP']);
+    expect(bindings.upgradeList).toEqual(['Tab']);
     expect(boundCodes(bindings).has('ArrowLeft')).toBe(false);
     expect(bindings.player.fire).toEqual(['Space']);
   });
@@ -64,9 +64,9 @@ describe('tick input sampling (CInput edges)', () => {
   it('keeps edges until a tick consumes them', () => {
     const keyboard = new KeyboardState();
     const input = sampler();
-    keyboard.keyDown('KeyP');
-    keyboard.keyUp('KeyP');
-    keyboard.keyDown('KeyP');
+    keyboard.keyDown('Tab');
+    keyboard.keyUp('Tab');
+    keyboard.keyDown('Tab');
     const sampled = input.sample(keyboard, { quitRequested: true, ambienceSamplesPlaying: 2 });
     expect(sampled.upgradeListPressed).toBe(true);
     expect(sampled.tick.quitRequested).toBe(true);

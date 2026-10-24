@@ -1,5 +1,5 @@
 import { PlayerControl, type ControlState, type PlayerInput, type TickInput } from '../../domain/world/input.ts';
-import { asciiKeyCode, codeForKeyCode } from './keyCodes.ts';
+import { asciiKeyCode, codeForKeyCode, TAB_KEY_CODE } from './keyCodes.ts';
 import type { KeyboardState } from './KeyboardState.ts';
 
 export interface PlayerKeyCodes {
@@ -29,7 +29,7 @@ export interface SampledTick {
   readonly upgradeListPressed: boolean;
 }
 
-export const UPGRADE_LIST_KEY = 'P';
+export const UPGRADE_LIST_KEY_CODE = TAB_KEY_CODE;
 export const EXTRA_FIRE_KEY = ' ';
 export const SELECT_KEYS = '0123456789';
 
@@ -71,7 +71,7 @@ function playerBindings(keys: PlayerKeyCodes, extraFire: readonly number[]): Pla
 export function buildBindings(keys: PlayerKeyCodes): InputBindings {
   return {
     player: playerBindings(keys, [asciiKeyCode(EXTRA_FIRE_KEY)]),
-    upgradeList: codes(asciiKeyCode(UPGRADE_LIST_KEY)),
+    upgradeList: codes(UPGRADE_LIST_KEY_CODE),
   };
 }
 

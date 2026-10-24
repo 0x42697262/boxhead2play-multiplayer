@@ -112,8 +112,8 @@ Add one line per behavior change: what to do, and the result you expect.
   `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
 * Let zombies reach the player -> blood decals appear on the floor but never on walls,
   and the life bar above the player shrinks.
-* Press P -> the upgrade list over the running game, no "PAUSED!" (new weapons in green,
-  inactive ones faded); zombies keep moving and W A S D still walk; P again hides it; click
+* Press TAB -> the upgrade list (keyboard focus does not move) over the running game, no "PAUSED!" (new weapons in green,
+  inactive ones faded); zombies keep moving and W A S D still walk; TAB again hides it; click
   QUIT? -> back to the single select-world screen.
 * Two browser tabs on `npm run dev`: DEATH MATCH in both, HOST in one, JOIN and the row's JOIN in
   the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player, the frags bar
@@ -175,7 +175,7 @@ Add one line per behavior change: what to do, and the result you expect.
   weapons.
 * Two tabs on `npm run dev`, COOPERATIVE, HOST in tab 1, JOIN in tab 2 (the room lists both names
   and characters, tab 2 says "WAITING FOR ... TO START"), click the level in tab 1 -> both tabs play the same world with one shared score; W A S D
-  move only that tab's player; P in tab 2 shows the upgrade list there while both players keep
+  move only that tab's player; TAB in tab 2 shows the upgrade list there while both players keep
   playing; QUIT? -> tab 2 is back in the room with "You left the match." and "CLICK TO JOIN GAME";
   clicking the level joins the running match again.
 * Two tabs in a coop game with names Ann and Bob -> under each player its name in small text;
@@ -190,4 +190,4 @@ Add one line per behavior change: what to do, and the result you expect.
   the page (`/` 200, `/../package.json` 404) and `ws://localhost:8099/ws`; a match streams 25
   frames per second of about 4 KB.
 * Two tabs on `npm run dev`, start a coop game while the guest tab is in the background, switch
-  to it and press P before any upgrade -> the full upgrade list shows (pistol rows faded).
+  to it and press TAB before any upgrade -> the full upgrade list shows (pistol rows faded).

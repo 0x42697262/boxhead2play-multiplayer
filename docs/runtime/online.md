@@ -65,7 +65,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   spawns a new player with `World.joinPlayer` near a living player (or the nearest open
   cell). In coop the new player gets every weapon unlocked so far; in deathmatch it
   starts with empty weapons and the pistol, like a respawn.
-* **Leave.** QUIT? on the upgrade list (P) sends `leaveGame` and returns to the lobby room.
+* **Leave.** QUIT? on the upgrade list (TAB) sends `leaveGame` and returns to the lobby room.
   "Back to menu" leaves the lobby (no notice for a leave the player asked for). The host
   role moves to the next connected member. An empty lobby
   closes. A match with no players left ends (`abandoned`).
@@ -95,7 +95,7 @@ dropped (client) or answered with `error: badMessage` (server).
 | `lobbies`, `lobby`, `lobbyLeft {reason}` | Lobby list and state |
 | `gameStarted {matchId, mode, roomId, options, playerIndex, ticksPerSecond, projectionFactor}` | Open the online game screen |
 | `frame {tick, brightness, camera, entries, hud, events}` | One world tick for one player |
-| `upgrades` | The multiplier upgrade list (sent when it changes, shown with P) |
+| `upgrades` | The multiplier upgrade list (sent when it changes, shown with TAB) |
 | `gameOver {matchId, state, winnerName, score}` | Match result |
 | `error {reason}` | A request failed (`ErrorReason`) |
 
@@ -143,7 +143,7 @@ connection allows:
 
 ## Upgrade list
 
-There is no pause. P shows or hides the upgrade list and QUIT? over the running game; the
+There is no pause. TAB shows or hides the upgrade list and QUIT? over the running game; the
 player keeps moving and firing, and a new `upgrades` message refreshes the shown list.
 Hiding the tab sends released controls so the player stops walking.
 

@@ -5,7 +5,10 @@ const LETTER_Z_KEY_CODE = 90;
 const NUMPAD_ZERO_KEY_CODE = 96;
 const NUMPAD_NINE_KEY_CODE = 105;
 
+export const TAB_KEY_CODE = 9;
+
 const NAMED_KEY_CODES: Readonly<Record<number, string>> = {
+  [TAB_KEY_CODE]: 'Tab',
   32: 'Space',
   33: 'PageUp',
   34: 'PageDown',

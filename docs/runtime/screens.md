@@ -151,7 +151,7 @@ covers the stage and swallows clicks, so the window is modal.
 * There is one key panel (ADR 0005): `mcPlayer1` is moved to the center (x -77.5). The
   second panel, `mc2PlayerCover`, both "PLAYER n CONTROLS:" headings and the "Additional
   Controls" line are hidden. Attached edit texts show "CONTROLS" above the panel and
-  "Additional controls: 0-9 select weapons, P shows the upgrade list" below it.
+  "Additional controls: 0-9 select weapons, TAB shows the upgrade list" below it.
 * Space is named SPACE instead of the original `' '`.
 * Clicking `mcChangeKey_<name>` (`Click2`) shows `mcPressKey` (its own `mcLock` blocks the
   pointer) with the blinking "PRESS A KEY" clip. The next key (`KeyCapture`):
@@ -159,7 +159,7 @@ covers the stage and swallows clicks, so the window is modal.
   * a key in the table with `mValid` stores the code in `settings.keys` and persists it;
   * a key in the table with `mValid = false` (`;`, backquote, `#`, `[`, `]`, `-zero-`) is
     ignored;
-  * any other key (digits, P, Enter, modifiers, F-keys) shows "INVALID KEY!" for 500 ms,
+  * any other key (digits, P, Tab, Enter, modifiers, F-keys) shows "INVALID KEY!" for 500 ms,
     then cross-fades back to "PRESS A KEY" over 500 ms.
 * Reset applies the port's default keys (W, S, A, D, Space, E, Q) instead of the original
   `ResetControls` keys (arrows, `/`, `.`, `,`).

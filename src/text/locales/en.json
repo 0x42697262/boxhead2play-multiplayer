@@ -245,7 +245,7 @@
   "online.result.error": "The match stopped because of a server error.",
   "controls.title": "CONTROLS",
   "controls.info": "Additional controls: 0-9 select weapons, {upgradeKey} shows the upgrade list",
-  "controls.upgradeListKey": "P",
+  "controls.upgradeListKey": "TAB",
   "setup.menuButton": "SETTINGS",
   "setup.title": "SETTINGS",
   "setup.graphics.title": "Graphics:",
