@@ -20,7 +20,18 @@ import { secondsSince } from './elapsed.ts';
 import { ClientActivity, type MonitorClient, type MonitorLobby, type Traffic } from './monitorProtocol.ts';
 import { nameKey, sanitizeName, uniqueName } from './sanitize.ts';
 import { sameFields } from './sameFields.ts';
-import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from './tuning.ts';
+import { AddressCounts } from './AddressCounts.ts';
+import {
+  HELLO_TIMEOUT_MS,
+  MAX_CLIENTS,
+  MAX_LOBBIES,
+  MAX_MESSAGE_BYTES,
+  MAX_SOCKETS,
+  MESSAGE_BURST,
+  MESSAGE_RATE_PER_SECOND,
+  MS_PER_SECOND,
+  RECONNECT_GRACE_MS,
+} from './tuning.ts';
 
 class ClientSession implements LobbyClient {
   connection: Connection | undefined;
@@ -34,6 +45,7 @@ class ClientSession implements LobbyClient {
     readonly sessionId: string,
     public name: string,
     connection: Connection,
+    readonly address: string,
     readonly startedMs: number,
   ) {
     this.connection = connection;
@@ -78,12 +90,19 @@ export interface Link {
   closed(): void;
 }
 
+const REFUSED_LINK: Link = { receive: () => undefined, closed: () => undefined };
+
 export class Hub {
   private readonly sessions = new Map<string, ClientSession>();
   private readonly lobbies = new Map<string, Lobby>();
 
   private readonly codes = new Map<string, string>();
   private readonly listed = new Map<string, LobbySummaryDto>();
+  private readonly lobbyAddresses = new Map<string, string>();
+
+  private readonly socketsByAddress = new AddressCounts();
+  private readonly sessionsByAddress = new AddressCounts();
+  private readonly lobbiesByAddress = new AddressCounts();
 
   constructor(private readonly deps: HubDependencies) {}
 
@@ -95,13 +114,29 @@ export class Hub {
     return this.sessions.size;
   }
 
+  get socketCount(): number {
+    return this.socketsByAddress.total;
+  }
+
   lobby(id: string): Lobby | undefined {
     return this.lobbies.get(id);
   }
 
-  connect(connection: Connection): Link {
+  connect(connection: Connection, address: string): Link {
+    const refusal = this.socketRefusal(address);
+    if (refusal) {
+      this.refuse(connection, refusal);
+      return REFUSED_LINK;
+    }
+    this.socketsByAddress.add(address);
+    let open = true;
     let client: ClientSession | undefined;
     const limiter = new RateLimiter(this.deps.clock.now());
+    const cancelHello = this.deps.timers.after(HELLO_TIMEOUT_MS, () => {
+      if (client) return;
+      this.deps.logger.debug(LogEvent.HelloTimedOut, {});
+      connection.close();
+    });
     return {
       receive: (text) => {
         if (text.length > MAX_MESSAGE_BYTES || !limiter.allow(this.deps.clock.now())) {
@@ -114,12 +149,17 @@ export class Hub {
           return;
         }
         if (message.type === ClientMessageType.Hello) {
-          client = this.hello(connection, message, client);
+          client = this.hello(connection, address, message, client);
+          if (client) cancelHello();
           return;
         }
         if (client?.connection === connection) this.handle(client, message);
       },
       closed: () => {
+        if (!open) return;
+        open = false;
+        cancelHello();
+        this.socketsByAddress.remove(address);
         if (client?.connection === connection) this.disconnected(client);
       },
     };
@@ -151,6 +191,7 @@ export class Hub {
     for (const lobby of [...this.lobbies.values()]) lobby.close();
     for (const session of this.sessions.values()) session.cancelExpiry?.();
     this.sessions.clear();
+    this.sessionsByAddress.clear();
   }
 
   private reject(connection: Connection, reason: ErrorReasonValue): void {
@@ -158,7 +199,25 @@ export class Hub {
     this.deps.logger.debug(LogEvent.MessageRejected, { reason });
   }
 
-  private hello(connection: Connection, message: Extract<ClientMessage, { type: 'hello' }>, current: ClientSession | undefined): ClientSession | undefined {
+  private refuse(connection: Connection, reason: ErrorReasonValue): void {
+    connection.send({ type: ServerMessageType.Error, reason });
+    connection.close();
+    this.deps.logger.debug(LogEvent.ClientRefused, { reason });
+  }
+
+  private socketRefusal(address: string): ErrorReasonValue | undefined {
+    if (this.socketsByAddress.total >= MAX_SOCKETS) return ErrorReason.ServerFull;
+    if (this.socketsByAddress.reached(address, this.deps.limits.socketsPerAddress)) return ErrorReason.AddressLimit;
+    return undefined;
+  }
+
+  private sessionRefusal(address: string): ErrorReasonValue | undefined {
+    if (this.sessions.size >= MAX_CLIENTS) return ErrorReason.ServerFull;
+    if (this.sessionsByAddress.reached(address, this.deps.limits.sessionsPerAddress)) return ErrorReason.AddressLimit;
+    return undefined;
+  }
+
+  private hello(connection: Connection, address: string, message: Extract<ClientMessage, { type: 'hello' }>, current: ClientSession | undefined): ClientSession | undefined {
     if (current) return current;
     if (message.version !== PROTOCOL_VERSION) {
       this.reject(connection, ErrorReason.VersionMismatch);
@@ -167,13 +226,14 @@ export class Hub {
     }
     const known = message.sessionId === null ? undefined : this.sessions.get(message.sessionId);
     if (known) return this.resume(known, connection, message.name);
-    if (this.sessions.size >= MAX_CLIENTS) {
-      this.reject(connection, ErrorReason.ServerFull);
-      connection.close();
+    const refusal = this.sessionRefusal(address);
+    if (refusal) {
+      this.refuse(connection, refusal);
       return undefined;
     }
-    const session = new ClientSession(this.deps.newId(), this.deps.newId(), this.freeName(message.name, undefined), connection, this.deps.clock.now());
+    const session = new ClientSession(this.deps.newId(), this.deps.newId(), this.freeName(message.name, undefined), connection, address, this.deps.clock.now());
     this.sessions.set(session.sessionId, session);
+    this.sessionsByAddress.add(address);
     session.send({ type: ServerMessageType.Welcome, clientId: session.id, sessionId: session.sessionId, resumed: false });
     this.deps.logger.info(LogEvent.ClientConnected, { client: session.id, clients: this.sessions.size });
     return session;
@@ -219,6 +279,7 @@ export class Hub {
     session.lobby?.remove(session, LeaveReason.Expired);
     session.lobby = undefined;
     this.sessions.delete(session.sessionId);
+    this.sessionsByAddress.remove(session.address);
     this.deps.logger.info(LogEvent.ClientExpired, { client: session.id, clients: this.sessions.size });
   }
 
@@ -276,6 +337,7 @@ export class Hub {
   private createLobby(session: ClientSession, message: Extract<ClientMessage, { type: 'createLobby' }>): ErrorReasonValue | undefined {
     if (!this.deps.content.rooms.has(message.roomId)) return ErrorReason.RoomUnknown;
     if (this.lobbies.size >= MAX_LOBBIES) return ErrorReason.LobbyLimit;
+    if (this.lobbiesByAddress.reached(session.address, this.deps.limits.lobbiesPerAddress)) return ErrorReason.AddressLobbyLimit;
     this.leaveLobby(session);
     const lobby = new Lobby({ id: this.deps.newId(), code: this.freeCode(), mode: message.mode, roomId: message.roomId, options: message.options }, session, message.character, {
       content: this.deps.content,
@@ -289,6 +351,8 @@ export class Hub {
     });
     this.lobbies.set(lobby.id, lobby);
     this.codes.set(lobby.code, lobby.id);
+    this.lobbyAddresses.set(lobby.id, session.address);
+    this.lobbiesByAddress.add(session.address);
     session.lobby = lobby;
     this.deps.logger.info(LogEvent.LobbyCreated, { lobby: lobby.id, mode: lobby.mode, room: message.roomId });
     session.send({ type: ServerMessageType.Lobby, lobby: lobby.dto() });
@@ -327,6 +391,11 @@ export class Hub {
     this.lobbies.delete(lobby.id);
     this.codes.delete(lobby.code);
     this.listed.delete(lobby.id);
+    const address = this.lobbyAddresses.get(lobby.id);
+    if (address !== undefined) {
+      this.lobbyAddresses.delete(lobby.id);
+      this.lobbiesByAddress.remove(address);
+    }
     for (const session of this.sessions.values()) if (session.lobby === lobby) session.lobby = undefined;
     this.broadcastLobbies(lobby.mode);
   }

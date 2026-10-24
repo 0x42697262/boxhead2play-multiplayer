@@ -11,7 +11,7 @@ The repository is a Nix flake (`flake.nix`, `nix/`).
 | `nixosModules.default` | `services.boxhead2play`. |
 | `overlays.default` | Adds `pkgs.boxhead2play`. |
 | `checks.<linux>.package` | `nix flake check` builds the package. |
-| `checks.<linux>.nixos` | A NixOS VM test (`nix/vmTest.nix`, needs KVM): the service on port 81 bound to `::`, Caddy in front on `http://localhost:8000`; it curls `/`, `/assets/manifest.json` directly and through Caddy, and `/__monitor` with the token from `environmentFile`. |
+| `checks.<linux>.nixos` | A NixOS VM test (`nix/vmTest.nix`, needs KVM): the service on port 81 bound to `::`, Caddy in front on `http://localhost:8000`; it curls `/`, `/assets/manifest.json` directly and through Caddy, and `/__monitor` with the token from `environmentFile`, and checks that the unit has `BOXHEAD_TRUST_PROXY=true`. |
 | `formatter` | `nix fmt` runs nixfmt. |
 
 ## How the package builds
@@ -79,6 +79,10 @@ Paste the printed hash into `nix/package.nix`.
 | `host` | `127.0.0.1` | Bind address (`HOST`). Loopback is meant for a reverse proxy; use `0.0.0.0` to expose it directly. Caddy proxies a wildcard bind (`0.0.0.0`, `::`) through loopback (`127.0.0.1`, `[::1]`) and puts IPv6 addresses in brackets. |
 | `port` | `8080` | Port for the page, the assets and the WebSocket server at `/ws` (`PORT`). Below 1024 the service gets `CAP_NET_BIND_SERVICE` (ambient and bounding set) and no other capability. |
 | `logLevel` | `info` | `LOG_LEVEL`: `debug`, `info`, `warn` or `error`. |
+| `trustProxy` | `caddy.enable` | `BOXHEAD_TRUST_PROXY`: take the client address from the last `X-Forwarded-For` entry. On with the module's Caddy, which replaces any client-sent header with the client's address; keep `host` on loopback (or the firewall closed for `port`) so nobody bypasses Caddy. Set it yourself for another proxy; never on a server clients reach directly. |
+| `limits.socketsPerAddress` | `null` | `BOXHEAD_MAX_SOCKETS_PER_ADDRESS`. `null` keeps the server default (16); `0` is unlimited. |
+| `limits.sessionsPerAddress` | `null` | `BOXHEAD_MAX_SESSIONS_PER_ADDRESS` (server default 8). |
+| `limits.lobbiesPerAddress` | `null` | `BOXHEAD_MAX_LOBBIES_PER_ADDRESS` (server default 4). |
 | `openFirewall` | `false` | Opens 80 and 443 with Caddy, otherwise `port`. |
 | `extraEnvironment` | `{}` | Extra environment variables. They end up in the world-readable Nix store, so no secrets. |
 | `environmentFile` | `null` | Absolute path on the host, given as a string, with `KEY=value` lines, for example `BOXHEAD_MONITOR_TOKEN`. systemd reads it as root before starting the service. A missing file is skipped, so the game still starts, only without the monitor. The type is `pathWith { inStore = false; absolute = true; }`: a path literal (`/etc/x` without quotes, `./secrets.env`) or a store path fails the evaluation, because interpolating a path literal copies the file into the world-readable Nix store. |
@@ -96,7 +100,9 @@ because it hides `/proc/meminfo`: Node's `os.freemem()` then falls back to `sysi
 RAM without the page cache, and the monitor's MEM row would show far less free memory than
 the host has.
 
-There are no abuse-limit options: this server has no environment variables for them yet. Add options here once `src/config/serverEnv.ts` reads them.
+The proxy and limit settings are not secret, so they go into the unit's `Environment`, not
+into `environmentFile`. The limits are described in `docs/runtime/online.md` ("Per-address
+limits").
 
 ### Monitor on a deployed server
 

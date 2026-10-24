@@ -6,13 +6,11 @@ import { createLogger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import { loadGameContent } from './node/content.ts';
 import { attachGameServer } from './node/gameServer.ts';
-import type { SocketGatewayOptions } from './node/socketGateway.ts';
 import { staticFileHandler } from './node/staticFiles.ts';
 
 const SERVER_LOG_SESSION = 'server';
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 const FAILURE_EXIT_CODE = 1;
-const GATEWAY: SocketGatewayOptions = { rejectForeignUpgrades: true };
 
 async function main(): Promise<void> {
   const settings = loadServerSettings(process.env);
@@ -23,7 +21,11 @@ async function main(): Promise<void> {
     if (game.monitor.handle(request, response)) return;
     serveStatic(request, response);
   });
-  const game = attachGameServer(server, content, logger, { token: settings.monitorToken, loopbackWithoutToken: false }, GATEWAY);
+  const game = attachGameServer(server, content, logger, {
+    monitor: { token: settings.monitorToken, loopbackWithoutToken: false },
+    gateway: { rejectForeignUpgrades: true, trustProxy: settings.trustProxy },
+    limits: settings.addressLimits,
+  });
   server.listen(settings.port, settings.host, () => {
     logger.info(LogEvent.ServerStarted, { host: settings.host, port: settings.port, rooms: content.rooms.size, assets: join(settings.assetDir) });
   });

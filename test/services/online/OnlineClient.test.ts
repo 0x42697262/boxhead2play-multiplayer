@@ -107,6 +107,19 @@ describe('OnlineClient connection', () => {
     expect(online.state.status).toBe(OnlineStatus.Offline);
   });
 
+  it('keeps reconnecting while the network has too many tabs open and clears that notice after a welcome', () => {
+    const { online, transport } = client();
+    online.start();
+    online.opened();
+    online.receive({ type: 'error', reason: 'addressLimit' });
+    online.closed();
+    expect(transport.disconnects).toBe(0);
+    expect(online.state).toMatchObject({ status: OnlineStatus.Connecting, error: 'addressLimit' });
+    online.opened();
+    online.receive({ type: 'welcome', clientId: 'c1', sessionId: 's', resumed: false });
+    expect(online.state.error).toBeUndefined();
+  });
+
   it('keeps reconnecting while the server is full and clears that notice after a welcome', () => {
     const { online, transport } = client();
     online.start();

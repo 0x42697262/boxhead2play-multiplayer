@@ -7,6 +7,7 @@ import { WireEncoder } from '../../net/wire.ts';
 import type { Hub } from '../Hub.ts';
 import type { Traffic } from '../monitorProtocol.ts';
 import type { Connection } from '../ports.ts';
+import { clientAddress } from './clientAddress.ts';
 import { requestPathname } from './requestPath.ts';
 import { MAX_MESSAGE_BYTES, PING_INTERVAL_MS } from '../tuning.ts';
 
@@ -42,6 +43,7 @@ function text(data: RawData): string {
 
 export interface SocketGatewayOptions {
   readonly rejectForeignUpgrades: boolean;
+  readonly trustProxy: boolean;
 }
 
 export interface SocketGateway {
@@ -68,7 +70,7 @@ export function attachSocketGateway(server: Server, hub: Hub, options: SocketGat
     const transport = request.socket;
     watched.set(socket, state);
     transports.add(transport);
-    const link = hub.connect(socketConnection(socket, transport));
+    const link = hub.connect(socketConnection(socket, transport), clientAddress(request, options.trustProxy));
     socket.on('pong', () => {
       state.alive = true;
     });

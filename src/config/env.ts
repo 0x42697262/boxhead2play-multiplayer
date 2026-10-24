@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const booleanString = z
+export const booleanString = z
   .enum(['true', 'false'])
   .default('false')
   .transform((value) => value === 'true');

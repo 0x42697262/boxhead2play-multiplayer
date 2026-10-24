@@ -21,6 +21,14 @@ Server environment (validated in `src/config/serverEnv.ts`):
 | `BOXHEAD_ASSET_DIR` | `dist/assets` | Extracted assets the server loads |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `BOXHEAD_MONITOR_TOKEN` | unset | At least 16 characters. Turns on `/__monitor` for `npm run monitor -- --token` (see `docs/runtime/monitor.md`) |
+| `BOXHEAD_MAX_SOCKETS_PER_ADDRESS` | 16 | Open WebSocket connections per client address, before and after `hello`. `0` is unlimited. |
+| `BOXHEAD_MAX_SESSIONS_PER_ADDRESS` | 8 | Sessions per client address, including sessions in the reconnect grace. `0` is unlimited. |
+| `BOXHEAD_MAX_LOBBIES_PER_ADDRESS` | 4 | Open lobbies (each with at most one running match) created from one client address. `0` is unlimited. |
+| `BOXHEAD_TRUST_PROXY` | `false` | `true`: the client address is the last `X-Forwarded-For` entry. See "Client addresses" below. |
+
+The development server (`src/server/devServer.ts`) reads no environment and uses no
+per-address limits (`NO_ADDRESS_LIMITS`), so many tabs and tools such as the 30-client lobby
+list check run from one machine. Test the limits with `npm start`.
 
 The client connects to the page's own host unless `VITE_SERVER_URL` (`ws://` or `wss://`)
 is set at build time.
@@ -118,7 +126,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 6)
+## Protocol (`src/net/protocol.ts`, version 7)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
@@ -131,7 +139,9 @@ that every decoded frame equals the JSON one.
 Every change to a message schema, including a new enum value such as a HUD message tone
 or a text key a frame may carry, bumps `PROTOCOL_VERSION` (`src/net/tuning.ts`). Version 5
 added the `joined` message tone (`hud.joined`) and the `serverFull` error. Version 6 added
-`latencyMs` to `ping` and the `latencies` message for the player list.
+`latencyMs` to `ping` and the `latencies` message for the player list. Version 7 added the
+`addressLimit` and `addressLobbyLimit` errors: an older client would drop such an `error`
+as undecodable and show nothing.
 
 | Client -> server | Purpose |
 |---|---|
@@ -271,9 +281,12 @@ Hiding the tab sends released controls so the player stops walking.
 random source is a constructor argument so tests are deterministic). The jitter spreads out
 the reconnects of many tabs after a server restart. A `welcome` resets the backoff. A
 `versionMismatch` error is final: `OnlineClient` disconnects the transport, goes offline and
-shows "Reload the page" instead of retrying. A full server (`MAX_CLIENTS`) answers a new
-client with `serverFull` and closes; the client keeps retrying with backoff and clears the
-notice on the next `welcome`.
+shows "Reload the page" instead of retrying. A full server (`MAX_CLIENTS` sessions or
+`MAX_SOCKETS` sockets) answers a new client with `serverFull` and closes; an address over its
+socket or session cap gets `addressLimit` ("Too many game tabs are open on your network.")
+and is closed the same way. For both, the client keeps retrying with backoff and clears the
+notice on the next `welcome` (`RETRIED_ERRORS`): an address frees a session slot when one of
+its sessions ends its reconnect grace.
 
 A message that the `WireDecoder` cannot decode (any exception, not only `WireError`) means
 the client's delta baselines may no longer match the server's encoder. The client closes
@@ -328,7 +341,10 @@ The server needs no change: the duplicate never sends the original's `sessionId`
 |---|---|---|
 | Players per lobby and per match | 16 | `MAX_LOBBY_PLAYERS`, `MAX_PLAYERS` |
 | Lobbies | 256 | `MAX_LOBBIES` |
-| Clients | 256 | `MAX_CLIENTS` |
+| Clients (sessions, including the reconnect grace) | 256 | `MAX_CLIENTS` |
+| Open sockets, with or without `hello` | 512 | `MAX_SOCKETS` |
+| Time to send `hello` | 10 s | `HELLO_TIMEOUT_MS` |
+| Sockets, sessions and lobbies per client address | 16, 8, 4 by default | `BOXHEAD_MAX_*_PER_ADDRESS` (`AddressLimits`) |
 | Message size | 4096 bytes | `MAX_MESSAGE_BYTES` (also the socket `maxPayload`) |
 | Message rate | 120/s, burst 240 | `MESSAGE_RATE_PER_SECOND`, `MESSAGE_BURST` |
 | Name length | 16 (control characters removed, empty becomes "Player") | `PLAYER_NAME_MAX_LENGTH`, `sanitizeName` |
@@ -345,6 +361,46 @@ timer, and `Lobby` ignores ticks for a match that is no longer its current one, 
 `match.ended` and `gameOver` go out once.
 
 Joining a full lobby answers `lobbyFull` and keeps the client in the lobby it was in.
+
+### Per-address limits
+
+Without them one script could open 256 sockets, send `hello`, disconnect, and hold every
+session slot for the 45 s grace, each slot able to create a lobby and run a match. Sockets
+that never sent `hello` were not counted at all. `Hub.connect(connection, address)` now
+counts, per client address (`AddressCounts`):
+
+* **Sockets.** Every open link, from `connect` until `closed`, counts against the address
+  and against `MAX_SOCKETS`. Over a cap the socket gets `addressLimit` (or `serverFull` for
+  the global cap) and is closed at once. A socket that sends no accepted `hello` within
+  `HELLO_TIMEOUT_MS` is closed (`server.hello_timed_out`, debug).
+* **Sessions.** A new session counts against the address of the socket that created it until
+  it expires, so sessions in the reconnect grace still count. Resuming a known `sessionId`
+  is never refused by the session caps, from any address, and does not move the session to
+  the new address.
+* **Lobbies.** A lobby counts against the address of its creator until it closes, also after
+  the host role moved on. Over the cap `createLobby` answers `addressLobbyLimit`. Every
+  match runs in a lobby, so this also caps running matches.
+
+Refusals are logged as `server.client_refused` at debug level, with the reason but without
+the address.
+
+### Client addresses
+
+`clientAddress` (`src/server/node/clientAddress.ts`) picks the address:
+
+* `BOXHEAD_TRUST_PROXY=false` (default): the socket's remote address. `X-Forwarded-For` is
+  ignored, so a client cannot choose its address.
+* `BOXHEAD_TRUST_PROXY=true`: the rightmost `X-Forwarded-For` entry, the one the immediate
+  proxy appended. Entries to its left come from the client and are ignored. If the header is
+  missing or its last entry is not an IP address, the socket address (the proxy) is used.
+  Only turn this on behind a proxy that every request passes and that appends the header
+  (Caddy, Render); without one, a client could send any address.
+
+The address is then keyed (`addressKey`): an IPv4-mapped IPv6 address counts as its IPv4
+address, and an IPv6 address counts by its /64 network, because one subscriber usually gets a
+whole /64 and could otherwise use a fresh address for every socket. Many players behind one
+NAT (a school, a LAN party, a carrier-grade NAT) share one address; raise the limits or set
+them to `0` for such a server.
 
 The production server (`src/server/main.ts`) closes WebSocket upgrade requests for any path
 other than `/ws` at once (`rejectForeignUpgrades`). The dev server leaves them alone, because

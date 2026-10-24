@@ -1,3 +1,4 @@
+import type { AddressLimits } from '../config/serverEnv.ts';
 import type { AnimationCatalog } from '../domain/animation/AnimationCatalog.ts';
 import type { ThingFactory } from '../domain/things/ThingFactory.ts';
 import type { RoomDefinition } from '../domain/world/RoomDefinition.ts';
@@ -41,4 +42,5 @@ export interface HubDependencies {
   readonly newId: () => string;
   readonly newSeed: () => number;
   readonly logger: Logger;
+  readonly limits: AddressLimits;
 }

@@ -7,3 +7,5 @@ services:
     envVars:
       - key: BOXHEAD_MONITOR_TOKEN
         generateValue: true
+      - key: BOXHEAD_TRUST_PROXY
+        value: "true"

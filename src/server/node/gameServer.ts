@@ -1,5 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
+import type { AddressLimits } from '../../config/serverEnv.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { Hub } from '../Hub.ts';
 import type { GameContent } from '../ports.ts';
@@ -15,7 +16,13 @@ export interface GameServer {
   close(): void;
 }
 
-export function attachGameServer(server: Server, content: GameContent, logger: Logger, access: MonitorAccess, gateway: SocketGatewayOptions): GameServer {
+export interface GameServerOptions {
+  readonly monitor: MonitorAccess;
+  readonly gateway: SocketGatewayOptions;
+  readonly limits: AddressLimits;
+}
+
+export function attachGameServer(server: Server, content: GameContent, logger: Logger, options: GameServerOptions): GameServer {
   const hub = new Hub({
     content,
     ticker: fixedStepTicker(nodeClock),
@@ -24,9 +31,10 @@ export function attachGameServer(server: Server, content: GameContent, logger: L
     newId: () => randomUUID(),
     newSeed: () => randomInt(SEED_LIMIT),
     logger,
+    limits: options.limits,
   });
-  const sockets = attachSocketGateway(server, hub, gateway);
-  const monitor = createMonitor({ hub, traffic: () => sockets.traffic() }, access);
+  const sockets = attachSocketGateway(server, hub, options.gateway);
+  const monitor = createMonitor({ hub, traffic: () => sockets.traffic() }, options.monitor);
   return {
     hub,
     monitor,

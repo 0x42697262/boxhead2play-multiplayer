@@ -23,6 +23,24 @@ let
   upstreamHost = wildcardLoopback.${cfg.host} or cfg.host;
   upstreamAddress = if lib.hasInfix ":" upstreamHost then "[${upstreamHost}]" else upstreamHost;
   portCapability = "CAP_NET_BIND_SERVICE";
+  limitVariables = {
+    socketsPerAddress = "BOXHEAD_MAX_SOCKETS_PER_ADDRESS";
+    sessionsPerAddress = "BOXHEAD_MAX_SESSIONS_PER_ADDRESS";
+    lobbiesPerAddress = "BOXHEAD_MAX_LOBBIES_PER_ADDRESS";
+  };
+  limitEnvironment = lib.mapAttrs' (
+    name: variable: lib.nameValuePair variable (toString cfg.limits.${name})
+  ) (lib.filterAttrs (name: _variable: cfg.limits.${name} != null) limitVariables);
+  limitOption =
+    what:
+    mkOption {
+      type = types.nullOr types.ints.unsigned;
+      default = null;
+      description = ''
+        Most ${what} one client address may hold at once; 0 means unlimited. Null keeps the
+        server's default (see docs/runtime/online.md).
+      '';
+    };
 in
 {
   options.services.boxhead2play = {
@@ -59,6 +77,23 @@ in
       ];
       default = "info";
       description = "Minimum level of the JSON log lines written to the journal.";
+    };
+
+    trustProxy = mkOption {
+      type = types.bool;
+      default = cfg.caddy.enable;
+      defaultText = lib.literalExpression "config.services.boxhead2play.caddy.enable";
+      description = ''
+        Take the client address from the last X-Forwarded-For entry (BOXHEAD_TRUST_PROXY)
+        instead of the socket. Turn it on only when every request comes through a reverse
+        proxy that appends that header; otherwise clients can choose their own address.
+      '';
+    };
+
+    limits = {
+      socketsPerAddress = limitOption "open WebSocket connections";
+      sessionsPerAddress = limitOption "sessions, including ones waiting for a reconnect,";
+      lobbiesPerAddress = limitOption "open lobbies";
     };
 
     openFirewall = mkOption {
@@ -129,7 +164,9 @@ in
           PORT = toString cfg.port;
           HOST = cfg.host;
           LOG_LEVEL = cfg.logLevel;
+          BOXHEAD_TRUST_PROXY = lib.boolToString cfg.trustProxy;
         }
+        // limitEnvironment
         // cfg.extraEnvironment;
 
         serviceConfig = {

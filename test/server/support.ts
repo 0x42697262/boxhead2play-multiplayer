@@ -1,3 +1,4 @@
+import { NO_ADDRESS_LIMITS } from '../../src/config/serverEnv.ts';
 import { silentLogger } from '../../src/observability/logger.ts';
 import { createThingFactory } from '../../src/domain/things/factory.ts';
 import { InitKind } from '../../src/domain/world/RoomDefinition.ts';
@@ -11,6 +12,7 @@ import { syntheticAnimationCatalog } from '../domain/support/animationCatalog.ts
 import { cellObject, room } from '../domain/support/fakes.ts';
 
 export const ROOM_ID = 'ROOM_TEST';
+export const TEST_ADDRESS = '203.0.113.1';
 const CLOCK_STEP_MS = 10;
 
 export const OPTIONS: LobbyOptions = {
@@ -116,7 +118,8 @@ export interface TestHub {
   readonly hub: Hub;
   readonly ticker: FakeTicker;
   readonly timers: FakeTimers;
-  connect(name: string, sessionId?: string | null): FakeConnection;
+  connect(name: string, sessionId?: string | null, address?: string): FakeConnection;
+  open(address?: string): FakeConnection;
 }
 
 export function testHub(overrides: Partial<HubDependencies> = {}): TestHub {
@@ -132,15 +135,20 @@ export function testHub(overrides: Partial<HubDependencies> = {}): TestHub {
     newId: () => `id${++ids}`,
     newSeed: () => 7,
     logger: silentLogger,
+    limits: NO_ADDRESS_LIMITS,
     ...overrides,
   });
   return {
     hub,
     ticker,
     timers,
-    connect(name, sessionId = null) {
+    open(address = TEST_ADDRESS) {
       const connection = new FakeConnection();
-      connection.link = hub.connect(connection);
+      connection.link = hub.connect(connection, address);
+      return connection;
+    },
+    connect(name, sessionId = null, address = TEST_ADDRESS) {
+      const connection = this.open(address);
       connection.say({ type: 'hello', version: PROTOCOL_VERSION, sessionId, name });
       return connection;
     },

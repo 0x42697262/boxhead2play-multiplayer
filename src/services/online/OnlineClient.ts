@@ -58,6 +58,8 @@ export interface GameSink {
 
 export type StateListener = (state: OnlineState) => void;
 
+const RETRIED_ERRORS: ReadonlySet<ErrorReason> = new Set([ErrorReason.ServerFull, ErrorReason.AddressLimit]);
+
 const INITIAL_STATE: OnlineState = {
   status: OnlineStatus.Offline,
   clientId: undefined,
@@ -289,7 +291,7 @@ export class OnlineClient {
     this.deps.session.write(sessionId);
     this.welcomed = true;
     this.deps.logger.info(LogEvent.OnlineConnected, { resumed });
-    const error = this.current.error === ErrorReason.ServerFull ? undefined : this.current.error;
+    const error = this.current.error !== undefined && RETRIED_ERRORS.has(this.current.error) ? undefined : this.current.error;
     if (!resumed) {
       this.sink?.lost();
       this.update({ status: OnlineStatus.Online, clientId, lobby: undefined, error });

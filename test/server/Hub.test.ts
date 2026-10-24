@@ -7,8 +7,19 @@ import { ErrorReason, LeaveReason, LobbyState, PROTOCOL_VERSION } from '../../sr
 import { MAX_LOBBY_PLAYERS } from '../../src/net/tuning.ts';
 import { Lobby } from '../../src/server/Lobby.ts';
 import type { Ticker } from '../../src/server/ports.ts';
-import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from '../../src/server/tuning.ts';
-import { FakeConnection, OPTIONS, ROOM_ID, testHub, type TestHub } from './support.ts';
+import { NO_ADDRESS_LIMITS, type AddressLimits } from '../../src/config/serverEnv.ts';
+import {
+  HELLO_TIMEOUT_MS,
+  MAX_CLIENTS,
+  MAX_LOBBIES,
+  MAX_MESSAGE_BYTES,
+  MAX_SOCKETS,
+  MESSAGE_BURST,
+  MESSAGE_RATE_PER_SECOND,
+  MS_PER_SECOND,
+  RECONNECT_GRACE_MS,
+} from '../../src/server/tuning.ts';
+import { OPTIONS, ROOM_ID, testHub, type FakeConnection, type TestHub } from './support.ts';
 
 function lobbyOf(connection: FakeConnection) {
   const lobby = connection.last('lobby')?.lobby;
@@ -49,8 +60,7 @@ describe('Hub sessions', () => {
     const connection = setup.connect('Ann');
     connection.link?.receive('{"type":"nonsense"}');
     expect(connection.last('error')?.reason).toBe(ErrorReason.BadMessage);
-    const outdated = new FakeConnection();
-    outdated.link = setup.hub.connect(outdated);
+    const outdated = setup.open();
     outdated.say({ type: 'hello', version: PROTOCOL_VERSION + 1, sessionId: null, name: 'Old' });
     expect(outdated.last('error')?.reason).toBe(ErrorReason.VersionMismatch);
     expect(outdated.closed).toBe(true);
@@ -373,5 +383,108 @@ describe('Hub matches', () => {
     guest.say({ type: 'leaveGame' });
     expect(lobbyOf(host).state).toBe(LobbyState.Waiting);
     expect(setup.ticker.running).toBe(0);
+  });
+});
+
+const OTHER_ADDRESS = '198.51.100.7';
+
+function limited(limits: Partial<AddressLimits>): TestHub {
+  return testHub({ limits: { ...NO_ADDRESS_LIMITS, ...limits } });
+}
+
+function createLobby(connection: FakeConnection): void {
+  connection.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+}
+
+describe('Hub address limits', () => {
+  it('refuses a socket over the per-address socket cap with addressLimit and counts it again after a close', () => {
+    const setup = limited({ socketsPerAddress: 2 });
+    const open = [setup.open(), setup.open()];
+    const third = setup.open();
+    expect(third.last('error')?.reason).toBe(ErrorReason.AddressLimit);
+    expect(third.closed).toBe(true);
+    expect(setup.hub.socketCount).toBe(2);
+    expect(setup.open(OTHER_ADDRESS).closed).toBe(false);
+    open[0]?.link?.closed();
+    open[0]?.link?.closed();
+    expect(setup.open().closed).toBe(false);
+    expect(setup.hub.socketCount).toBe(3);
+  });
+
+  it('refuses every socket over the global socket cap with serverFull, hello or not', () => {
+    const setup = testHub();
+    for (let index = 0; index < MAX_SOCKETS; index++) setup.open(`10.0.${Math.trunc(index / 256)}.${index % 256}`);
+    const late = setup.open(OTHER_ADDRESS);
+    expect(late.last('error')?.reason).toBe(ErrorReason.ServerFull);
+    expect(late.closed).toBe(true);
+  });
+
+  it('refuses a new session over the per-address cap, counts sessions in reconnect grace, and still resumes its own', () => {
+    const setup = limited({ sessionsPerAddress: 2 });
+    const ann = setup.connect('Ann');
+    setup.connect('Bob');
+    const sessionId = ann.last('welcome')?.sessionId;
+    ann.link?.closed();
+    const cy = setup.connect('Cy');
+    expect(cy.last('error')?.reason).toBe(ErrorReason.AddressLimit);
+    expect(cy.closed).toBe(true);
+    expect(setup.connect('Dee', null, OTHER_ADDRESS).last('welcome')?.resumed).toBe(false);
+    expect(setup.connect('Ann', sessionId).last('welcome')?.resumed).toBe(true);
+    expect(setup.hub.clientCount).toBe(3);
+  });
+
+  it('frees a session slot when the reconnect grace ends', () => {
+    const setup = limited({ sessionsPerAddress: 1 });
+    setup.connect('Ann').link?.closed();
+    expect(setup.connect('Bob').last('error')?.reason).toBe(ErrorReason.AddressLimit);
+    setup.timers.advance(RECONNECT_GRACE_MS);
+    expect(setup.connect('Bob').last('welcome')?.resumed).toBe(false);
+  });
+
+  it('refuses a lobby over the per-address lobby cap until one of them closes', () => {
+    const setup = limited({ lobbiesPerAddress: 1 });
+    const ann = setup.connect('Ann');
+    createLobby(ann);
+    const bob = setup.connect('Bob');
+    createLobby(bob);
+    expect(bob.last('error')?.reason).toBe(ErrorReason.AddressLobbyLimit);
+    const cy = setup.connect('Cy', null, OTHER_ADDRESS);
+    createLobby(cy);
+    expect(cy.last('lobby')).toBeDefined();
+    ann.say({ type: 'leaveLobby' });
+    createLobby(bob);
+    expect(bob.last('lobby')).toBeDefined();
+    expect(setup.hub.lobbyCount).toBe(2);
+  });
+
+  it('keeps no limits with zero values', () => {
+    const setup = testHub();
+    const many = 20;
+    const clients = Array.from({ length: many }, (_unused, index) => setup.connect(`P${index}`));
+    for (const client of clients) createLobby(client);
+    expect(setup.hub.lobbyCount).toBe(many);
+  });
+});
+
+describe('Hub hello timeout', () => {
+  it('closes a socket that sends no hello in time and frees its slot', () => {
+    const setup = limited({ socketsPerAddress: 1 });
+    const silent = setup.open();
+    setup.timers.advance(HELLO_TIMEOUT_MS - 1);
+    expect(silent.closed).toBe(false);
+    setup.timers.advance(1);
+    expect(silent.closed).toBe(true);
+    silent.link?.closed();
+    expect(setup.hub.socketCount).toBe(0);
+  });
+
+  it('keeps a socket that said hello and one that closed early alone', () => {
+    const setup = testHub();
+    const ann = setup.connect('Ann');
+    const gone = setup.open();
+    gone.link?.closed();
+    setup.timers.advance(HELLO_TIMEOUT_MS);
+    expect(ann.closed).toBe(false);
+    expect(gone.closed).toBe(false);
   });
 });

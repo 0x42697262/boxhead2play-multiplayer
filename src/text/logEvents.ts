@@ -28,6 +28,8 @@ export const LogEvent = {
   ClientDisconnected: 'server.client_disconnected',
   ClientExpired: 'server.client_expired',
   MessageRejected: 'server.message_rejected',
+  ClientRefused: 'server.client_refused',
+  HelloTimedOut: 'server.hello_timed_out',
   LobbyCreated: 'server.lobby_created',
   LobbyClosed: 'server.lobby_closed',
   MatchStarted: 'server.match_started',

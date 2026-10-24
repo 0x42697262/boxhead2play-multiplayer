@@ -375,3 +375,15 @@ Add one line per behavior change: what to do, and the result you expect.
 * Online coop, empty a weapon -> only that player sees the red `hud.outOfAmmo.<id>` message;
   `npx vitest run test/domain/things/weapons.test.ts` checks its player index and that a
   charge pack weapon with packs placed is not empty until they explode.
+* `npx vitest run test/server/Hub.test.ts test/server/node test/config` -> with per-address caps
+  a 17th socket or a 9th session (sessions in reconnect grace count) from one address gets
+  `addressLimit` and is closed while another address still connects, a known session resumes at
+  the cap, a 5th lobby gets `addressLobbyLimit`, a socket without `hello` is closed after 10 s,
+  socket 513 gets `serverFull`; `BOXHEAD_TRUST_PROXY=true` keys by the rightmost
+  `X-Forwarded-For` entry, spoofed left entries are ignored, and without it the header is ignored.
+* `BOXHEAD_MAX_SESSIONS_PER_ADDRESS=2 npm start`, open three tabs and start COOPERATIVE in each ->
+  the third shows "Too many game tabs are open on your network. Trying again…"; close one tab ->
+  within 45 s plus the retry delay the third connects. `npm run dev` with 20 tabs -> no limit.
+* Render deploy (`BOXHEAD_TRUST_PROXY=true`), two phones on mobile data plus 8 tabs on one PC ->
+  all phones connect; the 9th PC tab gets the address notice (Render's last `X-Forwarded-For`
+  entry is the client).

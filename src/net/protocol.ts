@@ -153,6 +153,8 @@ export const ErrorReason = {
   AlreadyPlaying: 'alreadyPlaying',
   RateLimited: 'rateLimited',
   ServerFull: 'serverFull',
+  AddressLimit: 'addressLimit',
+  AddressLobbyLimit: 'addressLobbyLimit',
 } as const;
 
 export type ErrorReason = (typeof ErrorReason)[keyof typeof ErrorReason];

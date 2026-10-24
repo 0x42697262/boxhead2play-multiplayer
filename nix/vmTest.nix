@@ -29,6 +29,7 @@ pkgs.testers.runNixOSTest {
   testScript = ''
     machine.wait_for_unit("boxhead2play.service")
     machine.wait_for_open_port(${toString port})
+    machine.succeed("systemctl show boxhead2play -p Environment | grep -w BOXHEAD_TRUST_PROXY=true")
     machine.succeed("curl -sf http://127.0.0.1:${toString port}/ | grep -i '<html'")
     machine.succeed("curl -sf 'http://[::1]:${toString port}/assets/manifest.json' | jq -e '.formatVersion > 0'")
 

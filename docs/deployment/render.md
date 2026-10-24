@@ -36,6 +36,20 @@ npm run monitor -- --url https://<service>.onrender.com --token <value>
 
 Delete the variable to turn `/__monitor` off.
 
+`BOXHEAD_TRUST_PROXY` is `true`: every request reaches the service through Render's proxy,
+so the socket address is the proxy's and the client address is the last `X-Forwarded-For`
+entry, which that proxy appends. The per-address limits (`BOXHEAD_MAX_SOCKETS_PER_ADDRESS`,
+`BOXHEAD_MAX_SESSIONS_PER_ADDRESS`, `BOXHEAD_MAX_LOBBIES_PER_ADDRESS`, see
+`docs/runtime/online.md`) keep their defaults; add them on the Environment page to change
+them. Not yet checked on Render itself: if Render's chain ever appended an internal hop as the
+last entry, every player would share one address and the eighth tab anywhere would get
+"Too many game tabs are open on your network". Check it with the verification checklist line
+in `AGENTS.md` after the first deploy.
+
+The `Dockerfile` sets no proxy setting: a plain `docker run` without a proxy in front uses
+the socket address, which is right there. Behind your own proxy, pass
+`-e BOXHEAD_TRUST_PROXY=true`.
+
 ## Free plan limits
 
 * The service sleeps after about 15 minutes without HTTP traffic and takes about a minute to

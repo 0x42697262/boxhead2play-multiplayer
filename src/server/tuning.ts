@@ -1,6 +1,8 @@
 export const RECONNECT_GRACE_MS = 45_000;
 export const MAX_LOBBIES = 256;
 export const MAX_CLIENTS = 256;
+export const MAX_SOCKETS = 512;
+export const HELLO_TIMEOUT_MS = 10_000;
 export const MAX_MESSAGE_BYTES = 4096;
 export const MESSAGE_RATE_PER_SECOND = 120;
 export const MESSAGE_BURST = 240;
