@@ -109,6 +109,9 @@ Add one line per behavior change: what to do, and the result you expect.
   to a zombie door; 16 online players start spread out, at least 4 cells apart.
 * DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> TAB shows one more
   death for him and no kill for anybody.
+* A NixOS host with `services.boxhead2play.environmentFile` holding `BOXHEAD_MONITOR_TOKEN` ->
+  `npm run monitor -- --url https://<domain> --token <token>` shows the server; the token is not
+  in `/nix/store`.
 * `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET
   rows, the lobby with its tick time and both players with their ONLINE time and about 0.5 KiB/s upload each, the lobby with MATCH and AGE times; `q`
   quits and restores the terminal. `npm start` without `BOXHEAD_MONITOR_TOKEN` -> `/__monitor`

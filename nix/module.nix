@@ -67,6 +67,17 @@ in
       description = "Extra environment variables for the service.";
     };
 
+    environmentFile = mkOption {
+      type = types.nullOr types.path;
+      default = null;
+      example = "/etc/boxhead2play/secrets.env";
+      description = ''
+        File with KEY=value lines loaded into the service environment, kept out of the
+        Nix store. Put BOXHEAD_MONITOR_TOKEN (at least 16 characters) here to serve
+        /__monitor for `npm run monitor -- --token`.
+      '';
+    };
+
     caddy = {
       enable = mkEnableOption "a Caddy reverse proxy with automatic HTTPS for boxhead2play";
 
@@ -108,6 +119,7 @@ in
 
         serviceConfig = {
           ExecStart = lib.getExe cfg.package;
+          EnvironmentFile = mkIf (cfg.environmentFile != null) "-${cfg.environmentFile}";
           Restart = "on-failure";
           RestartSec = 2;
 

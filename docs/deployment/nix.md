@@ -79,7 +79,8 @@ Paste the printed hash into `nix/package.nix`.
 | `port` | `8080` | Port for the page, the assets and the WebSocket server at `/ws` (`PORT`). |
 | `logLevel` | `info` | `LOG_LEVEL`: `debug`, `info`, `warn` or `error`. |
 | `openFirewall` | `false` | Opens 80 and 443 with Caddy, otherwise `port`. |
-| `extraEnvironment` | `{}` | Extra environment variables. |
+| `extraEnvironment` | `{}` | Extra environment variables. They end up in the world-readable Nix store, so no secrets. |
+| `environmentFile` | `null` | Path on the host (not in the store) with `KEY=value` lines, for example `BOXHEAD_MONITOR_TOKEN`. systemd reads it as root before starting the service. A missing file is skipped, so the game still starts, only without the monitor. |
 | `caddy.enable` | `false` | Caddy reverse proxy with automatic HTTPS. Caddy proxies WebSocket upgrades on its own. |
 | `caddy.domain` | `""` | Required with Caddy. |
 | `caddy.extraConfig` | `""` | Appended inside the Caddy site block. |
@@ -90,6 +91,18 @@ The server keeps lobbies in memory and writes nothing, so the service runs as a
 `MemoryDenyWriteExecute` stays off because V8 compiles JIT code.
 
 There are no abuse-limit options: this server has no environment variables for them yet. Add options here once `src/config/serverEnv.ts` reads them.
+
+### Monitor on a deployed server
+
+```sh
+sudo install -d -m 700 /etc/boxhead2play
+echo "BOXHEAD_MONITOR_TOKEN=$(openssl rand -hex 24)" | sudo tee /etc/boxhead2play/secrets.env
+sudo chmod 600 /etc/boxhead2play/secrets.env
+```
+
+Set `services.boxhead2play.environmentFile = "/etc/boxhead2play/secrets.env";`, rebuild, then
+from any machine: `npm run monitor -- --url https://boxhead.example.com --token <token>`.
+Caddy forwards `/__monitor` like every other path.
 
 ## Verified (2026-10-23, Nix 2.34.7, nixpkgs nixos-unstable 02c087f)
 
