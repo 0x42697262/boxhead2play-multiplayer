@@ -123,7 +123,7 @@ Add one line per behavior change: what to do, and the result you expect.
   barrels gone, scorch decals and a `(0, 30)` shake.
 * Multiplier x5 -> every player gets the UZI (key 2, 100 rounds). Weapon out of ammo ->
   red `hud.outOfAmmo.<id>` message and the pistol.
-* Coop death -> respawn after 4 s + 1 s on a random free floor cell with 200 life, empty
+* Coop death -> respawn after 10 s (4 s corpse + 6 s) on a random free floor cell with 200 life, empty
   weapons and 5 s of blinking. Single death -> `worldCompleted` with `playerDead`.
 * `npm run dev`, PLAY, go to level 1/18 BOXY, click the preview -> the room, the score total
   `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
@@ -143,7 +143,7 @@ Add one line per behavior change: what to do, and the result you expect.
 * Online coop, let a zombie kill a player -> red "<NAME> was killed by a zombie!" at the bottom
   for everyone; deathmatch grenade kill -> red "<KILLER> killed <VICTIM>!" and the frag goes to
   the thrower.
-* Online coop, die while the other player lives -> "RESPAWN IN 5" … "RESPAWN IN 1" in the
+* Online coop, die while the other player lives -> "RESPAWN IN 10" … "RESPAWN IN 1" in the
   middle of your view, gone when you respawn.
 * SETTINGS -> Frame rate 30 -> the game draws 30 frames per second (DevTools performance
   panel); DISPLAY draws every display frame. Online timing and the server do not change.

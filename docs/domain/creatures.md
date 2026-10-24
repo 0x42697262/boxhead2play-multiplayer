@@ -79,7 +79,7 @@ gone (`removeObject`).
   so far (`Upgrades.unlockedWeapons`); in deathmatch the inventory is reset as on respawn.
 * Death: the shared `dying`, then 4 s `dead`. In the last second it calls
   `World.playerDead()` every tick (which ends single and coop games when nobody is left).
-  Then `respawn` waits 25 ticks and retries every tick until `World.playerRespawnPoint`
+  Then `respawn` waits 148 ticks (25 in the original, so a death lasts 10 s) and retries every tick until `World.playerRespawnPoint`
   finds a point: full life, collidable, 125 ticks of invincibility (25 in deathmatch), fire
   key renewed, weapons emptied except the pistol, `Upgrades.playerRespawned()`.
 
