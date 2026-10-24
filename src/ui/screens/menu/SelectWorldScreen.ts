@@ -360,7 +360,8 @@ export class SelectWorldScreen implements Screen {
     this.sceneOptions(tree);
     this.sceneControls(tree);
     const roomItems = this.sceneRoom(tree);
-    return { items: roomItems.length > 0 ? [...this.layout.items, ...roomItems] : this.layout.items, overrides: tree.overrides, expand: SELECT_WORLD_EXPANDED };
+    if (roomItems.length > 0) tree.set(SUB, { attach: [...(tree.at(SUB).attach ?? []), ...roomItems] });
+    return { items: this.layout.items, overrides: tree.overrides, expand: SELECT_WORLD_EXPANDED };
   }
 
   private play(): void {
@@ -399,7 +400,7 @@ export class SelectWorldScreen implements Screen {
     const add = (placed: PlacedText | undefined, text: string, color: number): void => {
       if (!placed?.item.name) return;
       items.push(placed.item);
-      tree.set([placed.item.name], textOverride(placed, text, color));
+      tree.set([...SUB, placed.item.name], textOverride(placed, text, color));
     };
     panel.members.forEach((line, index) => {
       const style = index === 0 ? TextStyles.ListHeading : TextStyles.ListItem;

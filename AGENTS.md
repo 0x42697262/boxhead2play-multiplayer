@@ -143,6 +143,8 @@ Add one line per behavior change: what to do, and the result you expect.
   "COOPERATIVE ONLINE · Open games: 0"; HOST -> OBJECTIVE with one character card, no "2" label,
   "PLAYERS: 1. PLAYER · BAMBO (you, host)" and "CLICK TO START GAME". Back to menu -> the online
   menu, then the main menu.
+* Lobby room (HOST), open OPTIONS or CONTROLS -> the window covers the player list and the
+  options line; nothing draws over it.
 * Online menu, click NAME, type "Ann", Enter -> "NAME: ANN", kept after a reload. JOIN -> the
   controls window titled "SELECT A GAME TO JOIN!" with rows like "ANN'S GAME 1/4:" and JOIN.
 * Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),

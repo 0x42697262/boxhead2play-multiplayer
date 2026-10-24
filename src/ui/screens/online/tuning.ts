@@ -104,6 +104,6 @@ export const RoomChild = {
 
 export const ROOM_PROMPT_DEPTH = 1;
 export const ROOM_PROMPT_ATTACHED_DEPTH = 20;
-export const ROOM_MEMBERS = { depth: 100, left: 6, top: 242, lineHeight: 17, width: 196 } as const;
-export const ROOM_OPTIONS = { depth: 110, top: 342, width: 420 } as const;
-export const ROOM_NOTICE = { depth: 111, anchorX: 320, top: 420, width: 600 } as const;
+export const ROOM_MEMBERS = { depth: 400, left: 6, top: 242, lineHeight: 17, width: 196 } as const;
+export const ROOM_OPTIONS = { depth: 450, top: 342, width: 420 } as const;
+export const ROOM_NOTICE = { depth: 451, anchorX: 320, top: 420, width: 600 } as const;

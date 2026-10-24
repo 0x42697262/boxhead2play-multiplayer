@@ -57,7 +57,8 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   The host keeps the level arrows and OPTIONS; each change reconfigures the game
   (`configureLobby`). Clicking the level preview ("CLICK TO START GAME") starts the match.
   Guests see the host's level and "WAITING FOR <HOST> TO START". The character arrows
-  send `setCharacter`. "Back to menu" leaves the game and returns to the online menu.
+  send `setCharacter`. The room texts are attached inside `_SubScreen_Container`, so the OPTIONS
+  and CONTROLS windows draw over them. "Back to menu" leaves the game and returns to the online menu.
 * **Start.** Only the host starts. Every connected member becomes a player, in member
   order (player index 0 is the host).
 * **Late join.** A member who is not in the running match sees CLICK TO JOIN GAME. The server
