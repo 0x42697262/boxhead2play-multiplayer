@@ -1,4 +1,4 @@
-import type { KeyValueStore } from '../../adapters/storage/KeyValueStore.ts';
+import type { SessionToken } from '../../adapters/net/TabSession.ts';
 import type { MultiplierListEntry } from '../../domain/upgrades/Upgrades.ts';
 import type { PlayerCharacter } from '../../domain/world/SimulationSettings.ts';
 import type { ControlMasks } from '../../net/controlMask.ts';
@@ -23,8 +23,6 @@ import { REPORTED_LATENCY_MAX_MS } from '../../net/tuning.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { LogEvent } from '../../text/logEvents.ts';
 import { LatencyMeter } from './LatencyMeter.ts';
-
-export const SESSION_STORAGE_KEY = 'boxhead2play.onlineSession';
 
 export const OnlineStatus = {
   Offline: 'offline',
@@ -71,7 +69,7 @@ const INITIAL_STATE: OnlineState = {
 };
 
 export interface OnlineClientDependencies {
-  readonly session: KeyValueStore;
+  readonly session: SessionToken;
   readonly name: () => string;
   readonly logger: Logger;
   readonly onGameStarted: (start: GameStarted) => void;
@@ -208,7 +206,7 @@ export class OnlineClient {
   }
 
   opened(): void {
-    this.transport?.send({ type: ClientMessageType.Hello, version: PROTOCOL_VERSION, sessionId: this.deps.session.read(SESSION_STORAGE_KEY) ?? null, name: this.deps.name() });
+    this.transport?.send({ type: ClientMessageType.Hello, version: PROTOCOL_VERSION, sessionId: this.deps.session.read() ?? null, name: this.deps.name() });
   }
 
   closed(): void {
@@ -288,7 +286,7 @@ export class OnlineClient {
   }
 
   private welcome(clientId: string, sessionId: string, resumed: boolean): void {
-    this.deps.session.write(SESSION_STORAGE_KEY, sessionId);
+    this.deps.session.write(sessionId);
     this.welcomed = true;
     this.deps.logger.info(LogEvent.OnlineConnected, { resumed });
     const error = this.current.error === ErrorReason.ServerFull ? undefined : this.current.error;

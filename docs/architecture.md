@@ -73,7 +73,8 @@ versioned JSON catalogs plus SVG/MP3 files under `public/assets/`. See
 Only user settings persist (the original `SharedObject` "morerooms_default"). They are stored in
 `localStorage` as a versioned JSON blob. Readers migrate older versions on read. See
 `docs/persistence/settings.md`. The online session id lives in `sessionStorage` (per tab,
-so reconnects resume); the server persists nothing.
+so reconnects resume) and is owned by one tab through a Web Lock, so a duplicated tab starts
+a new session (`docs/runtime/online.md`, "One session per tab"); the server persists nothing.
 
 ## Runtime
 

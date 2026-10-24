@@ -1,14 +1,14 @@
 import { PROTOCOL_VERSION } from '../../../src/net/tuning.ts';
 import { describe, expect, it } from 'vitest';
-import { MemoryStore } from '../../../src/adapters/storage/KeyValueStore.ts';
+import { MemorySessionToken } from '../../../src/adapters/net/TabSession.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { parseServerMessage, type GameStarted, type ServerMessage } from '../../../src/net/protocol.ts';
 import { WireDecoder, WireEncoder } from '../../../src/net/wire.ts';
 import { silentLogger } from '../../../src/observability/logger.ts';
-import { OnlineClient, OnlineStatus, SESSION_STORAGE_KEY, type GameSink } from '../../../src/services/online/OnlineClient.ts';
+import { OnlineClient, OnlineStatus, type GameSink } from '../../../src/services/online/OnlineClient.ts';
 import { FakeTransport, frame, lobby, OPTIONS, START } from './support.ts';
 
-function client(session = new MemoryStore()) {
+function client(session = new MemorySessionToken()) {
   const starts: GameStarted[] = [];
   const transport = new FakeTransport();
   const clock = { nowMs: 0 };
@@ -67,8 +67,7 @@ describe('OnlineClient latency', () => {
 
 describe('OnlineClient connection', () => {
   it('says hello with the stored session, queues requests until welcome and stores the new session id', () => {
-    const session = new MemoryStore();
-    session.write(SESSION_STORAGE_KEY, 'old');
+    const session = new MemorySessionToken('old');
     const { online, transport } = client(session);
     online.start();
     expect(online.state.status).toBe(OnlineStatus.Connecting);
@@ -78,7 +77,7 @@ describe('OnlineClient connection', () => {
     expect(transport.sent).toEqual([{ type: 'hello', version: PROTOCOL_VERSION, sessionId: 'old', name: 'Ann' }]);
     online.receive({ type: 'welcome', clientId: 'c1', sessionId: 'new', resumed: false });
     expect(transport.types()).toEqual(['hello', 'watchLobbies', 'createLobby']);
-    expect(session.read(SESSION_STORAGE_KEY)).toBe('new');
+    expect(session.read()).toBe('new');
     expect(online.state).toMatchObject({ status: OnlineStatus.Online, clientId: 'c1' });
   });
 

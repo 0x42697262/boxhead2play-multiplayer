@@ -1,5 +1,6 @@
 import { ASSET_FORMAT_VERSION, type RoomIndex, type SymbolsCatalog } from '../../../src/adapters/assets/schemas.ts';
 import { SymbolLibrary } from '../../../src/adapters/render/symbols/SymbolLibrary.ts';
+import { MemorySessionToken } from '../../../src/adapters/net/TabSession.ts';
 import { MemoryStore } from '../../../src/adapters/storage/KeyValueStore.ts';
 import type { GameMode } from '../../../src/domain/world/GameMode.ts';
 import type { GameStarted, OnlineMode } from '../../../src/net/protocol.ts';
@@ -101,7 +102,7 @@ export const FAKE_INVITE: InviteView = { code: undefined, copied: false, copy: (
 
 export function onlineSetup(clientId = 'c1') {
   const transport = new FakeTransport();
-  const client = new OnlineClient({ session: new MemoryStore(), name: () => 'Ann', logger: silentLogger, onGameStarted: () => undefined, now: () => 0 });
+  const client = new OnlineClient({ session: new MemorySessionToken(), name: () => 'Ann', logger: silentLogger, onGameStarted: () => undefined, now: () => 0 });
   client.bind(transport);
   client.start();
   client.opened();

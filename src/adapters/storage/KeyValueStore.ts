@@ -1,6 +1,7 @@
 export interface KeyValueStore {
   read(key: string): string | undefined;
   write(key: string, value: string): boolean;
+  remove(key: string): void;
 }
 
 export class LocalStorageStore implements KeyValueStore {
@@ -22,6 +23,14 @@ export class LocalStorageStore implements KeyValueStore {
       return false;
     }
   }
+
+  remove(key: string): void {
+    try {
+      this.storage.removeItem(key);
+    } catch {
+      return;
+    }
+  }
 }
 
 export class MemoryStore implements KeyValueStore {
@@ -34,5 +43,9 @@ export class MemoryStore implements KeyValueStore {
   write(key: string, value: string): boolean {
     this.values.set(key, value);
     return true;
+  }
+
+  remove(key: string): void {
+    this.values.delete(key);
   }
 }

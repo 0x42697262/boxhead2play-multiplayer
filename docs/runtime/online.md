@@ -287,6 +287,41 @@ period (45 s): the lobby membership and the match player stay, and the server re
 `lobby` and `gameStarted`. After the grace period the member is removed from the lobby
 and the match. A `welcome` with `resumed: false` ends a running online game.
 
+### One session per tab
+
+Every browser tab is its own player. Chrome and Firefox copy `sessionStorage` into a
+duplicated tab (and into a tab opened with `window.open`), so without a guard the duplicate
+would say `hello` with the original's `sessionId`. `Hub.resume` hands the session to the
+newest socket and closes the older one, the older tab reconnects and takes it back, and the
+two tabs push each other out forever while acting as one player.
+
+`TabSession` (`src/adapters/net/TabSession.ts`) makes the tab that owns a session hold a
+Web Lock named `boxhead2play.onlineSession.<sessionId>` (`SESSION_LOCK_PREFIX`) for as
+long as the document lives:
+
+* At boot, `main.ts` starts `TabSession.restore` before the assets load and awaits it
+  before it builds `OnlineClient`, so the decision is made before the first `hello`.
+* A stored id whose lock this tab gets is kept and its lock stays held. A stored id whose
+  lock another live tab holds (a duplicate) is removed from `sessionStorage`; the tab says
+  `hello` with `null` and becomes a new player.
+* Every `welcome` writes its `sessionId` through `TabSession.write`, which takes the lock
+  of the new id and releases the previous one. A resumed id that is already held changes
+  nothing.
+* Without `navigator.locks` (old browsers, pages served over plain `http` from a
+  non-localhost address, which are not a secure context) and when the lock request fails
+  for any reason other than the wait running out, the stored id is used as before.
+
+A reload must keep its session, so the new document has to get the lock the old document
+held. The browser releases it when the old document is destroyed, which is a separate
+step from starting the new one. The claim therefore waits up to `SESSION_CLAIM_WAIT_MS`
+(500 ms, `src/adapters/net/tuning.ts`) instead of using `ifAvailable`. In Chromium 1246
+(Playwright) `ifAvailable` already got the lock on 40 of 40 reloads, and with the real app
+five reloads in a row kept the lock and the stored id while a `window.open` copy started
+fresh; Firefox was not measured, which is why the wait stays. The wait costs a duplicated
+tab at most 500 ms, and it runs while the assets load.
+
+The server needs no change: the duplicate never sends the original's `sessionId`.
+
 ## Limits
 
 | Limit | Value | Where |

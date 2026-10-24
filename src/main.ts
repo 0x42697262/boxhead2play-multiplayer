@@ -12,6 +12,8 @@ import { WebAudioOutput } from './adapters/audio/WebAudioOutput.ts';
 import { KeyboardState } from './adapters/input/KeyboardState.ts';
 import { BrowserLobbyLink } from './adapters/net/BrowserLobbyLink.ts';
 import { defaultServerUrl, ServerConnection } from './adapters/net/ServerConnection.ts';
+import { browserSessionLocks, TabSession } from './adapters/net/TabSession.ts';
+import { SESSION_CLAIM_WAIT_MS } from './adapters/net/tuning.ts';
 import { boundCodes, buildBindings, PLAYER_LIST_CODES } from './adapters/input/TickInputSampler.ts';
 import { ClipBuffers } from './adapters/render/clips/ClipBuffers.ts';
 import { LayeredStage } from './adapters/render/menu/LayeredStage.ts';
@@ -77,6 +79,7 @@ function randomSeed(): number {
 async function boot(shell: Shell, logger: Logger): Promise<void> {
   const settings = loadSettings(readBrowserEnv());
   if (settings.assetWorker) registerAssetWorker(settings.assetBaseUrl, logger);
+  const tabSession = TabSession.restore(new LocalStorageStore(window.sessionStorage), browserSessionLocks(navigator), () => AbortSignal.timeout(SESSION_CLAIM_WAIT_MS));
   const showProgress = (progress: LoadProgress): void => shell.showStatus(progressText(progress));
   shell.showStatus(t('boot.loading'));
   const catalogs = await loadCatalogs(browserFetcher, settings.assetBaseUrl, showProgress);
@@ -110,7 +113,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   const menuRng = new SeededRng(randomSeed());
   let startOnlineGame: (start: GameStarted) => void = () => undefined;
   const online = new OnlineClient({
-    session: new LocalStorageStore(window.sessionStorage),
+    session: await tabSession,
     name: () => userSettings.settings.playerName,
     logger,
     onGameStarted: (start) => startOnlineGame(start),
