@@ -1,6 +1,7 @@
 import type { KeyboardState } from '../adapters/input/KeyboardState.ts';
 import { PointerPhase, type ScreenFlow } from '../services/ScreenFlow.ts';
 import type { GameLoop } from './GameLoop.ts';
+import { isShortcut, releasesHeldKeys } from './keyModifiers.ts';
 
 export interface ListenerTargets {
   readonly window: Window;
@@ -27,7 +28,6 @@ const MOUSE = 'mouse';
 const IOS_PINCH_EVENT = 'gesturestart';
 
 function typedCharacter(event: KeyboardEvent): string | undefined {
-  if (event.ctrlKey || event.metaKey || event.altKey) return undefined;
   return event.key.length === SINGLE_CHARACTER ? event.key : undefined;
 }
 
@@ -41,13 +41,15 @@ export function attachListeners(targets: ListenerTargets, handlers: ListenerHand
   window.addEventListener('keydown', (event) => {
     if (typingInForm(event)) return;
     handlers.onGesture(false);
+    if (isShortcut(event)) return;
     if (handlers.isGameKey(event.code)) event.preventDefault();
     if (!event.repeat && handlers.flow.key(event.code, typedCharacter(event))) event.preventDefault();
     handlers.keyboard.keyDown(event.code);
   });
   window.addEventListener('keyup', (event) => {
     if (handlers.isGameKey(event.code) && !typingInForm(event)) event.preventDefault();
-    handlers.keyboard.keyUp(event.code);
+    if (releasesHeldKeys(event.code)) handlers.keyboard.releaseAll();
+    else handlers.keyboard.keyUp(event.code);
   });
   window.addEventListener('blur', () => handlers.keyboard.releaseAll());
   window.addEventListener('pointerdown', (event) => {

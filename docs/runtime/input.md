@@ -39,7 +39,11 @@ consumed the release. The port:
   session toggles the list; the world never sees the key.
 
 The entry listener calls `preventDefault` for bound keys so arrows, Space and `/` do not
-scroll or open quick find, except while a form control has focus. Key presses (not
+scroll or open quick find, except while a form control has focus. A key pressed with Ctrl, Cmd or Alt
+held is a browser shortcut (Ctrl+S, Cmd+R): the listener ignores it completely, so the
+shortcut works and the player does not start walking (`src/entry/keyModifiers.ts`). macOS
+sends no key up for keys released while Cmd is held, so releasing Cmd releases every held
+key, like a window blur. Key presses (not
 auto-repeats) also go to the active screen (`Screen.key`); the controls window consumes
 them while it waits for a key, and the listener then calls `preventDefault` too.
 

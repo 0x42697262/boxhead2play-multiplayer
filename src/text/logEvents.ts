@@ -18,6 +18,7 @@ export const LogEvent = {
   VisibilityChanged: 'loop.visibility_changed',
   AudioUnavailable: 'audio.unavailable',
   FrameBudgetExceeded: 'loop.frame_budget_exceeded',
+  FrameFailed: 'loop.frame_failed',
   ServerStarted: 'server.started',
   ServerFailed: 'server.failed',
   ClientConnected: 'server.client_connected',

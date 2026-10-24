@@ -190,6 +190,10 @@ Add one line per behavior change: what to do, and the result you expect.
 * In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
   SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
   screen (online: the lobby room).
+* `npx vitest run test/entry` -> a screen whose tick throws twice still gets its next frames,
+  and the failure is reported once. Playing, press Ctrl+S (Cmd+S on macOS) -> the browser's
+  save dialog opens and the player does not walk; hold W and Cmd, let go of W, then Cmd -> the player
+  stops.
 * Switch to another tab while playing single -> on return the game continues where it was,
   with no pause screen and no catch-up burst.
 * `npx vitest run test/adapters test/services test/entry test/ui` -> asset mapping,

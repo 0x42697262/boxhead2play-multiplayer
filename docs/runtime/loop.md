@@ -25,6 +25,13 @@ give the screen up to 6 ms of idle time (`RenderStack_Process`; the original all
 `SimulationSettings.ticksPerSecond` in a game (12.5, 25 or 50 by game speed; the world
 itself uses 25 while it loads).
 
+The next animation frame is requested before the frame's work runs. An exception from a
+screen's `tick`, `present` or `idle` (or from building the next screen) is caught, so one
+bad frame does not stop the loop for good. `GameLoop` reports the first failure of a run
+of failing frames to `main.ts`, which logs `loop.frame_failed` with the screen name and the
+stack; the next success ends the run. The page shows no error overlay, because
+`Shell.showError` is final and would cover a game that recovers on the next frame.
+
 ## Screens
 
 `ScreenFlow` owns the active `Screen` (`tick`, `present`, `idle`, `pointer`, `key`,

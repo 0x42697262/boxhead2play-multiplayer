@@ -160,7 +160,9 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   };
   const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor));
   startOnlineGame = (start) => flow.startOnlineGame(start);
-  const loop = new GameLoop(flow, browserLoopClock, () => userSettings.settings.frameRate);
+  const loop = new GameLoop(flow, browserLoopClock, () => userSettings.settings.frameRate, (error) =>
+    logger.error(LogEvent.FrameFailed, { screen: flow.screen?.name, error: error instanceof Error ? (error.stack ?? error.message) : String(error) }),
+  );
   const gameKeys = (): ReadonlySet<string> => boundCodes(buildBindings(userSettings.settings.keys));
   let keys = gameKeys();
   userSettings.subscribe(() => (keys = gameKeys()));

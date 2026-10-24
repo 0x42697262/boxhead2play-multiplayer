@@ -144,3 +144,44 @@ describe('ScreenFlow and GameLoop', () => {
     expect(screens[1]?.suspended).toBe(1);
   });
 });
+
+describe('GameLoop failures', () => {
+  it('keeps scheduling frames when a tick throws, and reports each failure streak once', () => {
+    let throwsLeft = 2;
+    const screen = new CountingScreen('mainMenu', 25, () => {
+      if (throwsLeft > 0) {
+        throwsLeft--;
+        throw new Error('tick failed');
+      }
+    });
+    const factory: ScreenFactory = {
+      mainMenu: () => screen,
+      selectWorld: () => new CountingScreen('selectWorld', 50),
+      onlineMenu: () => new CountingScreen('onlineMenu', 50),
+      lobbyRoom: () => new CountingScreen('lobbyRoom', 50),
+      onlineGame: () => new CountingScreen('onlineGame', 25),
+      game: () => new CountingScreen('game', 50),
+    };
+    const flow = new ScreenFlow(factory, silentLogger);
+    flow.start();
+    const scheduled: ((now: number) => void)[] = [];
+    const time: LoopClock = { now: () => 0, requestFrame: (callback) => scheduled.push(callback) };
+    const failures: unknown[] = [];
+    const loop = new GameLoop(flow, time, () => UNCAPPED_FRAME_RATE, (error) => failures.push(error));
+    loop.start();
+    const runNext = (now: number): void => scheduled.shift()?.(now);
+    runNext(0);
+    runNext(40);
+    expect(screen.ticks).toBe(1);
+    expect(screen.presents).toBe(1);
+    expect(scheduled).toHaveLength(1);
+    runNext(80);
+    expect(screen.ticks).toBe(2);
+    expect(failures).toHaveLength(1);
+    runNext(120);
+    expect(screen.ticks).toBe(3);
+    expect(screen.presents).toBe(2);
+    expect(scheduled).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+  });
+});
