@@ -123,8 +123,8 @@ export const RoomChild = {
 
 export const ROOM_PROMPT_DEPTH = 1;
 export const ROOM_PROMPT_ATTACHED_DEPTH = 20;
-export const ROOM_MEMBER_LINES = 11;
-export const ROOM_INVITE = { depth: 399, anchorX: 6, top: 242, width: 196 } as const;
-export const ROOM_MEMBERS = { depth: 400, left: 6, top: 259, lineHeight: 17, width: 196 } as const;
+export const ROOM_MEMBER_LINES = 12;
+export const ROOM_INVITE = { depth: 399, anchorX: 632, top: 8, width: 420, align: 'right' } as const;
+export const ROOM_MEMBERS = { depth: 400, left: 6, top: 242, lineHeight: 17, width: 196 } as const;
 export const ROOM_OPTIONS = { depth: 450, top: 342, width: 420 } as const;
 export const ROOM_NOTICE = { depth: 451, anchorX: 320, top: 420, width: 600 } as const;

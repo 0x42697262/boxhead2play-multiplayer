@@ -119,8 +119,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run bandwidth` -> per-player rates for coop and deathmatch with 1/4/16 players; wire +
   deflate stays under 5 KiB/s and no "decoded frames differ" line appears. In the browser,
   DevTools > Network > WS shows binary server frames of tens of bytes while nothing moves.
-* Tab 1 COOPERATIVE, HOST -> the address bar gets `?code=XXXXX`; click the code line -> "LINK
-  COPIED!". Paste the link in tab 2 -> tab 2 opens in tab 1's room. Main menu JOIN BY CODE
+* Tab 1 COOPERATIVE, HOST -> the address bar gets `?code=XXXXX` and the room shows "CODE XXXXX ·
+  CLICK TO COPY LINK" in the top-right corner, with "PLAYERS: 1/16" directly below the character
+  card; click the code line -> "LINK COPIED!". Paste the link in tab 2 -> tab 2 opens in tab 1's room. Main menu JOIN BY CODE
   (bottom right), type the code in lower case, Enter -> the same room; a wrong code -> "No game
   has that code.". In the game, Esc -> COPY LINK: XXXXX copies the link.
 * Two tabs both named "Player" in one lobby -> the room lists PLAYER and PLAYER #2.

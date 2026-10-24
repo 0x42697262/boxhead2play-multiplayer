@@ -62,7 +62,9 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   server allows up to 256 lobbies (`MAX_LOBBIES`).
 * **Lobby codes.** Every lobby gets a 5 character code from `A-Z` and `2-9` without `I`, `L`,
   `O` (`lobbyCodeFromNumber(newSeed() + attempt)`, the first free one). The lobby room shows
-  "CODE XXXXX · CLICK TO COPY LINK" above the player list.
+  "CODE XXXXX · CLICK TO COPY LINK" right-aligned in the top-right corner, across from the
+  "Back to menu" tab (`ROOM_INVITE`). The corner is empty in every mode, so the player list
+  keeps its own column with 12 member lines (`ROOM_MEMBER_LINES`).
 * **Joining by code.** The only place to type a code is JOIN BY CODE at the bottom right of
   the main menu (a scaled copy of the SETTINGS button, `JOIN_CODE_BUTTON`). Typing goes
   through `normalizeLobbyCode` (upper case, other characters dropped); Enter or a second
