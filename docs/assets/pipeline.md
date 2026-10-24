@@ -346,14 +346,15 @@ correctly.
 
 ## Runtime loading failures
 
-The browser loader (`src/adapters/assets/http.ts`) treats three failures as fatal and shows
-a specific message on the loading screen:
+The browser loader (`src/adapters/assets/http.ts`) treats every failure as fatal. Three have
+a specific message on the loading screen; `ASSET_INVALID` shows `boot.failed` with the reason:
 
 | Error code | Cause | Message key |
 |---|---|---|
-| `ASSET_MISSING` | Network error or HTTP error status | `boot.missingAssets` |
+| `ASSET_MISSING` | Network error (other than a timeout) or HTTP error status | `boot.missingAssets` |
 | `ASSET_SERVED_AS_PAGE` | The server answered with `text/html`. Vite does this for files added to `public/assets/` after the dev server started (its HTML fallback). | `boot.staleAssets` |
-| `ASSET_TIMED_OUT` | A request or SVG decode took longer than `ASSET_REQUEST_TIMEOUT_MS` / `ASSET_DECODE_TIMEOUT_MS` (15 s each) | `boot.assetTimedOut` |
+| `ASSET_TIMED_OUT` | The request, including reading its body, took longer than `ASSET_REQUEST_TIMEOUT_MS`, or an SVG decode took longer than `ASSET_DECODE_TIMEOUT_MS` (15 s each). The request deadline is an `AbortSignal.timeout`; its `TimeoutError`/`AbortError` maps to this code wherever it surfaces (`fetchAsset` or `fetchAssetBody`). | `boot.assetTimedOut` |
+| `ASSET_INVALID` | The body could not be read or parsed (bad JSON, failed SVG decode), or a catalog fails its schema | `boot.failed` with the error text |
 
 Downloads run 8 at a time (`mapLimited`). After the first failure no further downloads
 start, and the shell's error state is sticky (`Shell.showError`), so progress reports from

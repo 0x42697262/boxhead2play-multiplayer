@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fetchAsset, isHtmlFallback, withTimeout } from '../../../src/adapters/assets/http.ts';
+import { fetchAsset, fetchAssetBody, isHtmlFallback, withTimeout } from '../../../src/adapters/assets/http.ts';
 import { AppError, ErrorCode } from '../../../src/text/errors.ts';
 
 function responding(body: string, init: ResponseInit): typeof fetch {
@@ -32,6 +32,23 @@ describe('asset http', () => {
     expect(await errorCode(fetchAsset('a.svg', responding('', { status: 404 })))).toBe(ErrorCode.AssetMissing);
     const ok = await fetchAsset('a.svg', responding('<svg/>', { status: 200, headers: { 'content-type': 'image/svg+xml' } }));
     expect(await ok.text()).toBe('<svg/>');
+  });
+
+  it('reports a request that ran out of time as timed out, not missing', async () => {
+    const timedOut: typeof fetch = () => Promise.reject(new DOMException('', 'TimeoutError'));
+    const aborted: typeof fetch = () => Promise.reject(new DOMException('', 'AbortError'));
+    expect(await errorCode(fetchAsset('a.svg', timedOut))).toBe(ErrorCode.AssetTimedOut);
+    expect(await errorCode(fetchAsset('a.svg', aborted))).toBe(ErrorCode.AssetTimedOut);
+    expect(await errorCode(fetchAsset('a.svg', () => Promise.reject(new TypeError('offline'))))).toBe(ErrorCode.AssetMissing);
+  });
+
+  it('reports body reads that time out as timed out and unreadable bodies as invalid', async () => {
+    const json = responding('{"a":', { status: 200, headers: { 'content-type': 'application/json' } });
+    const slowBody = () => Promise.reject(new DOMException('', 'TimeoutError'));
+    expect(await errorCode(fetchAssetBody('a.json', slowBody, json))).toBe(ErrorCode.AssetTimedOut);
+    expect(await errorCode(fetchAssetBody('a.json', (response): Promise<unknown> => response.json(), json))).toBe(ErrorCode.AssetInvalid);
+    const text = responding('<svg/>', { status: 200, headers: { 'content-type': 'image/svg+xml' } });
+    expect(await fetchAssetBody('a.svg', (response) => response.text(), text)).toBe('<svg/>');
   });
 
   it('gives up on work that never settles', async () => {

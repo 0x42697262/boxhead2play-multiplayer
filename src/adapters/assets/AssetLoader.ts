@@ -18,7 +18,7 @@ import {
   type SymbolsCatalog,
   type XsiCatalog,
 } from './schemas.ts';
-import { fetchAsset } from './http.ts';
+import { fetchAssetBody } from './http.ts';
 import { LoadPhase, PARALLEL_DOWNLOADS, type ProgressListener } from './tuning.ts';
 import { AssetLocator, joinUrl } from './urls.ts';
 
@@ -51,11 +51,11 @@ export interface GameCatalogs {
 }
 
 export const browserFetcher: Fetcher = {
-  async json(url, options = {}) {
-    return (await fetchAsset(url, fetch, options.revalidate === true ? REVALIDATE : {})).json();
+  json(url, options = {}) {
+    return fetchAssetBody(url, (response): Promise<unknown> => response.json(), fetch, options.revalidate === true ? REVALIDATE : {});
   },
-  async bytes(url) {
-    return (await fetchAsset(url)).arrayBuffer();
+  bytes(url) {
+    return fetchAssetBody(url, (response) => response.arrayBuffer());
   },
 };
 
