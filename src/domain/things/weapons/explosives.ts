@@ -113,6 +113,7 @@ export class FakeWallWeapon extends PlacingWeapon {
 
 export class ChargePackWeapon extends Weapon {
   detonate = false;
+  private readonly isOwnPack = (thing: Thing): thing is ChargePack => thing instanceof ChargePack && thing.parent === this.holder;
 
   constructor(holder: WeaponHolder) {
     super(holder, CHARGE_PACK);
@@ -121,18 +122,22 @@ export class ChargePackWeapon extends Weapon {
   placedPacks(): ChargePack[] {
     const packs: ChargePack[] = [];
     for (const thing of this.world.things.newestFirst()) {
-      if (thing instanceof ChargePack && thing.parent === this.holder) packs.push(thing);
+      if (this.isOwnPack(thing)) packs.push(thing);
     }
     return packs;
   }
 
+  hasPlacedPacks(): boolean {
+    return this.world.things.some(this.isOwnPack);
+  }
+
   override isEmpty(): boolean {
-    return this.placedPacks().length === 0 && this.ammo <= 0;
+    return !this.hasPlacedPacks() && this.ammo <= 0;
   }
 
   override reset(): void {
     super.reset();
-    this.detonate = this.placedPacks().length > 0 && this.ammo <= 0;
+    this.detonate = this.hasPlacedPacks() && this.ammo <= 0;
   }
 
   protected fire(position: Position, angle: Angle): void {

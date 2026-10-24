@@ -116,14 +116,16 @@ describe('firearms', () => {
     expect(far.life).toBeLessThanOrEqual(0);
   });
 
-  it('runs out of ammo, warns and falls back to the pistol', () => {
+  it('runs out of ammo, warns only its own player and falls back to the pistol', () => {
     const world = range();
     const player = armed(world, WeaponName.Uzi);
     const uzi = player.inventory.current;
     if (!uzi) throw new Error('no uzi');
     uzi.ammo = 0;
     const events = step(world);
-    expect(events.some((event) => event.type === DomainEventType.HudMessage && event.text.key === 'hud.outOfAmmo.uzi')).toBe(true);
+    const warning = events.find((event) => event.type === DomainEventType.HudMessage && event.text.key === 'hud.outOfAmmo.uzi');
+    expect(warning).toMatchObject({ playerIndex: player.playerIndex });
+    expect(world.hud.messages.find((message) => message.text.key === 'hud.outOfAmmo.uzi')?.playerIndex).toBe(player.playerIndex);
     expect(player.inventory.currentName).toBe(WeaponName.Pistol);
   });
 });
@@ -210,11 +212,16 @@ describe('explosives', () => {
     if (!(weapon instanceof ChargePackWeapon)) throw new Error('no charge pack weapon');
     expect(weapon.detonate).toBe(true);
     expect(weapon.placedPacks()).toHaveLength(1);
+    expect(weapon.hasPlacedPacks()).toBe(true);
+    weapon.ammo = 0;
+    expect(weapon.isEmpty()).toBe(false);
     step(world, held(PlayerControl.Fire));
     const [pack] = ofClass(world, ThingClass.ChargePack) as ChargePack[];
     expect(pack?.detonateRequested).toBe(true);
     run(world, 5);
     expect(ofClass(world, ThingClass.EffectExplosion)).toHaveLength(1);
+    expect(weapon.hasPlacedPacks()).toBe(false);
+    expect(weapon.isEmpty()).toBe(true);
   });
 });
 

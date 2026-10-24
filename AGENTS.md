@@ -286,3 +286,6 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/domain/world/World.test.ts test/domain/world/SimulationSettings.test.ts`
   -> visible zombies produce ambience events in a local world and none in a world built with
   `SERVER_SIMULATION_HOST`; single play still plays the zombie moans.
+* Online coop, empty a weapon -> only that player sees the red `hud.outOfAmmo.<id>` message;
+  `npx vitest run test/domain/things/weapons.test.ts` checks its player index and that a
+  charge pack weapon with packs placed is not empty until they explode.

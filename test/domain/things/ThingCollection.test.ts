@@ -78,3 +78,12 @@ describe('ThingCollection', () => {
     expect(world.things.closestPlayer(at(9, 2))).toBe(first);
   });
 });
+
+describe('ThingCollection.some', () => {
+  it('finds a living thing that matches without copying the list', () => {
+    const { world } = makeWorld(room(10, 10));
+    const barrel = world.things.add(new FakeThing(world, at(2.5, 2.5), ThingClass.Barrel));
+    expect(world.things.some((thing) => thing === barrel)).toBe(true);
+    expect(world.things.some((thing) => thing.classId === ThingClass.ChargePack)).toBe(false);
+  });
+});

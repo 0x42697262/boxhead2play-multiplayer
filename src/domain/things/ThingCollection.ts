@@ -28,6 +28,11 @@ export class ThingCollection {
     return [...this.living.values()].reverse();
   }
 
+  some(predicate: (thing: Thing) => boolean): boolean {
+    for (const thing of this.living.values()) if (predicate(thing)) return true;
+    return false;
+  }
+
   players(): PlayerThing[] {
     return [...this.playerThings.values()].reverse();
   }

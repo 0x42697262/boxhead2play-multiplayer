@@ -15,7 +15,8 @@ replaces `CThing_Weapon.byCLASSID`.
 `update(fire)` (once per `playerControl` tick):
 
 1. `Upgrades.applyWeaponUpgrade` (an ammo upgrade refills).
-2. Empty: red message `hud.outOfAmmo.<id>`, select the pistol, stop.
+2. Empty: red message `hud.outOfAmmo.<id>` for the holder's player index only (online, the
+   other players do not see it), select the pistol, stop.
 3. `--fireRateCount <= 0`: auto weapons fire while the key is down, on-release weapons on a
    release, the others on a press. Firing takes the gun position (`GunPosition_Right`
    anchor of the current frame, or the player position) and a copy of the facing.
@@ -40,7 +41,8 @@ replaces `CThing_Weapon.byCLASSID`.
 Rockets, grenades, barrels, mines and charge packs pass the weapon's `biggerBang` and
 `clusterExplode` upgrades to their explosion. A charge pack weapon is only empty when it has
 no ammo and no packs placed. Its `reset` arms detonation when packs remain and the ammo is
-spent.
+spent. Both checks run every tick, so they use `ThingCollection.some` and stop at the first
+pack without copying the thing list; only detonation collects the packs (newest first).
 
 Pickups call `randomPickup`: every active weapon except the pistol gets weight
 `(1 - ammo / totalAmmo) * 0.75 + 0.25`, life gets `(1 - life / maxLife) * sum` when hurt,

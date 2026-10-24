@@ -18,6 +18,7 @@ export interface FireControl {
 }
 
 export interface WeaponHolder extends Thing {
+  readonly playerIndex?: number;
   selectWeapon(name: WeaponId): void;
   weaponPosition(): Position;
 }
@@ -79,7 +80,7 @@ export abstract class Weapon extends Thing implements UpgradableWeapon {
   update(key: FireControl): void {
     this.world.upgrades.applyWeaponUpgrade(this);
     if (this.isEmpty()) {
-      this.world.hud.addMessage(MessageTone.Critical, { key: this.text.outOfAmmo });
+      this.world.hud.addMessage(MessageTone.Critical, { key: this.text.outOfAmmo }, this.holder.playerIndex);
       this.holder.selectWeapon(WeaponName.Pistol);
       return;
     }
