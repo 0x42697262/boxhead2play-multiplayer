@@ -1,3 +1,4 @@
+import { effectPreferences } from '../../services/menuSettings.ts';
 import type { GameCatalogs } from '../../adapters/assets/AssetLoader.ts';
 import { toRoomDefinition } from '../../adapters/assets/mapping.ts';
 import type { SoundMixer } from '../../adapters/audio/SoundMixer.ts';
@@ -57,7 +58,7 @@ export class GameScreen implements Screen {
     const settings = deps.settings.settings;
     const options = toGameOptions(settings, deps.selection.mode);
     const hud = new HudRenderer(deps.kit.renderer, options.gameMode);
-    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: options.detail, resolution: () => deps.shell.resolution });
+    this.renderer = new WorldRenderer(room, deps.kit.renderer, deps.kit.clips, deps.kit.painter, hud, { detail: options.detail, resolution: () => deps.shell.resolution, effects: () => effectPreferences(deps.settings.settings) });
     for (const collection of prewarmCollections(options)) deps.kit.characters.enqueue(collection);
     deps.keyboard.releaseAll();
     deps.keyboard.clearEdges();

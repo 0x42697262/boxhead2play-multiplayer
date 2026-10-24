@@ -2,7 +2,7 @@ import type { DisplayItem, Filter } from '../../../adapters/assets/schemas.ts';
 import type { Matrix } from '../../../adapters/render/geometry/Matrix.ts';
 import { depthKey, type ButtonState, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import type { GraphicsQuality } from '../../../services/graphicsQuality.ts';
-import { resetSetup, withGraphics, withSoundVolume } from '../../../services/menuSettings.ts';
+import { resetSetup, withBlood, withGraphics, withScreenShake, withSoundVolume } from '../../../services/menuSettings.ts';
 import type { SettingsService, UserSettings } from '../../../services/SettingsService.ts';
 import { t } from '../../../text/i18n.ts';
 import { placedText, staticTextFrame, textOverride, type StaticTextFrame, type TextPlacement } from '../online/stageText.ts';
@@ -11,6 +11,7 @@ import { itemMatrix } from './MainMenuScreen.ts';
 import { Trigger, type MenuTarget } from './MenuPointer.ts';
 import type { OverrideTree } from './overrideTree.ts';
 import {
+  BLOOD_ROW,
   GRAPHICS_ROW,
   MainMenuChild,
   SETUP_ATTACHED_DEPTH,
@@ -20,6 +21,7 @@ import {
   SETUP_TITLE_CENTER_X,
   SETUP_TITLE_DEPTH,
   SETUP_WINDOW_BACKGROUND_DEPTH,
+  SHAKE_ROW,
   SetupWindowChild as Child,
   VOLUME_ROW,
   type SetupButtonSpec,
@@ -31,13 +33,17 @@ export const SetupAction = {
   Reset: 'reset',
   Graphics: 'graphics',
   Volume: 'volume',
+  ScreenShake: 'screenShake',
+  Blood: 'blood',
 } as const;
 
 export type SetupAction =
   | { readonly kind: typeof SetupAction.Close }
   | { readonly kind: typeof SetupAction.Reset }
   | { readonly kind: typeof SetupAction.Graphics; readonly value: GraphicsQuality }
-  | { readonly kind: typeof SetupAction.Volume; readonly value: number };
+  | { readonly kind: typeof SetupAction.Volume; readonly value: number }
+  | { readonly kind: typeof SetupAction.ScreenShake; readonly value: boolean }
+  | { readonly kind: typeof SetupAction.Blood; readonly value: boolean };
 
 export interface SetupButtonLayout<Value> {
   readonly spec: SetupButtonSpec<Value>;
@@ -58,6 +64,8 @@ export interface SetupWindowLayout {
   readonly title: StaticTextFrame | undefined;
   readonly graphics: SetupRowLayout<GraphicsQuality>;
   readonly volume: SetupRowLayout<number>;
+  readonly shake: SetupRowLayout<boolean>;
+  readonly blood: SetupRowLayout<boolean>;
   readonly hidden: readonly string[];
 }
 
@@ -84,6 +92,12 @@ export function applySetupAction(settings: SettingsService, action: SetupAction)
       return SetupOutcome.Open;
     case SetupAction.Volume:
       settings.update((current) => withSoundVolume(current, action.value));
+      return SetupOutcome.Open;
+    case SetupAction.ScreenShake:
+      settings.update((current) => withScreenShake(current, action.value));
+      return SetupOutcome.Open;
+    case SetupAction.Blood:
+      settings.update((current) => withBlood(current, action.value));
       return SetupOutcome.Open;
   }
 }
@@ -114,18 +128,22 @@ export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | 
   const children = window ? library.frameItems(window.characterId, 0) : [];
   const graphics = rowLayout(library, children, GRAPHICS_ROW);
   const volume = rowLayout(library, children, VOLUME_ROW);
+  const shake = rowLayout(library, children, SHAKE_ROW);
+  const blood = rowLayout(library, children, BLOOD_ROW);
   const kept = new Set<string>([
     Child.Lock,
     Child.Close,
     Child.Reset,
     depthKey(SETUP_WINDOW_BACKGROUND_DEPTH),
-    ...[...graphics.buttons, ...volume.buttons].map((button) => button.spec.instance),
+    ...[...graphics.buttons, ...volume.buttons, ...shake.buttons, ...blood.buttons].map((button) => button.spec.instance),
   ]);
   return {
     window,
     title: staticTextFrame(library, children.find((item) => item.depth === SETUP_TITLE_DEPTH)),
     graphics,
     volume,
+    shake,
+    blood,
     hidden: children.map(childKey).filter((key) => !kept.has(key)),
   };
 }
@@ -149,6 +167,8 @@ export class SetupWindow {
       release(buttonPath(Child.Close), { kind: SetupAction.Close }),
       ...this.layout.graphics.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Graphics, value: button.spec.value })),
       ...this.layout.volume.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Volume, value: button.spec.value })),
+      ...this.layout.shake.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.ScreenShake, value: button.spec.value })),
+      ...this.layout.blood.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Blood, value: button.spec.value })),
       { path: [...WINDOW, Child.Lock], trigger: Trigger.Block },
     ];
   }
@@ -157,11 +177,11 @@ export class SetupWindow {
     tree.set(WINDOW, { visible: open });
     if (!open) return;
     for (const key of this.layout.hidden) tree.set([...WINDOW, key], { visible: false });
-    const { graphics, volume } = this.layout;
+    const { graphics, volume, shake, blood } = this.layout;
     const { title } = this.layout;
     const texts = [
       title && this.text(tree, { name: Child.Title, depth: SETUP_ATTACHED_DEPTH, style: TextStyles.WindowTitle, anchorX: SETUP_TITLE_CENTER_X, top: title.top }, t('setup.title'), WINDOW_TEXT_COLOR),
-      ...[graphics, volume].flatMap((row, index) => {
+      ...[graphics, volume, shake, blood].flatMap((row, index) => {
         const depth = SETUP_ATTACHED_DEPTH + (index + 1) * 2;
         const rowTitle = row.title;
         const info = row.info;
@@ -174,6 +194,8 @@ export class SetupWindow {
     tree.set(WINDOW, { attach: texts });
     this.buttons(tree, graphics, settings.graphics, buttonState);
     this.buttons(tree, volume, settings.soundVolume, buttonState);
+    this.buttons(tree, shake, settings.screenShake, buttonState);
+    this.buttons(tree, blood, settings.blood, buttonState);
     for (const name of [Child.Close, Child.Reset]) {
       tree.set([...WINDOW, name, Child.Selected], { visible: false });
       tree.set(buttonPath(name), { buttonState: buttonState(buttonPath(name)) });

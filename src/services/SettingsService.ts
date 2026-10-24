@@ -16,11 +16,12 @@ import { DEFAULT_GRAPHICS_QUALITY, GraphicsQuality } from './graphicsQuality.ts'
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 const LEGACY_VERSION = 0;
 const LOCAL_TWO_PLAYER_VERSION = 1;
 const SOUND_SWITCH_VERSION = 2;
 const ORIGINAL_KEYS_VERSION = 3;
+const EFFECT_SWITCHES_VERSION = 4;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -50,6 +51,8 @@ export const UserSettingsSchema = z.object({
   version: z.literal(SETTINGS_VERSION),
   soundVolume: z.number().int().min(SOUND_VOLUME_OFF).max(SOUND_VOLUME_MAX),
   graphics: z.enum(Object.values(GraphicsQuality) as [GraphicsQuality, ...GraphicsQuality[]]),
+  screenShake: z.boolean(),
+  blood: z.boolean(),
   musicActive: z.boolean(),
   detail: z.boolean(),
   difficulty: enumValue(Difficulty),
@@ -108,6 +111,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   version: SETTINGS_VERSION,
   soundVolume: SOUND_VOLUME_MAX,
   graphics: DEFAULT_GRAPHICS_QUALITY,
+  screenShake: true,
+  blood: true,
   musicActive: true,
   detail: true,
   difficulty: Difficulty.Beginner,
@@ -203,7 +208,11 @@ function sameKeys(raw: unknown, keys: PlayerKeyCodes): boolean {
 }
 
 export function migrateOriginalKeys(raw: Raw): Raw {
-  return { ...raw, version: SETTINGS_VERSION, keys: sameKeys(raw.keys, ORIGINAL_KEYS) ? DEFAULT_KEYS : raw.keys };
+  return { ...raw, version: EFFECT_SWITCHES_VERSION, keys: sameKeys(raw.keys, ORIGINAL_KEYS) ? DEFAULT_KEYS : raw.keys };
+}
+
+export function migrateEffectSwitches(raw: Raw): Raw {
+  return { ...raw, version: SETTINGS_VERSION, screenShake: DEFAULT_SETTINGS.screenShake, blood: DEFAULT_SETTINGS.blood };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
@@ -211,6 +220,7 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [LOCAL_TWO_PLAYER_VERSION]: migrateLocalTwoPlayer,
   [SOUND_SWITCH_VERSION]: migrateSoundSwitch,
   [ORIGINAL_KEYS_VERSION]: migrateOriginalKeys,
+  [EFFECT_SWITCHES_VERSION]: migrateEffectSwitches,
 };
 
 function versionOf(raw: Raw): number {

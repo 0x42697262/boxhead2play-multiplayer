@@ -1,4 +1,4 @@
-import type { DecalRequested, ScoreAwarded } from '../../../domain/events.ts';
+import { DecalKind, type DecalRequested, type Point2, type ScoreAwarded } from '../../../domain/events.ts';
 import type { MultiplierListEntry } from '../../../domain/upgrades/Upgrades.ts';
 import { SCREEN_HEIGHT_PX, SCREEN_WIDTH_PX } from '../../../domain/world/tuning.ts';
 import { t } from '../../../text/i18n.ts';
@@ -15,9 +15,25 @@ import type { CameraFrame, PlayerHudFrame, WorldFrame } from './WorldFrame.ts';
 
 export const BACKGROUND_COLOR = 0x000000;
 
+export interface EffectPreferences {
+  readonly screenShake: boolean;
+  readonly blood: boolean;
+}
+
+export const ALL_EFFECTS: EffectPreferences = { screenShake: true, blood: true };
+
 export interface WorldRendererOptions {
   readonly detail: boolean;
   readonly resolution: () => number;
+  readonly effects?: () => EffectPreferences;
+}
+
+export function viewOrigin(camera: CameraFrame, effects: EffectPreferences): Point2 {
+  return effects.screenShake ? camera.view.drawOrigin : { x: camera.view.rect.x, y: camera.view.rect.y };
+}
+
+export function decalShown(decal: DecalRequested, effects: EffectPreferences): boolean {
+  return effects.blood || decal.decal !== DecalKind.BloodSplat;
 }
 
 export function playerLabelText(player: PlayerHudFrame): string {
@@ -45,6 +61,7 @@ export class WorldRenderer {
   private currentResolution: number;
   private readonly decals: DecalRequested[] = [];
   private lastDrawOrigin: CameraFrame['view']['drawOrigin'] | undefined = undefined;
+  private bloodShown: boolean;
 
   constructor(
     private readonly room: Room,
@@ -55,6 +72,7 @@ export class WorldRenderer {
     private readonly options: WorldRendererOptions,
   ) {
     this.currentResolution = options.resolution();
+    this.bloodShown = this.effects.blood;
     this.applyResolution();
     this.planes = buildRoomPlanes(room, renderer, this.currentResolution);
     this.screenSurface = this.screenSized();
@@ -75,7 +93,7 @@ export class WorldRenderer {
 
   stampDecal(decal: DecalRequested): void {
     this.decals.push(decal);
-    stampDecal(this.planes, this.clips, this.renderer, decal);
+    if (decalShown(decal, this.effects)) stampDecal(this.planes, this.clips, this.renderer, decal);
   }
 
   awardScore(event: ScoreAwarded): void {
@@ -88,6 +106,7 @@ export class WorldRenderer {
 
   render(frame: WorldFrame): void {
     this.syncResolution();
+    this.syncBlood();
     this.hud.updatePlayers(this.renderCamera(frame));
     this.applyBrightness(frame.brightness);
     this.hud.drawBitmapLayer(this.screen.ctx, frame.hud, frame.tick, frame.ticksPerSecond);
@@ -106,10 +125,26 @@ export class WorldRenderer {
     if (resolution === this.currentResolution) return;
     this.currentResolution = resolution;
     this.applyResolution();
-    this.planes = buildRoomPlanes(this.room, this.renderer, resolution);
-    for (const decal of this.decals) stampDecal(this.planes, this.clips, this.renderer, decal);
+    this.rebuildPlanes();
     this.screenSurface = this.screenSized();
     this.composed = this.screenSized();
+  }
+
+  private get effects(): EffectPreferences {
+    return this.options.effects?.() ?? ALL_EFFECTS;
+  }
+
+  private syncBlood(): void {
+    const { blood } = this.effects;
+    if (blood === this.bloodShown) return;
+    this.bloodShown = blood;
+    this.rebuildPlanes();
+  }
+
+  private rebuildPlanes(): void {
+    this.planes = buildRoomPlanes(this.room, this.renderer, this.currentResolution);
+    const effects = this.effects;
+    for (const decal of this.decals) if (decalShown(decal, effects)) stampDecal(this.planes, this.clips, this.renderer, decal);
   }
 
   private applyResolution(): void {
@@ -124,10 +159,11 @@ export class WorldRenderer {
   private renderCamera(frame: WorldFrame): PlayerLabel[] {
     const camera = localCamera(frame);
     if (!camera) return [];
-    const labelOrigin = this.lastDrawOrigin ?? camera.view.drawOrigin;
+    const origin = viewOrigin(camera, this.effects);
+    const labelOrigin = this.lastDrawOrigin ?? origin;
     const labels = frame.hud.players.map((player) => this.label(frame, player, roundedScreenPoint(player.position, labelOrigin, frame.projectionFactor)));
-    this.drawPlane(this.screen, camera, frame.projectionFactor);
-    this.lastDrawOrigin = camera.view.drawOrigin;
+    this.drawPlane(this.screen, camera, origin, frame.projectionFactor);
+    this.lastDrawOrigin = origin;
     return labels;
   }
 
@@ -143,14 +179,14 @@ export class WorldRenderer {
     };
   }
 
-  private drawPlane(target: Surface, camera: CameraFrame, projectionFactor: number): void {
+  private drawPlane(target: Surface, camera: CameraFrame, origin: Point2, projectionFactor: number): void {
     const ctx = target.ctx;
     resetContext(ctx);
     ctx.fillStyle = cssColor(BACKGROUND_COLOR);
     ctx.fillRect(0, 0, target.width, target.height);
-    const source = floorSourceOrigin(camera.view.drawOrigin, this.currentResolution);
+    const source = floorSourceOrigin(origin, this.currentResolution);
     copyClipped(ctx, this.planes.floor, source.x, source.y, target.width, target.height);
-    this.painter.paint(ctx, camera.entries, { drawOrigin: camera.view.drawOrigin, projectionFactor });
+    this.painter.paint(ctx, camera.entries, { drawOrigin: origin, projectionFactor });
     copyClipped(ctx, this.planes.cover, source.x, source.y, target.width, target.height);
   }
 

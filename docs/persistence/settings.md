@@ -10,13 +10,15 @@ validated with Zod and written back on every change (`CSaveData` flushed on ever
 Unreadable storage or a failed write is logged (`save.rejected`, `save.write_failed`) and
 the game continues with the values in memory.
 
-## Version 4
+## Version 5
 
 | Field | Type | Default | Original |
 |---|---|---|---|
-| `version` | `4` | | |
+| `version` | `5` | | |
 | `soundVolume` | 0..100 | 100 | `mSoundActive` (on/off) |
 | `graphics` | `sharp`, `smooth`, `pixelated` | `sharp` | none (ADR 0006) |
+| `screenShake` | boolean | true | none (explosions always shake) |
+| `blood` | boolean | true | none (blood splats always drawn) |
 | `musicActive` | boolean | true | `mMusicActive` (no music is registered) |
 | `detail` | boolean | true | `mDetail` (`_quality` HIGH/LOW) |
 | `difficulty` | 0..3 | 0 | `mDifficulty` |
@@ -50,10 +52,12 @@ current version, then validates.
   off 0) and adds `graphics: sharp`.
 * Version 3 had the original keys as defaults. `migrateOriginalKeys` replaces keys that
   still equal them (arrows, `/`, `.`, `,`) with W, S, A, D, Space, E, Q; rebound keys stay.
+* Version 4 had no effect switches. `migrateEffectSwitches` adds `screenShake: true` and
+  `blood: true`.
  A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 5: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[4]`
-that turns a version 4 object into a version 5 object.
+To add version 6: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[5]`
+that turns a version 5 object into a version 6 object.

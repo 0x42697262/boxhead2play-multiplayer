@@ -128,6 +128,8 @@ Add one line per behavior change: what to do, and the result you expect.
   A third tab can join the same death match.
 * Search the running game (menus, CONTROLS, lobby, HUD, scoreboard) for "Player 2" -> none;
   a player without a name is shown as "Player".
+* SETTINGS -> Screen shake OFF, shoot a barrel -> the view does not shake; Blood OFF -> zombies
+  hit by bullets leave no blood, existing blood disappears; ON brings it back.
 * In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
   SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
   screen (online: the lobby room).

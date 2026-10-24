@@ -74,6 +74,15 @@ describe('settings reading', () => {
     expect(readSettings(JSON.stringify({ ...v3, keys: rebound })).settings.keys).toEqual(rebound);
   });
 
+  it('migrates version 4 with screen shake and blood on', () => {
+    const v4: Record<string, unknown> = { ...DEFAULT_SETTINGS, version: 4, soundVolume: 25 };
+    delete v4.screenShake;
+    delete v4.blood;
+    const result = readSettings(JSON.stringify(v4));
+    expect(result.migratedFrom).toBe(4);
+    expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, soundVolume: 25, screenShake: true, blood: true });
+  });
+
   it('rejects invalid JSON, invalid values and future versions', () => {
     expect(readSettings('{').rejected).toBe('json');
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, difficulty: 7 })).rejected).toBeDefined();

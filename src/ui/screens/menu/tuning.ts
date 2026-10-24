@@ -101,6 +101,30 @@ export const VOLUME_ROW: SetupRowSpec<number> = {
   ],
 };
 
+export const SHAKE_ROW: SetupRowSpec<boolean> = {
+  titleDepth: 44,
+  infoDepth: 52,
+  rowOf: '_Damage_Off',
+  title: 'setup.shake.title',
+  info: 'setup.shake.info',
+  buttons: [
+    { instance: '_Damage_Off', value: false, label: 'setup.switch.off' },
+    { instance: '_Damage_On', value: true, label: 'setup.switch.on' },
+  ],
+};
+
+export const BLOOD_ROW: SetupRowSpec<boolean> = {
+  titleDepth: 53,
+  infoDepth: 75,
+  rowOf: '_Speed_Slow',
+  title: 'setup.blood.title',
+  info: 'setup.blood.info',
+  buttons: [
+    { instance: '_Speed_Slow', value: false, label: 'setup.switch.off' },
+    { instance: '_Speed_Normal', value: true, label: 'setup.switch.on' },
+  ],
+};
+
 export const ROLL_OUT_ALPHA = 0.5;
 export const ROLL_OVER_ALPHA = 1;
 

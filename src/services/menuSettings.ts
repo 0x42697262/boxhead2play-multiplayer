@@ -70,8 +70,21 @@ export function withSoundVolume(settings: UserSettings, soundVolume: number): Us
   return { ...settings, soundVolume };
 }
 
+export function withScreenShake(settings: UserSettings, screenShake: boolean): UserSettings {
+  return { ...settings, screenShake };
+}
+
+export function withBlood(settings: UserSettings, blood: boolean): UserSettings {
+  return { ...settings, blood };
+}
+
+export function effectPreferences(settings: UserSettings): { readonly screenShake: boolean; readonly blood: boolean } {
+  return { screenShake: settings.screenShake, blood: settings.blood };
+}
+
 export function resetSetup(settings: UserSettings): UserSettings {
-  return { ...settings, graphics: DEFAULT_SETTINGS.graphics, soundVolume: DEFAULT_SETTINGS.soundVolume };
+  const { graphics, soundVolume, screenShake, blood } = DEFAULT_SETTINGS;
+  return { ...settings, graphics, soundVolume, screenShake, blood };
 }
 
 export function soundGain(settings: UserSettings): number {
