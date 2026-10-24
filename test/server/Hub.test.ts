@@ -47,6 +47,22 @@ describe('Hub sessions', () => {
     expect(outdated.closed).toBe(true);
   });
 
+  it('numbers a name that another player already uses, ignoring case', () => {
+    const setup = testHub();
+    const { lobbyId } = hostAndGuest(setup);
+    const names = ['ann', 'Ann', 'Bob'].map((name) => {
+      const connection = setup.connect(name);
+      connection.say({ type: 'joinLobby', lobbyId, character: 0 });
+      return connection;
+    });
+    expect(lobbyOf(names[2] as FakeConnection).members.map((member) => member.name)).toEqual(['Ann', 'Bob', 'ann #2', 'Ann #3', 'Bob #2']);
+    const long = setup.connect('Zed the very long name');
+    const twin = setup.connect('Zed the very long name');
+    long.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    twin.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    expect(lobbyOf(twin).members[0]?.name).toBe('Zed the very #2');
+  });
+
   it('sanitizes names', () => {
     const setup = testHub();
     const host = setup.connect('  \u0007Zed the very long name  ');

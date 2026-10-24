@@ -168,6 +168,7 @@ and the match. A `welcome` with `resumed: false` ends a running online game.
 | Message size | 4096 bytes | `MAX_MESSAGE_BYTES` (also the socket `maxPayload`) |
 | Message rate | 120/s, burst 240 | `MESSAGE_RATE_PER_SECOND`, `MESSAGE_BURST` |
 | Name length | 16 (control characters removed, empty becomes "Player") | `PLAYER_NAME_MAX_LENGTH`, `sanitizeName` |
+| Duplicate names | A name another connected player uses (ignoring case) gets " #2", " #3", … (cut to fit 16) | `uniqueName`, `DUPLICATE_NAME_MARK` |
 | Catch-up ticks per timer callback | 5 | `MAX_CATCH_UP_TICKS` |
 
 A match that throws while stepping ends with `error`, logged as `server.failed`.
