@@ -131,6 +131,9 @@ Add one line per behavior change: what to do, and the result you expect.
   hold Fire while steering -> both work; > -> next weapon; list -> upgrades (scoreboard in
   deathmatch); pause -> the Esc menu, only a close button stays; menus show no controls. Use a
   mouse or key -> the controls hide.
+* `npx vitest run test/ui/touch` -> a stick key released by a window blur is pressed again by
+  the next thumb move in the same sector. Phone, push the stick far from its base, let go and
+  touch the base again at once -> the base snaps back to its resting place, not shifted.
 * Phone, main menu, tap NAME -> the keyboard opens and the game shrinks above it; type, tap
   Done -> the name is saved. Tap JOIN BY CODE, type `ab-c` -> `CODE: ABC`. With a mouse, NAME
   still edits with the physical keyboard and no input gets focus.

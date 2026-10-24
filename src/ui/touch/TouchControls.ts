@@ -1,9 +1,10 @@
 import type { KeyboardState } from '../../adapters/input/KeyboardState.ts';
-import { TOUCH_CODES, TouchCode } from '../../adapters/input/touchCodes.ts';
+import { TouchCode } from '../../adapters/input/touchCodes.ts';
 import { t } from '../../text/i18n.ts';
 import type { TextKey } from '../../text/i18n.ts';
 import { Glyph, GLYPH_VIEW_BOX } from './glyphs.ts';
-import { knobOffset, STICK_IDLE, stickDirections, type StickDirections } from './stick.ts';
+import { restCenter, type Point } from './stick.ts';
+import { TouchInputState } from './TouchInputState.ts';
 import { TouchLayout } from '../../services/ScreenFlow.ts';
 import {
   CONTROL_GAP_PX,
@@ -11,9 +12,7 @@ import {
   FIRE_BUTTON_PX,
   HAPTIC_TAP_MS,
   STICK_BASE_PX,
-  STICK_GRAB_RADIUS_FACTOR,
   STICK_KNOB_PX,
-  STICK_TRAVEL_PX,
   SYSTEM_BUTTON_PX,
   WEAPON_BUTTON_PX,
 } from './tuning.ts';
@@ -42,19 +41,8 @@ export interface TouchControlsDependencies {
   readonly vibrate: (durationMs: number) => void;
 }
 
-interface Point {
-  readonly x: number;
-  readonly y: number;
-}
-
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const LAYOUT_ATTRIBUTE = 'layout';
-const STICK_KEYS: readonly (readonly [keyof StickDirections, TouchCode])[] = [
-  ['up', TouchCode.Up],
-  ['down', TouchCode.Down],
-  ['left', TouchCode.Left],
-  ['right', TouchCode.Right],
-];
 const SIZES: Readonly<Record<string, number>> = {
   '--touch-stick-base': STICK_BASE_PX,
   '--touch-stick-knob': STICK_KNOB_PX,
@@ -65,8 +53,8 @@ const SIZES: Readonly<Record<string, number>> = {
   '--touch-gap': CONTROL_GAP_PX,
 };
 
-function center(rect: DOMRect): Point {
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+function clientPoint(event: PointerEvent): Point {
+  return { x: event.clientX, y: event.clientY };
 }
 
 export class TouchControls {
@@ -78,15 +66,15 @@ export class TouchControls {
   private readonly menuButton: HTMLButtonElement;
   private layout: TouchLayout = TouchLayout.Hidden;
   private shown: TouchLayout = TouchLayout.Hidden;
-  private stickPointer: number | undefined = undefined;
-  private origin: Point = { x: 0, y: 0 };
-  private directions: StickDirections = STICK_IDLE;
+  private readonly input: TouchInputState;
+  private readonly holdButtons: (readonly [HTMLButtonElement, TouchCode])[] = [];
 
   constructor(
     private readonly deps: TouchControlsDependencies,
     private touchInput: boolean,
   ) {
     const { document } = deps;
+    this.input = new TouchInputState(deps.keyboard);
     this.root = this.element('div', TouchClass.Root);
     for (const [name, value] of Object.entries(SIZES)) this.root.style.setProperty(name, `${value}px`);
     this.root.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -125,7 +113,8 @@ export class TouchControls {
     this.render();
   }
 
-  show(layout: TouchLayout): void {
+  sync(layout: TouchLayout): void {
+    for (const [button, code] of this.holdButtons) button.classList.toggle(TouchClass.Pressed, this.input.isDown(code));
     if (layout === this.layout) return;
     this.layout = layout;
     this.render();
@@ -146,29 +135,27 @@ export class TouchControls {
   }
 
   private releaseAll(): void {
-    for (const code of TOUCH_CODES) this.deps.keyboard.keyUp(code);
-    for (const pressed of this.root.querySelectorAll(`.${TouchClass.Pressed}`)) pressed.classList.remove(TouchClass.Pressed);
-    this.endStick();
+    this.input.releaseAll();
+    for (const [button] of this.holdButtons) button.classList.remove(TouchClass.Pressed);
+    this.resetStick();
   }
 
   private attachStick(): void {
     this.zone.addEventListener('pointerdown', (event) => {
-      if (this.stickPointer !== undefined) return;
+      const rest = restCenter(this.zone.getBoundingClientRect(), this.base);
+      const origin = this.input.grabStick(event.pointerId, clientPoint(event), rest);
+      if (!origin) return;
       event.preventDefault();
       this.zone.setPointerCapture(event.pointerId);
-      this.stickPointer = event.pointerId;
-      const rest = center(this.base.getBoundingClientRect());
-      const grab = Math.hypot(event.clientX - rest.x, event.clientY - rest.y) <= (STICK_BASE_PX / 2) * STICK_GRAB_RADIUS_FACTOR;
-      this.origin = grab ? rest : { x: event.clientX, y: event.clientY };
-      this.base.style.transform = `translate(${this.origin.x - rest.x}px, ${this.origin.y - rest.y}px)`;
+      this.base.style.transform = `translate(${origin.x - rest.x}px, ${origin.y - rest.y}px)`;
       this.base.classList.add(TouchClass.Dragging);
       this.moveStick(event);
     });
-    this.zone.addEventListener('pointermove', (event) => {
-      if (event.pointerId === this.stickPointer) this.moveStick(event);
-    });
+    this.zone.addEventListener('pointermove', (event) => this.moveStick(event));
     const end = (event: PointerEvent): void => {
-      if (event.pointerId === this.stickPointer) this.endStick();
+      if (!this.input.ownsStick(event.pointerId)) return;
+      this.input.endStick();
+      this.resetStick();
     };
     this.zone.addEventListener('pointerup', end);
     this.zone.addEventListener('pointercancel', end);
@@ -176,41 +163,28 @@ export class TouchControls {
   }
 
   private moveStick(event: PointerEvent): void {
-    const dx = event.clientX - this.origin.x;
-    const dy = event.clientY - this.origin.y;
-    const knob = knobOffset(dx, dy, STICK_TRAVEL_PX);
-    this.knob.style.transform = `translate(${knob.x}px, ${knob.y}px)`;
-    this.applyDirections(stickDirections(dx, dy, STICK_TRAVEL_PX));
+    const knob = this.input.moveStick(event.pointerId, clientPoint(event));
+    if (knob) this.knob.style.transform = `translate(${knob.x}px, ${knob.y}px)`;
   }
 
-  private endStick(): void {
-    this.stickPointer = undefined;
+  private resetStick(): void {
     this.base.style.transform = '';
     this.knob.style.transform = '';
     this.base.classList.remove(TouchClass.Dragging);
-    this.applyDirections(STICK_IDLE);
-  }
-
-  private applyDirections(next: StickDirections): void {
-    for (const [direction, code] of STICK_KEYS) {
-      if (next[direction] === this.directions[direction]) continue;
-      if (next[direction]) this.deps.keyboard.keyDown(code);
-      else this.deps.keyboard.keyUp(code);
-    }
-    this.directions = next;
   }
 
   private holdButton(button: HTMLButtonElement, code: TouchCode): HTMLButtonElement {
+    this.holdButtons.push([button, code]);
     button.addEventListener('pointerdown', (event) => {
       event.preventDefault();
       button.setPointerCapture(event.pointerId);
       button.classList.add(TouchClass.Pressed);
       this.tap();
-      this.deps.keyboard.keyDown(code);
+      this.input.press(code);
     });
     const release = (): void => {
       button.classList.remove(TouchClass.Pressed);
-      this.deps.keyboard.keyUp(code);
+      this.input.release(code);
     };
     button.addEventListener('pointerup', release);
     button.addEventListener('pointercancel', release);

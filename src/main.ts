@@ -172,7 +172,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
   );
   const softKeyboard = new SoftKeyboard({ document, entry: () => flow.screen?.textEntry, key: (code, typed) => flow.key(code, typed) });
   const syncTouch = (): void => {
-    touch.show(flow.screen?.touchLayout ?? TouchLayout.Hidden);
+    touch.sync(flow.screen?.touchLayout ?? TouchLayout.Hidden);
     softKeyboard.sync();
     window.requestAnimationFrame(syncTouch);
   };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { knobOffset, STICK_IDLE, stickDirections } from '../../../src/ui/touch/stick.ts';
+import { knobOffset, restCenter, STICK_IDLE, stickDirections } from '../../../src/ui/touch/stick.ts';
 import { STICK_DEAD_ZONE, STICK_TRAVEL_PX } from '../../../src/ui/touch/tuning.ts';
 
 const TRAVEL = STICK_TRAVEL_PX;
@@ -22,5 +22,11 @@ describe('virtual stick', () => {
     expect(knobOffset(10, 0, TRAVEL)).toEqual({ x: 10, y: 0 });
     const far = knobOffset(TRAVEL * 3, TRAVEL * 4, TRAVEL);
     expect(Math.hypot(far.x, far.y)).toBeCloseTo(TRAVEL);
+  });
+});
+
+describe('stick rest center', () => {
+  it('comes from the layout box, so a running spring-back transform does not move it', () => {
+    expect(restCenter({ left: 0, top: 200 }, { offsetLeft: 20, offsetTop: 300, offsetWidth: 132, offsetHeight: 132 })).toEqual({ x: 86, y: 566 });
   });
 });

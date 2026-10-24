@@ -62,6 +62,16 @@ so the eight sectors are equal. The knob is clamped to the travel and springs ba
 Several fingers work at once (stick plus Fire plus a weapon button) through pointer
 capture per control. Leaving the play layout releases every virtual key.
 
+The press and stick state lives in `TouchInputState`, which has no DOM and is unit tested
+with a real `KeyboardState`; `TouchControls` only wires pointer events and styles to it.
+The stick compares each new direction with `KeyboardState.isDown`, not with a remembered
+copy: a window blur (or releasing Cmd) releases the virtual keys too, and the next thumb
+movement presses them again without crossing into another sector. Once per animation
+frame, `TouchControls.sync` sets each button's pressed look from the key state, so a
+released key never shows as pressed. The base's rest center comes from its layout box
+(`offsetLeft`/`offsetTop` inside the zone), not from `getBoundingClientRect`, which would
+include the 0.25 s spring-back transform and put the base off center on a quick re-touch.
+
 Design (Apple Human Interface Guidelines): translucent white circles with a thin edge, white
 SF-style line glyphs, a spring press scale of 0.92, an 8 ms `navigator.vibrate` tap where
 the browser supports it (not Safari), all controls inside the safe areas, at least 44 px.
@@ -73,7 +83,7 @@ more` darkens the fills.
 
 Each screen reports its `touchLayout` (`ScreenFlow.Screen`): `GameScreen` and
 `OnlineGameScreen` return `play`, or `menu` while the Esc menu is open; every menu screen
-has none and the layer hides. `main.ts` syncs it once per animation frame.
+has none and the layer hides. `main.ts` calls `TouchControls.sync` once per animation frame.
 
 ## On-screen keyboard (`src/ui/mobile/SoftKeyboard.ts`)
 
