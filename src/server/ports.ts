@@ -1,10 +1,11 @@
 import type { AnimationCatalog } from '../domain/animation/AnimationCatalog.ts';
 import type { ThingFactory } from '../domain/things/ThingFactory.ts';
 import type { RoomDefinition } from '../domain/world/RoomDefinition.ts';
+import type { ServerMessage } from '../net/protocol.ts';
 import type { Logger } from '../observability/logger.ts';
 
 export interface Connection {
-  send(text: string): void;
+  send(message: ServerMessage): void;
   close(): void;
 }
 

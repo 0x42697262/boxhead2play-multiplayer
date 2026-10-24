@@ -328,9 +328,13 @@ export function decodeClientMessage(text: string): ClientMessage | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-export function decodeServerMessage(text: string): ServerMessage | undefined {
-  const parsed = ServerMessageSchema.safeParse(parseJson(text));
+export function parseServerMessage(value: unknown): ServerMessage | undefined {
+  const parsed = ServerMessageSchema.safeParse(value);
   return parsed.success ? (parsed.data as ServerMessage) : undefined;
+}
+
+export function decodeServerMessage(text: string): ServerMessage | undefined {
+  return parseServerMessage(parseJson(text));
 }
 
 export { PROTOCOL_VERSION };

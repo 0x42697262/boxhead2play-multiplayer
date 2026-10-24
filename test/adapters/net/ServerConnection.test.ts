@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultServerUrl, RECONNECT_DELAY_MS, ServerConnection, type SocketLike } from '../../../src/adapters/net/ServerConnection.ts';
 import type { ServerMessage } from '../../../src/net/protocol.ts';
+import { WireEncoder } from '../../../src/net/wire.ts';
 
 class FakeSocket implements SocketLike {
   readyState = 0;
@@ -8,7 +9,9 @@ class FakeSocket implements SocketLike {
   onclose: ((event: CloseEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
+  binaryType: BinaryType = 'blob';
   readonly sent: string[] = [];
+  private readonly encoder = new WireEncoder();
 
   send(text: string): void {
     this.sent.push(text);
@@ -24,7 +27,12 @@ class FakeSocket implements SocketLike {
     this.onopen?.({} as Event);
   }
 
-  deliver(data: string): void {
+  deliver(message: { readonly type: string; readonly [key: string]: unknown }): void {
+    this.deliverBytes(this.encoder.encode(message));
+  }
+
+  deliverBytes(bytes: Uint8Array): void {
+    const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
     this.onmessage?.({ data } as MessageEvent);
   }
 }
@@ -58,16 +66,39 @@ describe('ServerConnection', () => {
     expect(defaultServerUrl({ protocol: 'http:', host: 'localhost:5173' })).toBe('ws://localhost:5173/ws');
   });
 
-  it('decodes messages, reports undecodable ones and sends only while open', () => {
+  it('decodes binary messages as deltas, reports undecodable ones and sends only while open', () => {
     const { connection, sockets, events, messages } = setup();
     connection.connect();
+    expect(sockets[0]?.binaryType).toBe('arraybuffer');
     expect(connection.send({ type: 'leaveLobby' })).toBe(false);
     sockets[0]?.open();
     expect(connection.send({ type: 'leaveLobby' })).toBe(true);
-    sockets[0]?.deliver('{"type":"error","reason":"lobbyFull"}');
-    sockets[0]?.deliver('{"type":"bogus"}');
-    expect(messages).toEqual([{ type: 'error', reason: 'lobbyFull' }]);
-    expect(events).toEqual(['open', 'rejected']);
+    sockets[0]?.deliver({ type: 'error', reason: 'lobbyFull' });
+    sockets[0]?.deliver({ type: 'error', reason: 'notHost' });
+    sockets[0]?.deliver({ type: 'bogus' });
+    sockets[0]?.deliverBytes(new Uint8Array([200, 1]));
+    expect(messages).toEqual([
+      { type: 'error', reason: 'lobbyFull' },
+      { type: 'error', reason: 'notHost' },
+    ]);
+    expect(events).toEqual(['open', 'rejected', 'rejected']);
+  });
+
+  it('starts every new socket with a fresh decoder', () => {
+    const { connection, sockets, timers, messages } = setup();
+    connection.connect();
+    sockets[0]?.open();
+    sockets[0]?.deliver({ type: 'lobbyLeft', reason: 'left' });
+    sockets[0]?.close();
+    timers[0]?.run();
+    sockets[1]?.open();
+    sockets[1]?.deliver({ type: 'error', reason: 'lobbyFull' });
+    sockets[1]?.deliver({ type: 'error', reason: 'notHost' });
+    expect(messages).toEqual([
+      { type: 'lobbyLeft', reason: 'left' },
+      { type: 'error', reason: 'lobbyFull' },
+      { type: 'error', reason: 'notHost' },
+    ]);
   });
 
   it('reconnects after a drop until disconnected on purpose', () => {

@@ -1,7 +1,6 @@
 import {
   ClientMessageType,
   decodeClientMessage,
-  encodeServerMessage,
   ErrorReason,
   LeaveReason,
   PROTOCOL_VERSION,
@@ -38,7 +37,7 @@ class ClientSession implements LobbyClient {
   }
 
   send(message: ServerMessage): void {
-    this.connection?.send(encodeServerMessage(message));
+    this.connection?.send(message);
   }
 }
 
@@ -116,7 +115,7 @@ export class Hub {
   }
 
   private reject(connection: Connection, reason: ErrorReasonValue): void {
-    connection.send(encodeServerMessage({ type: ServerMessageType.Error, reason }));
+    connection.send({ type: ServerMessageType.Error, reason });
     this.deps.logger.debug(LogEvent.MessageRejected, { reason });
   }
 

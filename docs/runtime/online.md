@@ -95,10 +95,15 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 2)
+## Protocol (`src/net/protocol.ts`, version 3)
 
-JSON text messages, validated with Zod on both sides. Anything that fails validation is
-dropped (client) or answered with `error: badMessage` (server).
+Client messages are JSON text. Server messages are binary delta frames
+(`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
+`WireDecoder` per socket on the client, each message a delta against the previous message
+of the same type. Both sides validate the decoded values with Zod. Anything that fails is
+dropped (client) or answered with `error: badMessage` (server). `npm run bandwidth`
+measures the bytes per player for JSON, JSON + deflate, wire and wire + deflate and checks
+that every decoded frame equals the JSON one.
 
 | Client -> server | Purpose |
 |---|---|

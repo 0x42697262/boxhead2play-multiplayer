@@ -52,8 +52,8 @@ Option 3.
   (40 ms). There is no prediction.
 * The server needs the extracted assets (`rooms`, `characters/animMeta.json`, the symbol
   catalog) to build worlds; it loads them from `BOXHEAD_ASSET_DIR`.
-* Bandwidth is about 25 frames per second per player. Frames are JSON with fractions
-  rounded to three digits and permessage-deflate on the socket. A binary codec (like
-  tanka-maze's `wire/`) is the next step if bandwidth matters.
+* Bandwidth is about 25 frames per second per player. Frames were JSON with fractions
+  rounded to three digits and permessage-deflate on the socket; ADR 0007 replaced them
+  with binary delta frames.
 * Settings move to version 2 (one character, one key set, a player name). Version 1 is
   migrated.

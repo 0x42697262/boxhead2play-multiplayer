@@ -109,6 +109,9 @@ Add one line per behavior change: what to do, and the result you expect.
   to a zombie door; 16 online players start spread out, at least 4 cells apart.
 * DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> TAB shows one more
   death for him and no kill for anybody.
+* `npm run bandwidth` -> per-player rates for coop and deathmatch with 1/4/16 players; wire +
+  deflate stays under 5 KiB/s and no "decoded frames differ" line appears. In the browser,
+  DevTools > Network > WS shows binary server frames of tens of bytes while nothing moves.
 * Tab 1 COOPERATIVE, HOST -> the address bar gets `?code=XXXXX`; click the code line -> "LINK
   COPIED!". Paste the link in tab 2 -> tab 2 opens in tab 1's room. Main menu JOIN BY CODE
   (bottom right), type the code in lower case, Enter -> the same room; a wrong code -> "No game

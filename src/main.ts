@@ -103,7 +103,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
       opened: () => online.opened(),
       closed: () => online.closed(),
       message: (message) => online.receive(message),
-      rejected: (text) => online.rejected(text),
+      rejected: (byteLength) => online.rejected(byteLength),
     }),
   );
 

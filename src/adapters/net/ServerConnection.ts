@@ -1,4 +1,5 @@
-import { decodeServerMessage, encodeClientMessage, type ClientMessage, type ServerMessage } from '../../net/protocol.ts';
+import { encodeClientMessage, parseServerMessage, type ClientMessage, type ServerMessage } from '../../net/protocol.ts';
+import { WireDecoder, WireError } from '../../net/wire.ts';
 import { SOCKET_PATH } from '../../net/tuning.ts';
 
 export const RECONNECT_DELAY_MS = 1500;
@@ -9,6 +10,7 @@ export interface SocketLike {
   onclose: ((event: CloseEvent) => void) | null;
   onerror: ((event: Event) => void) | null;
   onmessage: ((event: MessageEvent) => void) | null;
+  binaryType: BinaryType;
   send(text: string): void;
   close(): void;
 }
@@ -23,10 +25,20 @@ export interface ConnectionListener {
   opened(): void;
   closed(): void;
   message(message: ServerMessage): void;
-  rejected(text: string): void;
+  rejected(byteLength: number): void;
 }
 
 const OPEN = 1;
+const ARRAY_BUFFER: BinaryType = 'arraybuffer';
+
+function decodeWire(decoder: WireDecoder, data: ArrayBuffer): ServerMessage | undefined {
+  try {
+    return parseServerMessage(decoder.decode(new Uint8Array(data)));
+  } catch (error) {
+    if (error instanceof WireError) return undefined;
+    throw error;
+  }
+}
 const SECURE_PAGE_PROTOCOL = 'https:';
 const SECURE_SOCKET_PROTOCOL = 'wss:';
 const PLAIN_SOCKET_PROTOCOL = 'ws:';
@@ -69,15 +81,17 @@ export class ServerConnection {
     this.wanted = true;
     if (this.socket || this.cancelRetry) return;
     const socket = this.createSocket(this.url);
+    const decoder = new WireDecoder();
+    socket.binaryType = ARRAY_BUFFER;
     this.socket = socket;
     socket.onopen = () => {
       if (this.socket === socket) this.listener.opened();
     };
     socket.onmessage = (event) => {
-      if (this.socket !== socket || typeof event.data !== 'string') return;
-      const message = decodeServerMessage(event.data);
+      if (this.socket !== socket || !(event.data instanceof ArrayBuffer)) return;
+      const message = decodeWire(decoder, event.data);
       if (message) this.listener.message(message);
-      else this.listener.rejected(event.data);
+      else this.listener.rejected(event.data.byteLength);
     };
     socket.onerror = () => socket.close();
     socket.onclose = () => {

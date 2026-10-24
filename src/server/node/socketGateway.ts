@@ -2,6 +2,7 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { SOCKET_PATH } from '../../net/tuning.ts';
+import { WireEncoder } from '../../net/wire.ts';
 import type { Hub } from '../Hub.ts';
 import type { Connection } from '../ports.ts';
 import { MAX_MESSAGE_BYTES, PING_INTERVAL_MS } from '../tuning.ts';
@@ -14,9 +15,10 @@ interface Watched {
 }
 
 function socketConnection(socket: WebSocket): Connection {
+  const encoder = new WireEncoder();
   return {
-    send(text) {
-      if (socket.readyState === OPEN) socket.send(text);
+    send(message) {
+      if (socket.readyState === OPEN) socket.send(encoder.encode(message));
     },
     close() {
       socket.close();

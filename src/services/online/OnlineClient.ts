@@ -198,8 +198,8 @@ export class OnlineClient {
     this.update({ status: OnlineStatus.Connecting });
   }
 
-  rejected(text: string): void {
-    this.deps.logger.warn(LogEvent.OnlineError, { length: text.length });
+  rejected(byteLength: number): void {
+    this.deps.logger.warn(LogEvent.OnlineError, { length: byteLength });
   }
 
   receive(message: ServerMessage): void {

@@ -1,6 +1,6 @@
 import { MAX_PLAYERS } from '../domain/world/tuning.ts';
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 export const SOCKET_PATH = '/ws';
 
 export const PLAYER_NAME_MAX_LENGTH = 16;
@@ -14,3 +14,6 @@ export const LOBBY_CODE_LENGTH = 5;
 export const LOBBY_CODE_PARAM = 'code';
 export const LOBBY_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const FRACTION_DIGITS_SCALE = 1000;
+export const WIRE_KEYED_FIELD = 'thingKey';
+export const WIRE_MAX_INTERNED_LENGTH = 64;
+export const WIRE_STRING_TABLE_LIMIT = 4096;

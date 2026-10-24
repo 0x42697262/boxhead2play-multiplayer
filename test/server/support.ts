@@ -2,7 +2,8 @@ import { silentLogger } from '../../src/observability/logger.ts';
 import { createThingFactory } from '../../src/domain/things/factory.ts';
 import { InitKind } from '../../src/domain/world/RoomDefinition.ts';
 import { Difficulty, GameAmount, GameSpeed } from '../../src/domain/world/SimulationSettings.ts';
-import { decodeServerMessage, encodeClientMessage, PROTOCOL_VERSION, type ClientMessage, type LobbyOptions, type ServerMessage } from '../../src/net/protocol.ts';
+import { encodeClientMessage, parseServerMessage, PROTOCOL_VERSION, type ClientMessage, type LobbyOptions, type ServerMessage } from '../../src/net/protocol.ts';
+import { WireDecoder, WireEncoder } from '../../src/net/wire.ts';
 import { Hub, type Link } from '../../src/server/Hub.ts';
 import type { Connection, GameContent, HubDependencies, Ticker, Timers } from '../../src/server/ports.ts';
 import { syntheticAnimationCatalog } from '../domain/support/animationCatalog.ts';
@@ -73,9 +74,12 @@ export class FakeConnection implements Connection {
   closed = false;
   link: Link | undefined;
 
-  send(text: string): void {
-    const message = decodeServerMessage(text);
-    if (!message) throw new Error(`undecodable server message: ${text.slice(0, 200)}`);
+  private readonly encoder = new WireEncoder();
+  private readonly decoder = new WireDecoder();
+
+  send(sent: ServerMessage): void {
+    const message = parseServerMessage(this.decoder.decode(this.encoder.encode(sent)));
+    if (!message) throw new Error(`undecodable server message: ${sent.type}`);
     this.received.push(message);
   }
 
