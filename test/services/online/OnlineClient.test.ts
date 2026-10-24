@@ -1,3 +1,4 @@
+import { PROTOCOL_VERSION } from '../../../src/net/tuning.ts';
 import { describe, expect, it } from 'vitest';
 import { MemoryStore } from '../../../src/adapters/storage/KeyValueStore.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
@@ -24,7 +25,7 @@ describe('OnlineClient connection', () => {
     online.watch(GameMode.Coop);
     online.createLobby(GameMode.Coop, 'ROOM_Single_0001', OPTIONS, 3);
     online.opened();
-    expect(transport.sent).toEqual([{ type: 'hello', version: 1, sessionId: 'old', name: 'Ann' }]);
+    expect(transport.sent).toEqual([{ type: 'hello', version: PROTOCOL_VERSION, sessionId: 'old', name: 'Ann' }]);
     online.receive({ type: 'welcome', clientId: 'c1', sessionId: 'new', resumed: false });
     expect(transport.types()).toEqual(['hello', 'watchLobbies', 'createLobby']);
     expect(session.read(SESSION_STORAGE_KEY)).toBe('new');

@@ -44,6 +44,7 @@ export const START: GameStarted = {
 export function lobby(overrides: Partial<LobbyDto> = {}): LobbyDto {
   return {
     id: 'l1',
+    code: 'ABCDE',
     name: "Ann's game",
     mode: GameMode.Coop,
     roomId: 'ROOM_Single_0001',

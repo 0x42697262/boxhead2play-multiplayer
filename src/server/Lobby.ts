@@ -45,6 +45,7 @@ export interface LobbyDependencies {
 
 export interface LobbySetup {
   readonly id: string;
+  readonly code: string;
   readonly mode: OnlineMode;
   readonly roomId: string;
   readonly options: LobbyOptions;
@@ -52,6 +53,7 @@ export interface LobbySetup {
 
 export class Lobby {
   readonly id: string;
+  readonly code: string;
   readonly mode: OnlineMode;
   private roomId: string;
   private options: LobbyOptions;
@@ -67,6 +69,7 @@ export class Lobby {
     private readonly deps: LobbyDependencies,
   ) {
     this.id = setup.id;
+    this.code = setup.code;
     this.mode = setup.mode;
     this.roomId = setup.roomId;
     this.options = setup.options;
@@ -98,6 +101,7 @@ export class Lobby {
     const host = this.host;
     return {
       id: this.id,
+      code: this.code,
       name: lobbyName(host?.client.name ?? ''),
       mode: this.mode,
       roomId: this.roomId,

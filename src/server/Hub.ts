@@ -14,6 +14,7 @@ import {
 import { LogEvent } from '../text/logEvents.ts';
 import { Lobby, type LobbyClient } from './Lobby.ts';
 import type { CancelTimer, Connection, HubDependencies } from './ports.ts';
+import { lobbyCodeFromNumber, normalizeLobbyCode } from '../net/lobbyCode.ts';
 import { nameKey, sanitizeName, uniqueName } from './sanitize.ts';
 import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from './tuning.ts';
 
@@ -67,6 +68,7 @@ export class Hub {
   private readonly sessions = new Map<string, ClientSession>();
   private readonly lobbies = new Map<string, Lobby>();
 
+  private readonly codes = new Map<string, string>();
   constructor(private readonly deps: HubDependencies) {}
 
   get lobbyCount(): number {
@@ -139,6 +141,14 @@ export class Hub {
     return session;
   }
 
+  private freeCode(): string {
+    const seed = this.deps.newSeed();
+    for (let attempt = 0; ; attempt++) {
+      const code = lobbyCodeFromNumber(seed + attempt);
+      if (!this.codes.has(code)) return code;
+    }
+  }
+
   private freeName(raw: string, self: ClientSession | undefined): string {
     const taken = new Set([...this.sessions.values()].filter((other) => other !== self).map((other) => nameKey(other.name)));
     return uniqueName(sanitizeName(raw), taken);
@@ -195,6 +205,10 @@ export class Hub {
         return this.createLobby(session, message);
       case ClientMessageType.JoinLobby:
         return this.joinLobby(session, message.lobbyId, message.character);
+      case ClientMessageType.JoinByCode: {
+        const lobbyId = this.codes.get(normalizeLobbyCode(message.code));
+        return lobbyId === undefined ? ErrorReason.CodeNotFound : this.joinLobby(session, lobbyId, message.character);
+      }
       case ClientMessageType.LeaveLobby:
         this.leaveLobby(session);
         return undefined;
@@ -218,7 +232,7 @@ export class Hub {
     if (!this.deps.content.rooms.has(message.roomId)) return ErrorReason.RoomUnknown;
     if (this.lobbies.size >= MAX_LOBBIES) return ErrorReason.LobbyLimit;
     this.leaveLobby(session);
-    const lobby = new Lobby({ id: this.deps.newId(), mode: message.mode, roomId: message.roomId, options: message.options }, session, message.character, {
+    const lobby = new Lobby({ id: this.deps.newId(), code: this.freeCode(), mode: message.mode, roomId: message.roomId, options: message.options }, session, message.character, {
       content: this.deps.content,
       ticker: this.deps.ticker,
       newId: this.deps.newId,
@@ -228,6 +242,7 @@ export class Hub {
       onEmpty: (empty) => this.lobbyClosed(empty),
     });
     this.lobbies.set(lobby.id, lobby);
+    this.codes.set(lobby.code, lobby.id);
     session.lobby = lobby;
     this.deps.logger.info(LogEvent.LobbyCreated, { lobby: lobby.id, mode: lobby.mode, room: message.roomId });
     session.send({ type: ServerMessageType.Lobby, lobby: lobby.dto() });
@@ -261,6 +276,7 @@ export class Hub {
 
   private lobbyClosed(lobby: Lobby): void {
     this.lobbies.delete(lobby.id);
+    this.codes.delete(lobby.code);
     for (const session of this.sessions.values()) if (session.lobby === lobby) session.lobby = undefined;
     this.lobbyChanged(lobby);
   }

@@ -152,6 +152,11 @@ export class OnlineClient {
     this.send({ type: ClientMessageType.JoinLobby, lobbyId, character });
   }
 
+  joinByCode(code: string, character: PlayerCharacter): void {
+    this.enterMatchOf = undefined;
+    this.send({ type: ClientMessageType.JoinByCode, code, character });
+  }
+
   leaveLobby(): void {
     this.leaving = true;
     this.send({ type: ClientMessageType.LeaveLobby });

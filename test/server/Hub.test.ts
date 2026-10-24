@@ -47,6 +47,23 @@ describe('Hub sessions', () => {
     expect(outdated.closed).toBe(true);
   });
 
+  it('gives every lobby its own 5 character code and joins by it, ignoring case and spaces', () => {
+    const setup = testHub();
+    const { host, lobbyId } = hostAndGuest(setup);
+    const second = setup.connect('Cy');
+    second.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    const code = lobbyOf(second).code;
+    expect(code).toMatch(/^[A-Z2-9]{5}$/);
+    expect(lobbyOf(host).code).not.toBe(code);
+    const dee = setup.connect('Dee');
+    dee.say({ type: 'joinByCode', code: ` ${code.toLowerCase()} `, character: 0 });
+    expect(lobbyOf(dee).id).toBe(lobbyOf(second).id);
+    expect(lobbyOf(dee).id).not.toBe(lobbyId);
+    const eve = setup.connect('Eve');
+    eve.say({ type: 'joinByCode', code: 'ZZZZZ', character: 0 });
+    expect(eve.last('error')?.reason).toBe(ErrorReason.CodeNotFound);
+  });
+
   it('numbers a name that another player already uses, ignoring case', () => {
     const setup = testHub();
     const { lobbyId } = hostAndGuest(setup);

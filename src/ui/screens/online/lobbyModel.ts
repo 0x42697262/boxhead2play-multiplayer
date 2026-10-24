@@ -155,7 +155,7 @@ function memberLines(lobby: LobbyDto, clientId: string | undefined): string[] {
   const selfIndex = lobby.members.findIndex((member) => member.id === clientId);
   const { shown, hidden } = visibleMemberIndices(lobby.members.length, selfIndex < 0 ? undefined : selfIndex, ROOM_MEMBER_LINES);
   const lines = shown.map((index) => memberLine(lobby, index, clientId));
-  return [t('online.room.players', { count: lobby.members.length, max: lobby.maxPlayers }), ...lines, ...(hidden > 0 ? [t('online.room.more', { count: hidden })] : [])];
+  return [t('online.room.code', { code: lobby.code }), t('online.room.players', { count: lobby.members.length, max: lobby.maxPlayers }), ...lines, ...(hidden > 0 ? [t('online.room.more', { count: hidden })] : [])];
 }
 
 function roomPrompt(lobby: LobbyDto, clientId: string | undefined): { readonly prompt: string; readonly canPlay: boolean } {

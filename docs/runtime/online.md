@@ -53,7 +53,13 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   clicking the key cell joins. More than 14 games are split into pages: two clones of the
   hidden RESET button (`< PREV`, `NEXT >`, 85 px left and right of the centered CLOSE) step
   through them, faded at the first and last page, and the info line says "Page n of m". The
-  server allows up to 256 lobbies (`MAX_LOBBIES`). Entering a lobby code is not built yet. Joining a running game also asks to enter the match
+  server allows up to 256 lobbies (`MAX_LOBBIES`).
+* **Lobby codes.** Every lobby gets a 5 character code from `A-Z` and `2-9` without `I`, `L`,
+  `O` (`lobbyCodeFromNumber(newSeed() + attempt)`, the first free one). The lobby room shows
+  "LOBBY CODE: XXXXX" above the player list. The online menu's `mcDeathPlay` slot is ENTER
+  CODE: click it, type (lower case and other characters are dropped or upper-cased by
+  `normalizeLobbyCode`), Enter or a second click sends `joinByCode`. An unknown code answers
+  `codeNotFound` ("No game has that code."). Joining a running game also asks to enter the match
   (`OnlineClient.joinLobby(..., enterMatch)`), so the player goes straight into it.
 * **Lobby room** (`SelectWorldScreen` with a `LobbyRoom`). The OBJECTIVE screen of the mode
   with the player list under the character card and the options summary under the level.
@@ -77,7 +83,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 1)
+## Protocol (`src/net/protocol.ts`, version 2)
 
 JSON text messages, validated with Zod on both sides. Anything that fails validation is
 dropped (client) or answered with `error: badMessage` (server).
@@ -88,6 +94,7 @@ dropped (client) or answered with `error: badMessage` (server).
 | `setName`, `setCharacter` | Profile changes, also while in a lobby |
 | `watchLobbies {mode}` | Subscribe to the lobby list of a mode |
 | `createLobby`, `joinLobby`, `leaveLobby`, `configureLobby` | Lobby management |
+| `joinByCode` | Join the lobby with that code (`codeNotFound` otherwise). |
 | `startGame` | Host: start the match. Member outside a running match: join it. |
 | `leaveGame` | Leave the running match, stay in the lobby |
 | `input {down, pressed, released}` | Control bit masks (`src/net/controlMask.ts`) |

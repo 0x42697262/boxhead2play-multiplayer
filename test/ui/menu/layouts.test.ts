@@ -39,10 +39,10 @@ describe('menu layouts from the real library', () => {
     for (const { clip } of layout.optionInfoClips) expect(clip.xMax).toBeGreaterThan(200);
   });
 
-  it.skipIf(assetsMissing)('online menu reuses the main menu slots for HOST, JOIN and NAME plus the back tab and the controls window with 14 join rows', () => {
+  it.skipIf(assetsMissing)('online menu reuses the main menu slots for HOST, JOIN, CODE and NAME plus the back tab and the controls window with 14 join rows', () => {
     const library = new SymbolLibrary(assetSymbols());
     const layout = onlineMenuLayout(library);
-    expect(layout.items.map((item) => item.name ?? item.depth)).toEqual([1, 'mcSinglePlay', 'mcCoopPlay', 'mcInstructions', 74, '_Icon_Back', 82, 'mcWindow_Controls']);
+    expect(layout.items.map((item) => item.name ?? item.depth)).toEqual([1, 'mcSinglePlay', 'mcCoopPlay', 'mcDeathPlay', 'mcInstructions', 74, '_Icon_Back', 82, 'mcWindow_Controls']);
     expect(layout.slots).toHaveLength(14);
     expect(layout.slots.every((slot) => slot.label !== undefined)).toBe(true);
     expect(layout.labels[OnlineMenuChild.Host]?.centerX).toBeCloseTo(11, 0);

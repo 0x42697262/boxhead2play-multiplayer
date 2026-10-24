@@ -13,6 +13,7 @@ import { isTextKey } from '../text/i18n.ts';
 import { CONTROL_MASK_LIMIT } from './controlMask.ts';
 import {
   FRACTION_DIGITS_SCALE,
+  LOBBY_CODE_LENGTH,
   LOBBY_ID_MAX_LENGTH,
   MAX_LOBBY_PLAYERS,
   PLAYER_NAME_MAX_LENGTH,
@@ -79,6 +80,7 @@ export type MemberDto = z.infer<typeof MemberSchema>;
 
 const LobbySchema = z.object({
   id: LobbyIdSchema,
+  code: z.string().length(LOBBY_CODE_LENGTH),
   name: NameSchema,
   mode: OnlineModeSchema,
   roomId: RoomIdSchema,
@@ -108,6 +110,7 @@ export const ClientMessageType = {
   WatchLobbies: 'watchLobbies',
   CreateLobby: 'createLobby',
   JoinLobby: 'joinLobby',
+  JoinByCode: 'joinByCode',
   LeaveLobby: 'leaveLobby',
   ConfigureLobby: 'configureLobby',
   SetCharacter: 'setCharacter',
@@ -122,6 +125,7 @@ const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(ClientMessageType.WatchLobbies), mode: OnlineModeSchema.nullable() }),
   z.object({ type: z.literal(ClientMessageType.CreateLobby), mode: OnlineModeSchema, roomId: RoomIdSchema, options: LobbyOptionsSchema, character: CharacterSchema }),
   z.object({ type: z.literal(ClientMessageType.JoinLobby), lobbyId: LobbyIdSchema, character: CharacterSchema }),
+  z.object({ type: z.literal(ClientMessageType.JoinByCode), code: z.string().max(LOBBY_ID_MAX_LENGTH), character: CharacterSchema }),
   z.object({ type: z.literal(ClientMessageType.LeaveLobby) }),
   z.object({ type: z.literal(ClientMessageType.ConfigureLobby), roomId: RoomIdSchema, options: LobbyOptionsSchema }),
   z.object({ type: z.literal(ClientMessageType.SetCharacter), character: CharacterSchema }),
@@ -137,6 +141,7 @@ export const ErrorReason = {
   VersionMismatch: 'versionMismatch',
   NotInLobby: 'notInLobby',
   LobbyNotFound: 'lobbyNotFound',
+  CodeNotFound: 'codeNotFound',
   LobbyFull: 'lobbyFull',
   LobbyLimit: 'lobbyLimit',
   NotHost: 'notHost',
