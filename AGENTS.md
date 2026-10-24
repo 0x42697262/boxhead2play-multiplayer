@@ -148,8 +148,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),
   kept after a reload; the game uses the chosen characters. Every level starts (no exclusive lock).
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET
-  -> Beginner, Normal, on, on, on, first to 10. CONTROLS -> the key names (player 2 always
-  covered); click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->
+  -> Beginner, Normal, on, on, on, first to 10. CONTROLS -> one centered panel titled
+  CONTROLS with the key names (SHOOT/USE: SPACE), no player 2 panel; click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->
   `'K'` stored; Escape cancels; RESET restores the defaults.
 * `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
   (wraparound, roll-over filters, valid keys, key capture, pointer, transition), option

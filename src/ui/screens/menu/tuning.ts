@@ -148,6 +148,19 @@ export const PLAYER_CHARACTER_CARD = 'mcPlayer1_Character';
 export const SECOND_CHARACTER_CARD = 'mcPlayer2_Character';
 export const SECOND_CHARACTER_LABEL_DEPTH = 37;
 export const CONTROL_PANEL = 'mcPlayer1';
+export const SECOND_CONTROL_PANEL = 'mcPlayer2';
+export const CONTROLS_TITLE_DEPTH = 7;
+export const SECOND_CONTROLS_TITLE_DEPTH = 94;
+export const CONTROLS_INFO_DEPTH = 96;
+export const CONTROLS_PANEL_X = -77.5;
+export const CONTROLS_TEXT_CENTER_X = 0;
+export const CONTROLS_TEXT_WIDTH_PX = 440;
+export const CONTROLS_ATTACHED_DEPTH = 130;
+
+export const ControlsWindowText = {
+  Title: 'controlsTitle',
+  Info: 'controlsInfo',
+} as const;
 
 export const SELECT_WORLD_EXPANDED: ReadonlySet<string> = new Set([
   SelectWorldChild.SubScreenContainer,

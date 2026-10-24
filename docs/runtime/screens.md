@@ -111,7 +111,7 @@ Removed: `_IconMoreGames`, `_STC`, the four banners (depths 50, 56, 60, 65) and
 
 Buttons render their `over` and `down` records while hovered or pressed (Flash
 `SimpleButton` states), and the cursor is a hand over anything with a handler, except the
-`mcLock` and `mc2PlayerCover` blockers (`useHandCursor = false`).
+`mcLock` blockers (`useHandCursor = false`).
 
 A stored index outside the frame range shows `mcGotoFrame`'s wrapped frame, and starting
 the game uses that same wrapped index (the original would have loaded the unwrapped
@@ -148,8 +148,11 @@ covers the stage and swallows clicks, so the window is modal.
 
 * `mcPlayer1` shows the bound key names in `tb<Shoot|MoveUp|...>` from the
   `CInput.mValidKeys` table (`validKeys.ts`, names in `en.json` `key.name.<code>`).
-* `mc2PlayerCover` always covers the player 2 panel and blocks its buttons, as the
-  original did in single play. Online, every player uses their own player 1 keys.
+* There is one key panel (ADR 0005): `mcPlayer1` is moved to the center (x -77.5). The
+  second panel, `mc2PlayerCover`, both "PLAYER n CONTROLS:" headings and the "Additional
+  Controls" line are hidden. Attached edit texts show "CONTROLS" above the panel and
+  "Additional controls: 0-9 select weapons, P shows the upgrade list" below it.
+* Space is named SPACE instead of the original `' '`.
 * Clicking `mcChangeKey_<name>` (`Click2`) shows `mcPressKey` (its own `mcLock` blocks the
   pointer) with the blinking "PRESS A KEY" clip. The next key (`KeyCapture`):
   * Escape (27) cancels;

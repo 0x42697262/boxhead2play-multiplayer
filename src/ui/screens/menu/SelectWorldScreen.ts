@@ -22,7 +22,18 @@ import { LogEvent } from '../../../text/logEvents.ts';
 import { roomIdForLevel, type RoomPanel } from '../online/lobbyModel.ts';
 import type { SelectWorldRoom } from '../online/LobbyRoom.ts';
 import { placedText, staticTextFrame, textOverride, type PlacedText, type StaticTextFrame } from '../online/stageText.ts';
-import { MENU_TEXT_COLOR, ROOM_MEMBERS, ROOM_NOTICE, ROOM_OPTIONS, ROOM_PROMPT_ATTACHED_DEPTH, ROOM_PROMPT_DEPTH, ROW_LABEL_COLOR, RoomChild, TextStyles } from '../online/tuning.ts';
+import {
+  MENU_TEXT_COLOR,
+  ROOM_MEMBERS,
+  ROOM_NOTICE,
+  ROOM_OPTIONS,
+  ROOM_PROMPT_ATTACHED_DEPTH,
+  ROOM_PROMPT_DEPTH,
+  ROW_LABEL_COLOR,
+  RoomChild,
+  TextStyles,
+  WINDOW_TEXT_COLOR,
+} from '../online/tuning.ts';
 import { cycleFrame } from './frameCycle.ts';
 import { KeyCapture, KeyPressOutcome, type KeyTarget } from './KeyCapture.ts';
 import { itemMatrix } from './MainMenuScreen.ts';
@@ -32,6 +43,13 @@ import { OverrideTree } from './overrideTree.ts';
 import {
   CHANGE_KEY_PREFIX,
   CONTROL_PANEL,
+  CONTROLS_ATTACHED_DEPTH,
+  CONTROLS_INFO_DEPTH,
+  CONTROLS_PANEL_X,
+  CONTROLS_TEXT_CENTER_X,
+  CONTROLS_TEXT_WIDTH_PX,
+  CONTROLS_TITLE_DEPTH,
+  ControlsWindowText,
   KEY_ROWS,
   KEY_TEXT_PREFIX,
   MENU_TICKS_PER_SECOND,
@@ -41,6 +59,8 @@ import {
   PLAYER_CHARACTER_CARD,
   SECOND_CHARACTER_CARD,
   SECOND_CHARACTER_LABEL_DEPTH,
+  SECOND_CONTROL_PANEL,
+  SECOND_CONTROLS_TITLE_DEPTH,
   SELECT_WORLD_BANNER_DEPTHS,
   SELECT_WORLD_EXPANDED,
   SELECT_WORLD_REMOVED_NAMES,
@@ -96,6 +116,8 @@ export interface SelectWorldLayout {
   readonly pressAKeyFrames: number;
   readonly prompt: StaticTextFrame | undefined;
   readonly levelCenterX: number;
+  readonly controlsTitle: StaticTextFrame | undefined;
+  readonly controlsInfo: StaticTextFrame | undefined;
 }
 
 const NEXT = 1;
@@ -145,6 +167,9 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
   const character = card ? library.findChild(card.characterId, Child.Character) : undefined;
   const controls = library.resolve(items, PRESS_KEY, undefined);
   const pressAKey = controls ? library.findChild(controls.item.characterId, Child.PressAKey) : undefined;
+  const windowItem = items.find((item) => item.name === Child.WindowControls);
+  const windowChildren = windowItem ? library.frameItems(windowItem.characterId, 0) : [];
+  const windowText = (depth: number): StaticTextFrame | undefined => staticTextFrame(library, windowChildren.find((item) => item.depth === depth));
   return {
     items,
     subScreenId,
@@ -154,6 +179,8 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
     pressAKeyFrames: frameCount(library, pressAKey),
     prompt: staticTextFrame(library, selectionItems.find((item) => item.depth === ROOM_PROMPT_DEPTH)),
     levelCenterX: selection?.matrix[4] ?? 0,
+    controlsTitle: windowText(CONTROLS_TITLE_DEPTH),
+    controlsInfo: windowText(CONTROLS_INFO_DEPTH),
   };
 }
 
@@ -411,7 +438,6 @@ export class SelectWorldScreen implements Screen {
     return [
       { path: buttonPath(...CONTROLS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetControls } },
       { path: buttonPath(...CONTROLS, Child.Close), trigger: Trigger.Release, action: { kind: SelectAction.CloseControls } },
-      { path: [...CONTROLS, Child.TwoPlayerCover], trigger: Trigger.Block },
       ...keys,
       { path: [...CONTROLS, Child.Lock], trigger: Trigger.Block },
     ];
@@ -456,7 +482,11 @@ export class SelectWorldScreen implements Screen {
   private sceneControls(tree: OverrideTree): void {
     tree.set(CONTROLS, { visible: this.controlsOpen });
     if (!this.controlsOpen) return;
-    tree.set([...CONTROLS, Child.TwoPlayerCover], { visible: true });
+    for (const key of [Child.TwoPlayerCover, SECOND_CONTROL_PANEL, ...[CONTROLS_TITLE_DEPTH, SECOND_CONTROLS_TITLE_DEPTH, CONTROLS_INFO_DEPTH].map(depthKey)]) {
+      tree.set([...CONTROLS, key], { visible: false });
+    }
+    tree.set(OWN_KEYS, { matrix: [1, 0, 0, 1, CONTROLS_PANEL_X, this.ownKeysY()] });
+    this.controlsTexts(tree);
     const keys = this.deps.settings.settings.keys;
     for (const row of KEY_ROWS) {
       const key = validKey(keys[row.field]);
@@ -470,6 +500,28 @@ export class SelectWorldScreen implements Screen {
     const blink = (this.ticks - this.captureTick) % this.layout.pressAKeyFrames;
     tree.set([...PRESS_KEY, Child.PressAKey], { frame: blink, alpha: display.pressAKeyAlpha });
     tree.set([...PRESS_KEY, Child.InvalidKey], { visible: display.invalidVisible, alpha: display.invalidAlpha });
+  }
+
+  private ownKeysY(): number {
+    const panel = this.deps.kit.renderer.library.resolve(this.layout.items, OWN_KEYS, undefined);
+    return panel?.item.matrix[5] ?? 0;
+  }
+
+  private controlsTexts(tree: OverrideTree): void {
+    const library = this.deps.kit.renderer.library;
+    const { controlsTitle, controlsInfo } = this.layout;
+    const texts = [
+      { frame: controlsTitle, name: ControlsWindowText.Title, style: TextStyles.Heading, text: t('controls.title') },
+      { frame: controlsInfo, name: ControlsWindowText.Info, style: TextStyles.Small, text: t('controls.info', { upgradeKey: t('controls.upgradeListKey') }) },
+    ];
+    const attached = texts.flatMap(({ frame, name, style, text }, index) => {
+      if (!frame) return [];
+      const placed = placedText(library, { name, depth: CONTROLS_ATTACHED_DEPTH + index, style, anchorX: CONTROLS_TEXT_CENTER_X, top: frame.top, width: CONTROLS_TEXT_WIDTH_PX });
+      if (!placed) return [];
+      tree.set([...CONTROLS, name], textOverride(placed, text, WINDOW_TEXT_COLOR));
+      return [placed.item];
+    });
+    tree.set(CONTROLS, { attach: attached });
   }
 
   private windowButtons(tree: OverrideTree, window: readonly string[]): void {

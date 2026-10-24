@@ -6,6 +6,7 @@
 | High scores | Submitted to seantcooper.com (`CHighscore_Submit`) | Removed | The service is gone; see ADR 0003. |
 | Analytics | `CTracker` | Removed | See ADR 0003. |
 | Player names | none | Online: the name under each player, green for the local player | Owner request: tell players apart. |
+| Controls window | Two key panels (player 2 covered in single play), "PLAYER 1 CONTROLS:", Space named `' '` | One centered panel titled CONTROLS, Space named SPACE | No local second player (ADR 0005); owner request. |
 | Default keys | Arrows, `/` (and Space), `.`, `,` | W, A, S, D, Space, E, Q | Owner request. |
 | Render resolution | Vector menus at the window size; the world is a 640 x 480 bitmap (`CWorld.bmDraw`) | Every surface at the screen's resolution by default (`sharp`); `smooth` and `pixelated` draw at 640 x 480 | Owner request: sharp graphics on large screens. See ADR 0006. |
 | Init object order | `mInitList` order is the order of AS2 constructors while the room is attached | `rooms/*.json` `initObjects` in pre-order: tag order (which equals depth order in every room), a clip before its nested children | AS2 queues a registered clip's constructor before the constructors of the children its first frame creates. The only nested init objects are collision solids inside pieces, so this order affects no gameplay. |

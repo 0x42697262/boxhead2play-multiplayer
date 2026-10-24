@@ -33,7 +33,7 @@ describe('CInput valid keys', () => {
   it('keeps the original table: names, invalid entries and missing keys', () => {
     expect(VALID_KEYS.size).toBe(63);
     expect(t(validKey(38)?.name ?? 'app.title')).toBe('ARROW UP');
-    expect(t(validKey(32)?.name ?? 'app.title')).toBe("' '");
+    expect(t(validKey(32)?.name ?? 'app.title')).toBe('SPACE');
     expect(validKey(186)?.valid).toBe(false);
     expect(validKey(80)).toBeUndefined();
     expect(validKey(49)).toBeUndefined();
