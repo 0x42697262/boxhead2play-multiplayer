@@ -44,6 +44,7 @@ export const MESSAGE_COLORS: Readonly<Record<MessageTone, number>> = {
   [MessageTone.Level]: 0xffffff,
   [MessageTone.Upgrade]: 0x00ff00,
   [MessageTone.Critical]: 0xff0000,
+  [MessageTone.Joined]: 0xffff00,
 };
 
 export const AMMO_LETTER_SPACING_PX = -2;

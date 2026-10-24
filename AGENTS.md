@@ -131,6 +131,8 @@ Add one line per behavior change: what to do, and the result you expect.
   hold Fire while steering -> both work; > -> next weapon; list -> upgrades (scoreboard in
   deathmatch); pause -> the Esc menu, only a close button stays; menus show no controls. Use a
   mouse or key -> the controls hide.
+* Tab 1 hosts and starts coop, tab 2 opens the link and joins the running match -> tab 1 shows a
+  yellow "Player #2 joined the game!" where the red kill messages appear.
 * `npm run dev`, play coop in two tabs, `npm run monitor` in a terminal -> CPU, MEM, LOOP and NET
   rows, the lobby with its tick time and both players with their ONLINE time and about 0.5 KiB/s upload each, the lobby with MATCH and AGE times; `q`
   quits and restores the terminal. `npm start` without `BOXHEAD_MONITOR_TOKEN` -> `/__monitor`

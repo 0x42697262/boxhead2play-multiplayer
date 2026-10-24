@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DomainEventType, type DomainEvent } from '../../../src/domain/events.ts';
+import { DomainEventType, MessageTone, type DomainEvent } from '../../../src/domain/events.ts';
 import { CollideFlag } from '../../../src/domain/map/CollideFlag.ts';
 import { SeededRng } from '../../../src/domain/math/Rng.ts';
 import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
@@ -257,5 +257,14 @@ describe('World players joining and leaving', () => {
     expect(world.upgrades.playerCount).toBe(2);
     expect(world.freePlayerIndex()).toBe(1);
     expect(world.leavePlayer(1)).toBe(false);
+  });
+
+  it('announces a late player in yellow with the name resolved on the client', () => {
+    const { world } = makeWorld(basicRoom(), { options: { gameMode: GameMode.Coop } });
+    const before = world.hud.messages.length;
+    expect(world.joinPlayer(2, 3)).toBe(true);
+    expect(world.hud.messages.slice(before)).toEqual([expect.objectContaining({ tone: MessageTone.Joined, text: { key: 'hud.joined' }, names: { player: 2 } })]);
+    expect(world.joinPlayer(2, 3)).toBe(false);
+    expect(world.hud.messages.length).toBe(before + 1);
   });
 });

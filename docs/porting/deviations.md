@@ -74,6 +74,7 @@
 | Respawn delay | 4 s dead + 25 ticks (`respawn`), 5 s in total | 4 s dead + 148 ticks, so "RESPAWN IN 10" counts down from 10 | Owner request. Single play still ends after the 4 s corpse. |
 | Ping display | none | Online matches show the round-trip time in the top-right corner, colored green, yellow, orange or red; SETTINGS has a Ping row (default ON) | Owner request: see your own connection quality. |
 | Mobile browsers | Flash ran on desktops only | Landscape full screen on touch, a rotate screen in portrait, a Home Screen web app for iPhone, and on-screen stick, Fire, weapon, menu and list buttons (`docs/runtime/mobile.md`) | Owner request: play on phones. |
+| Join messages | none | A player entering a running online match shows a yellow "<NAME> joined the game!" message | Owner request: see who connects, like the kill messages. |
 | Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
 | Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |

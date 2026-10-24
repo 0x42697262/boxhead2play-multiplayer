@@ -175,7 +175,9 @@ export class World implements WorldContext, UpgradesHost {
 
   joinPlayer(playerIndex: number, character: PlayerCharacter): boolean {
     if (this.things.playerByIndex(playerIndex) || playerIndex >= MAX_PLAYERS) return false;
-    return this.spawnPlayer(playerIndex, character, this.unoccupied(this.playerRespawnPoint()));
+    if (!this.spawnPlayer(playerIndex, character, this.unoccupied(this.playerRespawnPoint()))) return false;
+    this.hud.addMessage(MessageTone.Joined, { key: 'hud.joined' }, undefined, { player: playerIndex });
+    return true;
   }
 
   leavePlayer(playerIndex: number): boolean {

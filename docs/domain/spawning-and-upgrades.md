@@ -146,6 +146,11 @@ player index); the client fills in the online names. The attacker is the root of
 affect owner's `parent` chain (`rootOwner`), so grenades, rockets, mines and barrels count
 for the player who fired or placed them.
 
+Join messages: `World.joinPlayer` (a player entering a running online match) adds a yellow
+(`Joined`, `0xffff00`) message "<PLAYER> joined the game!" for everyone, with
+`names: {player}` resolved on the client like the kill messages. Players present when the
+match starts get no message.
+
 Frags (`HudState.recordDeath`): a player death credits the victim's `lastAttackerIndex`
 when it is another player. A death without one (own grenade or barrel, a zombie or devil,
 an unknown killer) still counts as a death but gives nobody a frag.

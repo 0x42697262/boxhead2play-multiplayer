@@ -40,6 +40,7 @@ export const MessageTone = {
   Level: 'level',
   Upgrade: 'upgrade',
   Critical: 'critical',
+  Joined: 'joined',
 } as const;
 
 export type MessageTone = (typeof MessageTone)[keyof typeof MessageTone];
