@@ -39,6 +39,7 @@ import {
   WIDE_SHOT_LEVEL,
   WIDER_SHOT_LEVEL,
 } from './tuning.ts';
+import { extraEnemies, liveDevilCap, liveZombieCap, NO_EXTRA_ENEMIES, type ExtraEnemies, type LevelBase } from './playerScaling.ts';
 import { UpgradeProp } from './UpgradeProp.ts';
 
 export interface UpgradesHost {
@@ -103,6 +104,8 @@ export class Upgrades {
   tick = 0;
   totalPlayerCount = 0;
   playerCount = 0;
+  private levelBase: LevelBase = NO_EXTRA_ENEMIES;
+  private granted: ExtraEnemies = NO_EXTRA_ENEMIES;
   private readonly records = new Map<ThingClass, ClassRecord>();
   private readonly unlocked = new Set<WeaponName>();
   private readonly levels: readonly LevelDefinition[];
@@ -151,6 +154,7 @@ export class Upgrades {
   process(): void {
     if (this.host.settings.gameMode === GameMode.DeathMatch) return;
     this.tick++;
+    this.scaleToPlayers();
     const level = this.level;
     if (level.zombieCount <= 0 && level.devilCount <= 0 && !this.host.enemiesAlive()) {
       this.applyLevel(this.levelIndex + 1, true);
@@ -309,11 +313,12 @@ export class Upgrades {
 
   private spawnEnemies(): void {
     const level = this.level;
-    const cap = this.host.settings.detail ? MAX_LIVE_ZOMBIES_DETAIL : MAX_LIVE_ZOMBIES_LOW;
+    const players = this.totalPlayerCount;
+    const cap = liveZombieCap(this.host.settings.detail ? MAX_LIVE_ZOMBIES_DETAIL : MAX_LIVE_ZOMBIES_LOW, players);
     if (level.liveZombies < Math.min(level.zombieCount, cap) && level.zombieSpawnCountdown-- <= 0) {
       if (this.host.spawnZombie()) level.zombieSpawnCountdown = level.zombieSpawnRate;
     }
-    if (level.liveDevils < level.devilCount) {
+    if (level.liveDevils < Math.min(level.devilCount, liveDevilCap(players))) {
       const step = level.zombieCount !== 0 ? DEVIL_COUNTDOWN_STEP_WITH_ZOMBIES : DEVIL_COUNTDOWN_STEP_ONLY_DEVILS;
       level.devilSpawnCountdown -= step;
       if (level.devilSpawnCountdown <= 0 && this.host.spawnDevil()) level.devilSpawnCountdown = level.devilSpawnRate;
@@ -335,6 +340,9 @@ export class Upgrades {
         level.devilTotalCount = definition.devil.totalCount;
         this.addStat(ThingClass.Devil, UpgradeProp.SpeedUp, definition.devil.speedUp);
       }
+      const { zombieCount, zombieTotalCount, devilCount, devilTotalCount } = level;
+      this.levelBase = { zombieCount, zombieTotalCount, devilCount, devilTotalCount };
+      this.granted = NO_EXTRA_ENEMIES;
     }
     this.level.liveZombies = 0;
     this.level.liveDevils = 0;
@@ -345,6 +353,17 @@ export class Upgrades {
       key: index <= LEVEL_COUNT ? 'hud.level' : 'hud.levelForever',
       params: { level: index },
     });
+  }
+
+  private scaleToPlayers(): void {
+    const target = extraEnemies(this.levelBase, this.totalPlayerCount);
+    const level = this.level;
+    const granted = this.granted;
+    level.zombieTotalCount = Math.max(level.zombieTotalCount + target.zombieTotalCount - granted.zombieTotalCount, 0);
+    level.zombieCount = Math.max(Math.min(level.zombieCount + target.zombieCount - granted.zombieCount, level.zombieTotalCount), 0);
+    level.devilTotalCount = Math.max(level.devilTotalCount + target.devilTotalCount - granted.devilTotalCount, 0);
+    level.devilCount = Math.max(Math.min(level.devilCount + target.devilCount - granted.devilCount, level.devilTotalCount), 0);
+    this.granted = target;
   }
 
   private setLiveZombies(count: number): void {

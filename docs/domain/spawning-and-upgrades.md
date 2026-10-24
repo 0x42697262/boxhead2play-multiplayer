@@ -70,6 +70,22 @@ Each tick:
 When a zombie dies, the zombie total drops by 1, and the quota is clamped to the total.
 Then `logKills(1)`: multiple kill +1, multiplier +1.
 
+## More enemies for more players (`playerScaling.ts`)
+
+Not in the original (owner request). From the second player on, every extra player in the
+match (`totalPlayerCount`, dead players waiting to respawn included) adds half of the level's
+base counts on top: `zombieCount`, `zombieTotalCount`, `devilCount` and `devilTotalCount`
+each grow by `floor(base * 0.5 * extraPlayers)`. Example: level 1 has 10 zombies; 2 players
+get 15, 3 get 20, 4 get 25.
+
+`Upgrades.scaleToPlayers` runs at the start of every tick. It keeps the extra counts it has
+granted for the current level and adds or removes the difference, so players who join or
+leave mid-level change the remaining quota at once. A new level starts again from its base.
+
+The live caps grow the same way: zombies `min(60 * (1 + 0.5 * extraPlayers), 120)` (40
+instead of 60 with low detail), devils at most 20 alive with two or more players. One player
+keeps the original numbers exactly.
+
 ## Multiplier
 
 * The multiplier stays in `1..999`. Each set restarts its timer:

@@ -20,6 +20,11 @@ export const SPEED_UP_MAX = 5;
 
 export const MAX_LIVE_ZOMBIES_DETAIL = 60;
 export const MAX_LIVE_ZOMBIES_LOW = 40;
+export const SCALING_FIRST_EXTRA_PLAYER = 2;
+export const ZOMBIES_PER_EXTRA_PLAYER = 0.5;
+export const DEVILS_PER_EXTRA_PLAYER = 0.5;
+export const MAX_LIVE_ZOMBIES_SCALED = 120;
+export const MAX_LIVE_DEVILS_SCALED = 20;
 export const DEVIL_COUNTDOWN_STEP_WITH_ZOMBIES = 1;
 export const DEVIL_COUNTDOWN_STEP_ONLY_DEVILS = 10;
 

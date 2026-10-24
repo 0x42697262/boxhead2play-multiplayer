@@ -104,6 +104,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/server` -> a 17th player gets `lobbyFull`; a death match starts with 16
   players at 16 different indices. The lobby room lists at most 11 players, your own line and
   "+N MORE", under "PLAYERS: n/16".
+* `npx vitest run test/domain/upgrades` -> level 1 has 10 zombies for 1 player, 20 for 3, and
+  10 again after two leave.
 * Zombie next to a player -> the player loses 50 life per attack (also with damage off).
   Devil within 5 cells, facing the player with a clear line -> a fireball for 50.
 * `npx vitest run test/domain/map/GameMap.test.ts test/domain/things/creatures/devil.test.ts` ->
