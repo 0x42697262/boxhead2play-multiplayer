@@ -1,3 +1,4 @@
+import type { AnimationCatalog } from '../../../domain/animation/AnimationCatalog.ts';
 import type { GameCatalogs } from '../../../adapters/assets/AssetLoader.ts';
 import type { SoundMixer } from '../../../adapters/audio/SoundMixer.ts';
 import type { KeyboardState } from '../../../adapters/input/KeyboardState.ts';
@@ -27,6 +28,7 @@ export interface OnlineGameScreenDependencies {
   readonly shell: Shell;
   readonly kit: RenderKit;
   readonly catalogs: GameCatalogs;
+  readonly animations: AnimationCatalog;
   readonly settings: SettingsService;
   readonly audio: SoundMixer;
   readonly keyboard: KeyboardState;
@@ -75,6 +77,7 @@ export class OnlineGameScreen implements Screen {
         },
       },
       link: client,
+      animations: deps.animations,
       playerNames: () => playerNames(client),
       showPing: () => deps.settings.settings.showPing,
       logger: deps.logger,

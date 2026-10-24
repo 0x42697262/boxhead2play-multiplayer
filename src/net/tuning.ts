@@ -1,6 +1,6 @@
 import { MAX_PLAYERS } from '../domain/world/tuning.ts';
 
-export const PROTOCOL_VERSION = 8;
+export const PROTOCOL_VERSION = 9;
 export const REPORTED_LATENCY_MAX_MS = 60_000;
 export const SOCKET_PATH = '/ws';
 

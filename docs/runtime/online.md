@@ -126,7 +126,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 8)
+## Protocol (`src/net/protocol.ts`, version 9)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
@@ -143,7 +143,13 @@ added the `joined` message tone (`hud.joined`) and the `serverFull` error. Versi
 `addressLimit` and `addressLobbyLimit` errors: an older client would drop such an `error`
 as undecodable and show nothing. Version 8 added the wire string reset: every `gameStarted`
 clears the string table and the baselines on both sides (ADR 0007, "Update: string reset at
-match start"); an older decoder would read the reset marker as a string id.
+match start"); an older decoder would read the reset marker as a string id. Version 9 made frames compact
+(`src/net/compactFrame.ts`): a draw entry's character or clip visual leaves out its
+`position` when it equals the entry's, a character visual leaves out `sourceFrame`,
+`directionCount` and `styleScale`, and a decal leaves out `symbol`, `rotationCount`, `scaleX`
+and `scaleY` when they have the default for its kind. `OnlineGameSession` restores them
+from the animation catalog (`expandFrame`) before the renderer sees the frame, so the
+renderer still works with full `DrawEntry` and `DecalRequested` values.
 
 | Client -> server | Purpose |
 |---|---|

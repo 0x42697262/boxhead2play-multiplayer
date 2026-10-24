@@ -180,7 +180,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         room: new LobbyRoom({ client: online, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result, invite }),
       }),
     onlineGame: (controls, start) =>
-      new OnlineGameScreen({ shell, kit, catalogs, settings: userSettings, audio, keyboard, client: online, logger, controls, start, uiRng: menuRng, invite }),
+      new OnlineGameScreen({ shell, kit, catalogs, animations, settings: userSettings, audio, keyboard, client: online, logger, controls, start, uiRng: menuRng, invite }),
   };
   const flow = new ScreenFlow(screens, logger, (cursor) => shell.setCursor(cursor), online);
   startOnlineGame = (start) => flow.startOnlineGame(start);

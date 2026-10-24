@@ -109,3 +109,20 @@ benchmark: encoding 1.4 to 1.8 ms, simulation 0.33 ms (less garbage collection),
 6.5 ms instead of 17 ms. Encoding still grows with players times visible things; if the
 monitor's LOOP row stays high with more players, the next steps are fewer temporary
 objects per frame or more CPU (a paid Render plan).
+
+## Update: compact frames (protocol 9)
+
+A field attribution of a busy 4-player Nightmare frame (player 0's view, 1768 B) showed
+85 % in draw entries (about 98 visible things, 52 of them changing every tick) and 12 % in
+decal events (about 7 blood splats per frame, sent to every player because a player may
+scroll to them later). Every character and clip visual repeated the entry position, and a
+character carried `sourceFrame`, `directionCount` and `styleScale`, which the client can
+derive from the animation catalog and the style. Decals carried their kind's constant
+symbol, rotation count and scale.
+
+The server now drops those fields (`compactEntry`, `compactDecal`) and the client restores
+them (`expandFrame`); positions and decal values are kept whenever they differ from the
+default, so the restored frame equals the server's draw list exactly (tested against real
+match frames). Same benchmark: 1281 B per frame (-27 %), frame building plus encoding
+2.0 ms per tick instead of 2.6 ms. `npm run bandwidth`, coop 4 players: wire 9.2 KiB/s
+instead of 12.9 KiB/s, wire + deflate 1.8 KiB/s instead of 2.0 KiB/s.

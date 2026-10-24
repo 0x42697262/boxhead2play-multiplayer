@@ -1,6 +1,7 @@
 import { DomainEventType, type DomainEvent } from '../domain/events.ts';
 import { cellToScreen } from '../domain/world/camera.ts';
 import type { CameraView, World } from '../domain/world/World.ts';
+import { compactDecal, compactEntry } from './compactFrame.ts';
 import { ServerMessageType, type NetEvent, type NetFrame, type NetHud } from './protocol.ts';
 
 export function playerHudEntries(world: World): NetHud['players'] {
@@ -15,8 +16,10 @@ export function netEvents(events: readonly DomainEvent[], camera: CameraView, pr
   for (const event of events) {
     switch (event.type) {
       case DomainEventType.SoundRequested:
-      case DomainEventType.DecalRequested:
         routed.push(event);
+        break;
+      case DomainEventType.DecalRequested:
+        routed.push(compactDecal(event));
         break;
       case DomainEventType.ScoreAwarded: {
         const screen = cellToScreen(event.worldPosition, projectionFactor);
@@ -38,7 +41,7 @@ export function netFrameFor(world: World, playerIndex: number, events: readonly 
     tick: world.tick,
     brightness: world.effectsFor(playerIndex).brightness,
     camera,
-    entries: world.drawList(camera),
+    entries: world.drawList(camera).map(compactEntry),
     hud: {
       totalScore: world.hud.totalScore,
       multiplier: world.upgrades.multiplier,

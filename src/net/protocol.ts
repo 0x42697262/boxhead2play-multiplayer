@@ -4,7 +4,7 @@ import type { HudMessageEntry } from '../domain/hud/HudState.ts';
 import { SoundId } from '../domain/sounds.ts';
 import type { PlayerHudStatus } from '../domain/things/PlayerThing.ts';
 import type { MultiplierListEntry } from '../domain/upgrades/Upgrades.ts';
-import type { DrawEntry } from '../domain/visuals.ts';
+import type { CharacterVisual, ClipVisual, DrawEntry, Visual } from '../domain/visuals.ts';
 import { CompletionState } from '../domain/world/CompletionState.ts';
 import { GameMode } from '../domain/world/GameMode.ts';
 import { Difficulty, GameAmount, GameSpeed, PlayerCharacter, type GameOptions } from '../domain/world/SimulationSettings.ts';
@@ -227,14 +227,14 @@ const NetEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal(DomainEventType.DecalRequested),
     decal: stringEnum(DecalKind),
-    symbol: z.string(),
+    symbol: z.string().optional(),
     xPx: z.number(),
     yPx: z.number(),
     frame: z.number(),
     rotationIndex: z.number(),
-    rotationCount: z.number(),
-    scaleX: z.number(),
-    scaleY: z.number(),
+    rotationCount: z.number().optional(),
+    scaleX: z.number().optional(),
+    scaleY: z.number().optional(),
   }),
   z.object({ type: z.literal(DomainEventType.ScoreAwarded), points: z.number(), worldPosition: Point3Schema, screenPosition: Point2Schema }),
 ]);
@@ -286,7 +286,23 @@ const ServerMessageSchema = z.discriminatedUnion('type', [
 
 type ParsedServerMessage = z.infer<typeof ServerMessageSchema>;
 
-export type NetEvent = SoundRequested | DecalRequested | ScoreAwarded;
+type Point3 = DrawEntry['position'];
+
+export type NetCharacterVisual = Omit<CharacterVisual, 'position' | 'sourceFrame' | 'directionCount' | 'styleScale'> & { readonly position?: Point3 };
+export type NetClipVisual = Omit<ClipVisual, 'position'> & { readonly position?: Point3 };
+export type NetVisual = NetCharacterVisual | NetClipVisual | Exclude<Visual, CharacterVisual | ClipVisual>;
+
+export interface NetDrawEntry {
+  readonly thingKey: string;
+  readonly sortFloor: boolean;
+  readonly position: Point3;
+  readonly visual: NetVisual;
+}
+
+type DecalDefaults = 'symbol' | 'rotationCount' | 'scaleX' | 'scaleY';
+export type NetDecal = Omit<DecalRequested, DecalDefaults> & Partial<Pick<DecalRequested, DecalDefaults>>;
+
+export type NetEvent = SoundRequested | NetDecal | ScoreAwarded;
 
 export interface NetHud {
   readonly totalScore: number;
@@ -303,7 +319,7 @@ export interface NetFrame {
   readonly tick: number;
   readonly brightness: number;
   readonly camera: CameraView;
-  readonly entries: readonly DrawEntry[];
+  readonly entries: readonly NetDrawEntry[];
   readonly hud: NetHud;
   readonly events: readonly NetEvent[];
 }

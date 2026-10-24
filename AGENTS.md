@@ -428,3 +428,7 @@ Add one line per behavior change: what to do, and the result you expect.
   prints "Samples logged to /tmp/boxhead2play-monitor/monitor-<time>.jsonl", one JSON line per
   sample with `cpuPercent`, `clientRates` and the raw snapshot. `--log logs/x` writes there.
   Without `--log` no file is written.
+* `npx vitest run test/net/compactFrame.test.ts` -> characters, clips and decals round-trip
+  through the compact wire form, and every frame of a real coop match restores to the
+  server's draw list (protocol 9). `npm run bandwidth` -> coop 4 players wire about 9 KiB/s, no
+  "decoded frames differ" line. Online coop -> zombies, players, smoke and blood look as before.

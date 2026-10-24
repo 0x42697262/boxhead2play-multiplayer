@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorldFrame } from '../../../src/adapters/render/world/WorldFrame.ts';
+import { EMPTY_ANIMATION_CATALOG } from '../../../src/domain/animation/AnimationCatalog.ts';
 import { DecalKind, DomainEventType } from '../../../src/domain/events.ts';
 import { SoundId } from '../../../src/domain/sounds.ts';
 import type { MultiplierListEntry } from '../../../src/domain/upgrades/Upgrades.ts';
@@ -38,6 +39,7 @@ function harness(showPing = true, latencyMs: () => number | undefined = () => 87
   let sink: GameSink | undefined;
   const session = new OnlineGameSession({
     start: START,
+    animations: EMPTY_ANIMATION_CATALOG,
     audio: { play: (sound) => sounds.push(sound), stopAmbience: () => undefined, ambiencePlaying: () => 0 },
     scene: { stampDecal: (decal) => decals.push(decal), awardScore: () => undefined, showUpgrades: (list) => lists.push(list), render: (world) => rendered.push(world) },
     input: { sample: () => controls.shift() ?? { masks: IDLE_MASKS, upgradeListPressed: false } },

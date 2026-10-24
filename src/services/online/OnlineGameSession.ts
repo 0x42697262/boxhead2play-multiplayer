@@ -1,3 +1,5 @@
+import type { AnimationCatalog } from '../../domain/animation/AnimationCatalog.ts';
+import { expandFrame, type PlayFrame } from '../../net/compactFrame.ts';
 import type { HudFrame, WorldFrame } from '../../adapters/render/world/WorldFrame.ts';
 import { DomainEventType } from '../../domain/events.ts';
 import type { MultiplierListEntry } from '../../domain/upgrades/Upgrades.ts';
@@ -51,6 +53,7 @@ export interface OnlineSessionDependencies {
   readonly scene: SessionScene;
   readonly input: OnlineInput;
   readonly link: OnlineLink;
+  readonly animations: AnimationCatalog;
   readonly playerNames: () => HudFrame['playerNames'];
   readonly showPing: () => boolean;
   readonly logger: Logger;
@@ -67,7 +70,7 @@ export function releasedMasks(previous: ControlMasks): ControlMasks {
 
 export class OnlineGameSession implements GameSink {
   readonly matchId: string;
-  private readonly buffer = new FrameBuffer<NetFrame>();
+  private readonly buffer = new FrameBuffer<PlayFrame>();
   private readonly detach: () => void;
   private upgradesShown = false;
   private finished = false;
@@ -104,7 +107,7 @@ export class OnlineGameSession implements GameSink {
   }
 
   frame(frame: NetFrame): void {
-    if (!this.finished) this.buffer.push(frame);
+    if (!this.finished) this.buffer.push(expandFrame(frame, this.deps.animations));
   }
 
   upgrades(upgrades: readonly MultiplierListEntry[]): void {
@@ -156,7 +159,7 @@ export class OnlineGameSession implements GameSink {
     this.deps.scene.showUpgrades(this.upgradesShown ? this.upgradeList : undefined);
   }
 
-  private apply(frame: NetFrame, use: FrameUse): void {
+  private apply(frame: PlayFrame, use: FrameUse): void {
     const audible = use !== FrameUse.Dropped;
     for (const event of frame.events) {
       switch (event.type) {
@@ -177,7 +180,7 @@ export class OnlineGameSession implements GameSink {
     this.deps.scene.render(this.worldFrame(frame));
   }
 
-  private stepAmbience(frame: NetFrame): void {
+  private stepAmbience(frame: PlayFrame): void {
     const step = stepAmbience(this.ambience, visibleZombies(frame.entries), this.deps.audio.ambiencePlaying());
     this.ambience = step.state;
     for (const event of step.events) {
@@ -186,7 +189,7 @@ export class OnlineGameSession implements GameSink {
     }
   }
 
-  private worldFrame(frame: NetFrame): WorldFrame {
+  private worldFrame(frame: PlayFrame): WorldFrame {
     const { start } = this.deps;
     return {
       gameMode: start.mode,
