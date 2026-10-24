@@ -44,6 +44,10 @@ export class HudState {
     return this.kills;
   }
 
+  get deathCounts(): readonly number[] {
+    return this.deaths;
+  }
+
   deathsOf(playerIndex: number): number {
     return this.deaths[playerIndex] ?? 0;
   }

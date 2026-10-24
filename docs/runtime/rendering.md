@@ -14,7 +14,7 @@ Source: `DrawPrimitive/**`, `World/CWorld.as` (`InitDrawPlanes`, `Draw`, `Draw_P
 | `clips/` | `CDrawPrimitive_MovieClip_*` buffering: `bufferLayout`, `clipPlans`, `ClipBuffers`. |
 | `xsi/` | `CDrawPrimitive_XSI_*`: style sheets, plane lists, `XsiRasterizer`, `XsiFrameCache`. |
 | `world/` | `CWorld` planes and per-camera drawing: `RoomPlanes`, `VisualPainter`, `WorldRenderer`. |
-| `hud/` | `CHud` drawing: score popups, messages, player labels, score total, frags, upgrade list. |
+| `hud/` | `CHud` drawing: score popups, messages, player labels, score total, upgrade list, deathmatch scoreboard. |
 
 Everything draws into `OffscreenCanvas` surfaces (`surface.ts`). The visible canvas only
 receives the finished stage.
@@ -167,9 +167,7 @@ parsed from JSON on every tick.
 
 Live layer (the clips that Flash composited above the bitmap): `Hud.ScoreTotal` at
 (320, 0) with the 12-digit score, `x<multiplier>` and the timer frame;
-`Hud_PlayerFrags` in deathmatch (left: the local player; right: the opponent with the
-most frags, hidden when alone; names are the online names or "Player N"; `mcSwitchSides`
-hidden); one `HUD.Player` per player (life frame
+nothing in deathmatch (`Hud_PlayerFrags` is not drawn, see the scoreboard below); one `HUD.Player` per player (life frame
 `floor(min(max(1, 101 * ratio + 1), 101))`, ammo text `<short name>:<ammo>`, letter spacing
 -2); `HUD.Paused` as the upgrade list, drawn over the running game with the "PAUSED!"
 title (depth 14) hidden (one row more than a third per column, 17 px rows,
@@ -179,6 +177,11 @@ Online, each player's name is drawn 14 px below the player with the ammo text's 
 (42, Calibri bold) at 10 px and its black glow: green for the local player, white for the
 others. Single play has no names and shows none.
 `hitTest` maps clicks on `_Quit` while the list is shown.
+
+Deathmatch scoreboard: TAB shows `HUD.Paused` with both titles (depths 14 and 15) hidden, a
+`Hud.Message` "SCOREBOARD" title at (320, 70) and one row per player in the three upgrade
+columns: rank and name, kills, deaths (`scoreboardRows`: most kills first, then fewer deaths;
+equal rows share the rank). The local player's row is green. QUIT? stays.
 
 ## Known visual gaps
 

@@ -119,8 +119,9 @@ Add one line per behavior change: what to do, and the result you expect.
   inactive ones faded); zombies keep moving and W A S D still walk; TAB again hides it; click
   QUIT? -> back to the single select-world screen.
 * Two browser tabs on `npm run dev`: DEATH MATCH in both, HOST in one, JOIN and the row's JOIN in
-  the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player, the frags bar
-  with the local name on the left and the opponent on the right, no switch-sides arrows.
+  the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player and no frags bar;
+  TAB -> SCOREBOARD with one row per player (rank and name, kills, deaths), your row green.
+  A third tab can join the same death match.
 * In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
   SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
   screen (online: the lobby room).

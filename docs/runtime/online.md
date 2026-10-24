@@ -117,7 +117,7 @@ as press plus release, like the local sampler. A disconnect releases all held co
 
 Each tick the server drains the world's events once and builds one frame per player
 (`src/net/frames.ts`): the player's camera, `drawList(camera)`, the HUD state (score,
-multiplier, frags, the player's messages, every player's label data) and the events the
+multiplier, frags and deaths, the player's messages, every player's label data) and the events the
 client needs: sounds, decals and score popups (screen position recomputed for that
 player's camera). Shake is part of `camera.drawOrigin`.
 

@@ -24,6 +24,7 @@ export interface HudFrame {
   readonly multiplier: number;
   readonly multiplierTickRatio: number;
   readonly frags: readonly number[];
+  readonly deaths: readonly number[];
   readonly messages: readonly HudMessageEntry[];
   readonly players: readonly PlayerHudFrame[];
   readonly upgrades: readonly MultiplierListEntry[];

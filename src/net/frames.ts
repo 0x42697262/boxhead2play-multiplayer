@@ -44,6 +44,7 @@ export function netFrameFor(world: World, playerIndex: number, events: readonly 
       multiplier: world.upgrades.multiplier,
       multiplierTickRatio: world.upgrades.multiplierTickRatio,
       frags: [...world.hud.frags],
+      deaths: [...world.hud.deathCounts],
       messages: world.hud.messages.filter((message) => message.playerIndex === undefined || message.playerIndex === playerIndex),
       players: playerHudEntries(world),
     },

@@ -65,7 +65,7 @@ export function frame(tick: number, overrides: Partial<NetFrame> = {}): NetFrame
     brightness: 0,
     camera: { playerIndex: 1, rect: { x: 32, y: 32, width: 640, height: 480 }, drawOrigin: { x: 32, y: 32 } },
     entries: [],
-    hud: { totalScore: 0, multiplier: 1, multiplierTickRatio: 0, frags: [0, 0, 0, 0], messages: [], players: [] },
+    hud: { totalScore: 0, multiplier: 1, multiplierTickRatio: 0, frags: [0, 0, 0, 0], deaths: [0, 0, 0, 0], messages: [], players: [] },
     events: [],
     ...overrides,
   };

@@ -195,6 +195,7 @@ const HudSchema = z.object({
   multiplier: z.number(),
   multiplierTickRatio: z.number(),
   frags: z.array(z.number()),
+  deaths: z.array(z.number()),
   messages: z.array(HudMessageSchema),
   players: z.array(z.object({ playerIndex: z.number().int(), position: Point3Schema, status: PlayerStatusSchema })),
 });
@@ -271,6 +272,7 @@ export interface NetHud {
   readonly multiplier: number;
   readonly multiplierTickRatio: number;
   readonly frags: readonly number[];
+  readonly deaths: readonly number[];
   readonly messages: readonly HudMessageEntry[];
   readonly players: readonly { readonly playerIndex: number; readonly position: { x: number; y: number; z: number }; readonly status: PlayerHudStatus }[];
 }

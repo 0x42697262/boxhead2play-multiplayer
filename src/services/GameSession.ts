@@ -59,6 +59,7 @@ export function hudFrame(world: World, localPlayerIndex: number = LOCAL_PLAYER_I
     multiplier: world.upgrades.multiplier,
     multiplierTickRatio: world.upgrades.multiplierTickRatio,
     frags: world.hud.frags,
+    deaths: world.hud.deathCounts,
     messages: world.hud.messages,
     players: playerHudEntries(world),
     upgrades: [],

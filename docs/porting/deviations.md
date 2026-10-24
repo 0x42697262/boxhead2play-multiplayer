@@ -61,6 +61,7 @@
 | Key prompt alpha | After an invalid key, a valid key closes the prompt and `mcPressAKey` can keep a partial alpha for the next prompt | Each prompt starts fully visible | Bug fix. |
 | Modal windows | Blocking by `mcLock.onPress` and `mc2PlayerCover.onPress` | Same blockers, hit-tested on their bounds | Flash tests clip shapes; both blockers are full rectangles. |
 | In-game menu | Esc does nothing in game | Esc opens SETTINGS / QUIT over the running game (see `docs/runtime/screens.md`) | Owner request: change graphics and volume, and quit, without the upgrade list. |
+| Deathmatch HUD | `Hud_PlayerFrags` shows both players' frags at the top | No frags at the top; TAB shows a scoreboard of every player instead of the upgrade list | Owner request; the two-panel bar does not fit more than two players. |
 | Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
 | Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |

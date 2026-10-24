@@ -15,10 +15,10 @@ import type { SymbolRenderer } from '../symbols/SymbolRenderer.ts';
 import { HUD_BUFFER_INFLATE_PX, HUD_CACHE_LIMIT } from '../tuning.ts';
 import { blit } from '../world/VisualPainter.ts';
 import type { HudFrame } from '../world/WorldFrame.ts';
+import { scoreboardRows, type ScoreboardRow } from './scoreboard.ts';
 import { lifeFrameIndex, MessageTrack, padNumber, ScorePopups, timerFrameIndex, upgradeRows } from './hudAnimation.ts';
 import {
   AMMO_LETTER_SPACING_PX,
-  FRAG_DIGITS,
   HudChild,
   HudSymbol,
   INACTIVE_UPGRADE_ALPHA,
@@ -32,6 +32,9 @@ import {
   MESSAGE_COLORS,
   NEW_WEAPON_UPGRADE_COLOR,
   PAUSED_TITLE_DEPTH,
+  SCOREBOARD_COLUMNS,
+  SCOREBOARD_TITLE_POSITION,
+  UPGRADE_LIST_TITLE_DEPTH,
   UPGRADE_ROW_SPACING_PX,
   SCORE_DIGITS,
   UPGRADE_COLOR,
@@ -58,18 +61,6 @@ const OPAQUE = 1;
 const SCORE_TOTAL_POSITION: Point2 = { x: SCREEN_WIDTH_PX / 2, y: 0 };
 const MESSAGE_ORIGIN: Point2 = { x: SCREEN_WIDTH_PX / 2, y: SCREEN_HEIGHT_PX };
 
-export interface FragPanels {
-  readonly own: number;
-  readonly opponent: number | undefined;
-}
-
-export function fragPanels(hud: HudFrame): FragPanels {
-  const opponents = hud.players.map((player) => player.playerIndex).filter((index) => index !== hud.localPlayerIndex);
-  const fragsOf = (index: number): number => hud.frags[index] ?? 0;
-  const opponent = opponents.reduce<number | undefined>((best, index) => (best === undefined || fragsOf(index) > fragsOf(best) ? index : best), undefined);
-  return { own: hud.localPlayerIndex, opponent };
-}
-
 export function playerDisplayName(hud: HudFrame, playerIndex: number): string {
   const name = hud.playerNames[playerIndex];
   return name ? name : t('hud.playerName', { number: playerIndex + 1 });
@@ -88,6 +79,8 @@ export class HudRenderer {
   private upgradeList: Surface | undefined = undefined;
   private upgradeListKey: string | undefined = undefined;
   private upgradeEntries: readonly MultiplierListEntry[] | undefined = undefined;
+  private panelShown = false;
+  private scoreboard: { readonly key: string; readonly surface: Surface | undefined } | undefined = undefined;
   private currentResolution = 1;
 
   constructor(
@@ -108,6 +101,7 @@ export class HudRenderer {
     this.currentResolution = resolution;
     this.cache.clear();
     this.upgradeList = this.upgradeEntries ? this.renderUpgradeList(this.upgradeEntries) : undefined;
+    this.scoreboard = undefined;
   }
 
   addScore(event: ScoreAwarded): void {
@@ -137,6 +131,8 @@ export class HudRenderer {
   }
 
   showUpgrades(upgrades: readonly MultiplierListEntry[] | undefined): void {
+    this.panelShown = upgrades !== undefined;
+    if (this.gameMode === GameMode.DeathMatch) return;
     const key = upgrades ? JSON.stringify(upgrades) : undefined;
     if (key === this.upgradeListKey) return;
     this.upgradeListKey = key;
@@ -146,10 +142,7 @@ export class HudRenderer {
 
   drawLive(ctx: Context2D): void {
     const totals = this.totals;
-    if (totals) {
-      if (this.gameMode === GameMode.DeathMatch) this.drawFrags(ctx, totals);
-      else this.drawScoreTotal(ctx, totals);
-    }
+    if (totals && this.gameMode !== GameMode.DeathMatch) this.drawScoreTotal(ctx, totals);
     for (const label of this.labels) {
       if (!label.visible) continue;
       const bitmap = this.playerClip(label);
@@ -157,16 +150,17 @@ export class HudRenderer {
       const name = label.name ? this.nameClip(label.name, label.local ? LOCAL_PLAYER_NAME_COLOR : OTHER_PLAYER_NAME_COLOR) : undefined;
       if (name) blit(ctx, name, { x: label.screen.x, y: label.screen.y + PLAYER_NAME_OFFSET_Y_PX }, 1, OPAQUE_ALPHA, this.currentResolution);
     }
-    if (this.upgradeList) {
+    const panel = this.panelSurface();
+    if (panel) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
-      ctx.drawImage(this.upgradeList.canvas, 0, 0);
+      ctx.drawImage(panel.canvas, 0, 0);
     }
     resetContext(ctx);
   }
 
   hitTest(point: Point2): HudAction | undefined {
-    if (this.upgradeList && this.childButtonContains(HudSymbol.UpgradeList, HudChild.Quit, point)) return HudAction.Quit;
+    if (this.panelShown && this.childButtonContains(HudSymbol.UpgradeList, HudChild.Quit, point)) return HudAction.Quit;
     return undefined;
   }
 
@@ -188,23 +182,6 @@ export class HudRenderer {
     const key = `total|${totals.totalScore}|${totals.multiplier}|${overrides[HudChild.Timer]?.frame ?? 0}`;
     const bitmap = this.clip(HudSymbol.ScoreTotal, overrides, key, LIVE_CLIP_INFLATE_PX);
     if (bitmap) blit(ctx, bitmap, SCORE_TOTAL_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
-  }
-
-  private drawFrags(ctx: Context2D, totals: HudFrame): void {
-    const { own, opponent } = fragPanels(totals);
-    const panel = (playerIndex: number): Overrides => ({
-      [HudChild.PlayerName]: { text: playerDisplayName(totals, playerIndex) },
-      [HudChild.Frags]: { text: padNumber(totals.frags[playerIndex] ?? 0, FRAG_DIGITS) },
-    });
-    const overrides: Overrides = {
-      [HudChild.Player1]: { children: panel(own) },
-      [HudChild.Player2]: opponent === undefined ? { visible: false } : { children: panel(opponent) },
-      [HudChild.SwitchSides]: { visible: false },
-    };
-    const names = [own, opponent].map((index) => (index === undefined ? '' : playerDisplayName(totals, index))).join(',');
-    const key = `frags|${own}|${opponent ?? ''}|${names}|${totals.frags.join(',')}`;
-    const bitmap = this.clip(HudSymbol.PlayerFrags, overrides, key, LIVE_CLIP_INFLATE_PX);
-    if (bitmap) blit(ctx, bitmap, { x: 0, y: 0 }, 1, OPAQUE_ALPHA, this.currentResolution);
   }
 
   private playerClip(label: PlayerLabel): BufferedBitmap | undefined {
@@ -271,26 +248,68 @@ export class HudRenderer {
     return bitmap;
   }
 
-  private renderUpgradeList(upgrades: readonly MultiplierListEntry[]): Surface | undefined {
-    const library = this.renderer.library;
-    const id = library.characterId(HudSymbol.UpgradeList);
+  private panelSurface(): Surface | undefined {
+    if (!this.panelShown) return undefined;
+    const totals = this.totals;
+    if (this.gameMode !== GameMode.DeathMatch) return this.upgradeList;
+    if (!totals) return undefined;
+    const rows = scoreboardRows(totals, (playerIndex) => playerDisplayName(totals, playerIndex));
+    const key = JSON.stringify(rows);
+    if (this.scoreboard?.key !== key) this.scoreboard = { key, surface: this.renderScoreboard(rows) };
+    return this.scoreboard.surface;
+  }
+
+  private panelBase(hiddenKeys: readonly string[]): { readonly id: number; readonly surface: Surface; readonly toDevice: Matrix } | undefined {
+    const id = this.renderer.library.characterId(HudSymbol.UpgradeList);
     if (id === undefined) return undefined;
     const resolution = this.currentResolution;
     const toDevice = scaling(resolution, resolution);
     const surface = this.renderer.createSurface(SCREEN_WIDTH_PX * resolution, SCREEN_HEIGHT_PX * resolution);
-    const hidden: Overrides = Object.fromEntries([...UPGRADE_COLUMNS, depthKey(PAUSED_TITLE_DEPTH)].map((key) => [key, { visible: false }]));
+    const hidden: Overrides = Object.fromEntries([...UPGRADE_COLUMNS, ...hiddenKeys].map((key) => [key, { visible: false }]));
     this.renderer.draw(surface.ctx, id, 0, toDevice, { overrides: hidden, resolution });
+    return { id, surface, toDevice };
+  }
+
+  private drawPanelRow(base: { readonly id: number; readonly surface: Surface; readonly toDevice: Matrix }, column: string, row: number, overrides: Overrides, alpha: number): void {
+    const template = this.renderer.library.findChild(base.id, column);
+    if (!template) return;
+    const matrix: Matrix = multiply(base.toDevice, flashTranslate(template.matrix, 0, row * UPGRADE_ROW_SPACING_PX));
+    this.renderer.draw(base.surface.ctx, template.characterId, 0, matrix, { overrides, colorTransform: alphaOnly(alpha), resolution: this.currentResolution });
+  }
+
+  private renderUpgradeList(upgrades: readonly MultiplierListEntry[]): Surface | undefined {
+    const base = this.panelBase([depthKey(PAUSED_TITLE_DEPTH)]);
+    if (!base) return undefined;
     for (const { entry, column, row } of upgradeRows(upgrades)) {
-      const template = library.findChild(id, column);
-      if (!template) continue;
-      const matrix: Matrix = multiply(toDevice, flashTranslate(template.matrix, 0, row * UPGRADE_ROW_SPACING_PX));
       const overrides: Overrides = {
         [HudChild.UpgradeText]: { text: t(entry.name), textColor: entry.newWeapon ? NEW_WEAPON_UPGRADE_COLOR : UPGRADE_COLOR },
         [HudChild.UpgradeIndex]: { text: String(entry.index) },
       };
-      const alpha = entry.active ? OPAQUE : INACTIVE_UPGRADE_ALPHA;
-      this.renderer.draw(surface.ctx, template.characterId, 0, matrix, { overrides, colorTransform: alphaOnly(alpha), resolution });
+      this.drawPanelRow(base, column, row, overrides, entry.active ? OPAQUE : INACTIVE_UPGRADE_ALPHA);
     }
-    return surface;
+    return base.surface;
+  }
+
+  private renderScoreboard(rows: readonly ScoreboardRow[]): Surface | undefined {
+    const base = this.panelBase([depthKey(PAUSED_TITLE_DEPTH), depthKey(UPGRADE_LIST_TITLE_DEPTH)]);
+    if (!base) return undefined;
+    const titleId = this.renderer.library.characterId(HudSymbol.Message);
+    const titleOverrides: Overrides = { [HudChild.MessageText]: { text: t('hud.scoreboard.title'), textColor: UPGRADE_COLOR } };
+    const { x, y } = SCOREBOARD_TITLE_POSITION;
+    if (titleId !== undefined) this.renderer.draw(base.surface.ctx, titleId, 0, multiply(base.toDevice, [1, 0, 0, 1, x, y]), { overrides: titleOverrides, resolution: this.currentResolution });
+    rows.forEach((entry, row) => {
+      const color = entry.local ? LOCAL_PLAYER_NAME_COLOR : UPGRADE_COLOR;
+      const cells: readonly (readonly [string, string])[] = [
+        [String(entry.rank), entry.name],
+        [String(entry.kills), t('hud.scoreboard.kills')],
+        [String(entry.deaths), t('hud.scoreboard.deaths')],
+      ];
+      cells.forEach(([index, text], column) => {
+        const name = SCOREBOARD_COLUMNS[column];
+        if (name === undefined) return;
+        this.drawPanelRow(base, name, row, { [HudChild.UpgradeText]: { text, textColor: color }, [HudChild.UpgradeIndex]: { text: index } }, OPAQUE);
+      });
+    });
+    return base.surface;
   }
 }
