@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { MemorySessionToken } from '../../../src/adapters/net/TabSession.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { parseServerMessage, type GameStarted, type ServerMessage } from '../../../src/net/protocol.ts';
-import { WireDecoder, WireEncoder } from '../../../src/net/wire.ts';
+import { ServerWireDecoder, ServerWireEncoder } from '../../../src/net/serverWire.ts';
 import { silentLogger } from '../../../src/observability/logger.ts';
 import { OnlineClient, OnlineStatus, type GameSink } from '../../../src/services/online/OnlineClient.ts';
 import { FakeTransport, frame, lobby, OPTIONS, START } from './support.ts';
@@ -37,8 +37,8 @@ describe('OnlineClient latency', () => {
 
   it('matches a pong that went through the binary wire codec, with a fractional clock', () => {
     const { online, transport, clock } = client();
-    const encoder = new WireEncoder();
-    const decoder = new WireDecoder();
+    const encoder = new ServerWireEncoder();
+    const decoder = new ServerWireDecoder();
     const wire = (message: ServerMessage): ServerMessage | undefined => parseServerMessage(decoder.decode(encoder.encode(message)));
     online.start();
     online.opened();

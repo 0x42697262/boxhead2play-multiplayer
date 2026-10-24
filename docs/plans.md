@@ -46,15 +46,15 @@ Decides it: monitor showing memory or upload growth while a player's connection 
 
 ## Frame size and server CPU
 
-Measured 2026-10-25 on a busy 4-player Nightmare frame after protocol 9 (1281 B per frame,
-ADR 0007): draw entries about 1050 B, decals about 180 B, sounds about 50 B, other players'
-HUD positions about 35 B. Ideas, biggest saving first:
+Measured 2026-10-25 on a busy 4-player Nightmare match after protocol 10 (about 500 B per
+frame, ADR 0007): decals about 180 B, sounds about 50 B, other players' HUD positions about
+35 B, the rest the packed draw list. Ideas, biggest saving first:
 
 | Idea | Expected effect | Effort | Decides it |
 |---|---|---|---|
 | 12.5 frames per second with client interpolation (as tanka-maze does at 15) | About half the bytes and encoding CPU; adds about 80 ms of delay | Days | Monitor LOOP row still high with 4+ players |
-| Fixed-layout frame codec: no field ids or type tags, flags packed into bits, quantized numbers | About 6 to 8 of the about 22 bytes a walking zombie costs per tick (estimate) | Days; every new visual field needs codec work (ADR 0007 rejected it once) | Same |
-| Stop listing unchanged entries; the client keeps them and sorts by depth itself | About 15 to 20 % of frame bytes (estimate) | Half a day | Same |
+| Decals and sounds in the fixed layout too | About 100 of 180 decal bytes per frame (estimate) | Half a day | Same |
+| Stop listing unchanged entries; the client keeps them and sorts by depth itself | About 50 B per frame (one byte per unchanged thing) | Half a day; client must sort like the server | Same |
 | Client runs walk animations; the server sends only animation changes | A few bytes per walking zombie per tick | About a day; visuals may drift from the server's frame count | Owner unsure (2026-10-25) |
 | Sounds only for players who can hear them (like screen shake, per camera) | About 50 B per frame, and no gunfire from across the room | About an hour | Owner decision: changes what players hear |
 

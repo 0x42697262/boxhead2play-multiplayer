@@ -2,9 +2,8 @@ import type { IncomingMessage, Server } from 'node:http';
 import type { Socket } from 'node:net';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
-import { ServerMessageType } from '../../net/protocol.ts';
 import { SOCKET_PATH } from '../../net/tuning.ts';
-import { WireEncoder } from '../../net/wire.ts';
+import { ServerWireEncoder } from '../../net/serverWire.ts';
 import type { Hub } from '../Hub.ts';
 import type { Traffic } from '../monitorProtocol.ts';
 import type { Connection } from '../ports.ts';
@@ -13,7 +12,6 @@ import { requestPathname } from './requestPath.ts';
 import { MAX_MESSAGE_BYTES, PING_INTERVAL_MS } from '../tuning.ts';
 
 const OPEN = 1;
-const STRING_RESET_TYPES: ReadonlySet<string> = new Set([ServerMessageType.GameStarted]);
 
 interface Watched {
   alive: boolean;
@@ -24,7 +22,7 @@ function socketTraffic(transport: Socket): Traffic {
 }
 
 function socketConnection(socket: WebSocket, transport: Socket): Connection {
-  const encoder = new WireEncoder(STRING_RESET_TYPES);
+  const encoder = new ServerWireEncoder();
   return {
     send(message) {
       if (socket.readyState === OPEN) socket.send(encoder.encode(message));

@@ -126,15 +126,18 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 9)
+## Protocol (`src/net/protocol.ts`, version 10)
 
 Client messages are JSON text. Server messages are binary delta frames
-(`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
-`WireDecoder` per socket on the client, each message a delta against the previous message
-of the same type. Both sides validate the decoded values with Zod. Anything that fails is
+(`src/net/serverWire.ts`, ADR 0007): one `ServerWireEncoder` per socket on the server, one
+`ServerWireDecoder` per socket on the client. The generic codec (`src/net/wire.ts`) sends
+each message as a delta against the previous message of the same type; a frame's `entries`
+travel inside it as one byte string packed by the draw list codec
+(`src/net/drawListWire.ts`). Both sides validate the decoded values with Zod. Anything that fails is
 dropped (client) or answered with `error: badMessage` (server). `npm run bandwidth`
-measures the bytes per player for JSON, JSON + deflate, wire and wire + deflate and checks
-that every decoded frame equals the JSON one.
+measures the bytes per player for JSON, JSON + deflate, wire, wire + deflate and "as sent"
+(the `ws` server compresses only messages of 1024 bytes or more, so most frames leave
+uncompressed) and checks that every decoded frame equals the JSON one.
 
 Every change to a message schema, including a new enum value such as a HUD message tone
 or a text key a frame may carry, bumps `PROTOCOL_VERSION` (`src/net/tuning.ts`). Version 5
@@ -149,7 +152,10 @@ match start"); an older decoder would read the reset marker as a string id. Vers
 `directionCount` and `styleScale`, and a decal leaves out `symbol`, `rotationCount`, `scaleX`
 and `scaleY` when they have the default for its kind. `OnlineGameSession` restores them
 from the animation catalog (`expandFrame`) before the renderer sees the frame, so the
-renderer still works with full `DrawEntry` and `DecalRequested` values.
+renderer still works with full `DrawEntry` and `DecalRequested` values. Version 10 packs the
+draw list in a fixed layout (ADR 0007, "Update: fixed-layout draw list"): every visible
+thing holds a small slot number, an unchanged thing costs one byte, a changed one a bit mask
+of what changed followed by only those values.
 
 | Client -> server | Purpose |
 |---|---|
@@ -296,7 +302,7 @@ and is closed the same way. For both, the client keeps retrying with backoff and
 notice on the next `welcome` (`RETRIED_ERRORS`): an address frees a session slot when one of
 its sessions ends its reconnect grace.
 
-A message that the `WireDecoder` cannot decode (any exception, not only `WireError`) means
+A message that the `ServerWireDecoder` cannot decode (any exception, not only `WireError`) means
 the client's delta baselines may no longer match the server's encoder. The client closes
 the socket and ignores the rest of its messages; the reconnect opens a new socket with a
 fresh encoder and decoder on both sides and resumes the session. A message that decodes but

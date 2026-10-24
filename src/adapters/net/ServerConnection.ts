@@ -1,5 +1,5 @@
 import { encodeClientMessage, parseServerMessage, ServerMessageType, type ClientMessage, type ServerMessage } from '../../net/protocol.ts';
-import { WireDecoder } from '../../net/wire.ts';
+import { ServerWireDecoder } from '../../net/serverWire.ts';
 import type { Rng } from '../../domain/math/Rng.ts';
 import { SOCKET_PATH } from '../../net/tuning.ts';
 import { RECONNECT_BACKOFF_FACTOR, RECONNECT_BASE_DELAY_MS, RECONNECT_JITTER_FRACTION, RECONNECT_MAX_DELAY_MS } from './tuning.ts';
@@ -33,7 +33,7 @@ const ARRAY_BUFFER: BinaryType = 'arraybuffer';
 
 const DESYNCED = Symbol('desynced');
 
-function decodeWire(decoder: WireDecoder, data: ArrayBuffer): ServerMessage | undefined | typeof DESYNCED {
+function decodeWire(decoder: ServerWireDecoder, data: ArrayBuffer): ServerMessage | undefined | typeof DESYNCED {
   let value: unknown;
   try {
     value = decoder.decode(new Uint8Array(data));
@@ -91,7 +91,7 @@ export class ServerConnection {
     this.wanted = true;
     if (this.socket || this.cancelRetry) return;
     const socket = this.createSocket(this.url);
-    const decoder = new WireDecoder();
+    const decoder = new ServerWireDecoder();
     let desynced = false;
     socket.binaryType = ARRAY_BUFFER;
     this.socket = socket;

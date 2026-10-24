@@ -5,8 +5,7 @@ import {
   VisualKind,
   type ClipVisual,
   type DrawEntry,
-  type LineVisual,
-  type SquareVisual,
+  type OverlayVisual,
   type Visual,
 } from '../../../domain/visuals.ts';
 import type { ClipBuffers } from '../clips/ClipBuffers.ts';
@@ -19,8 +18,6 @@ import { omniIndex, pixelSnap, roundedScreenPoint, thingScreenPoint } from './pr
 export const SQUARE_LINE_WIDTH_PX = 1;
 const UNIT_SCALE = 1;
 const DEFAULT_ROTATION_COUNT = 1;
-
-type OverlayVisual = LineVisual | SquareVisual;
 
 export interface PaintContext {
   readonly drawOrigin: Point2;

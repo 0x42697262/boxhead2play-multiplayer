@@ -4,7 +4,7 @@ import { createThingFactory } from '../../src/domain/things/factory.ts';
 import { InitKind } from '../../src/domain/world/RoomDefinition.ts';
 import { Difficulty, GameAmount, GameSpeed } from '../../src/domain/world/SimulationSettings.ts';
 import { encodeClientMessage, parseServerMessage, PROTOCOL_VERSION, type ClientMessage, type LobbyOptions, type ServerMessage } from '../../src/net/protocol.ts';
-import { WireDecoder, WireEncoder } from '../../src/net/wire.ts';
+import { ServerWireDecoder, ServerWireEncoder } from '../../src/net/serverWire.ts';
 import { Hub, type Link } from '../../src/server/Hub.ts';
 import type { Traffic } from '../../src/server/monitorProtocol.ts';
 import type { Connection, GameContent, HubDependencies, Ticker, Timers } from '../../src/server/ports.ts';
@@ -77,8 +77,8 @@ export class FakeConnection implements Connection {
   closed = false;
   link: Link | undefined;
 
-  private readonly encoder = new WireEncoder();
-  private readonly decoder = new WireDecoder();
+  private readonly encoder = new ServerWireEncoder();
+  private readonly decoder = new ServerWireDecoder();
 
   bytesSent = 0;
   bytesReceived = 0;

@@ -430,5 +430,9 @@ Add one line per behavior change: what to do, and the result you expect.
   Without `--log` no file is written.
 * `npx vitest run test/net/compactFrame.test.ts` -> characters, clips and decals round-trip
   through the compact wire form, and every frame of a real coop match restores to the
-  server's draw list (protocol 9). `npm run bandwidth` -> coop 4 players wire about 9 KiB/s, no
-  "decoded frames differ" line. Online coop -> zombies, players, smoke and blood look as before.
+  server's draw list (protocol 9). Online coop -> zombies, players, smoke and blood look as before.
+* `npx vitest run test/net/drawListWire.test.ts` -> every visual kind round-trips the fixed
+  draw list layout, an unchanged thing costs 1 byte, and 1500 ticks of a 4-player match decode
+  exactly like the JSON encoding (protocol 10). `npm run bandwidth` -> coop 4 players wire and
+  "as sent" about 4.3 KiB/s, no "decoded frames differ" line. Online coop with lasers, smoke,
+  dying zombies and a devil -> everything looks as before.

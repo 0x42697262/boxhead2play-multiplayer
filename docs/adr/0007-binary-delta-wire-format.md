@@ -126,3 +126,38 @@ default, so the restored frame equals the server's draw list exactly (tested aga
 match frames). Same benchmark: 1281 B per frame (-27 %), frame building plus encoding
 2.0 ms per tick instead of 2.6 ms. `npm run bandwidth`, coop 4 players: wire 9.2 KiB/s
 instead of 12.9 KiB/s, wire + deflate 1.8 KiB/s instead of 2.0 KiB/s.
+
+## Update: fixed-layout draw list (protocol 10)
+
+After protocol 9 a busy 4-player Nightmare frame still carried about 1080 B of draw entries
+for about 106 visible things, 54 of them changed. A changed walking zombie cost about 17 B:
+2 for its key, about 11 for type tags, field ids and change counts (`position`, `x`, `y`,
+`visual`, `frame`), 4 for the values. The game is the stock original and its visual types
+do not grow, which removes the main reason this ADR first rejected a hand-written codec.
+
+`src/net/drawListWire.ts` now packs `entries` into one byte string, carried by the generic
+codec as a `Bytes` value (`src/net/serverWire.ts`):
+
+* Every visible thing gets a slot number while it stays in view; slots of things that left
+  are reused. The entry list is a sequence of `slot * 3 + state` varints in draw order, so
+  the client keeps the server's sort.
+* `Same` costs that one byte. `Changed` adds a varint bit mask (x, y, z, frame, direction,
+  alpha, animation, whole visual, sort-floor toggle) and then only the flagged values;
+  positions travel as deltas in thousandths of a cell. `New` sends the thing key and the
+  full fixed layout of its visual kind.
+* Numbers that are not positions use one varint whose low bit says whether it is a
+  non-negative integer or a fraction rounded to three digits, so the decoded values equal
+  the JSON encoding's (tested on every frame of a 1500-tick 4-player match).
+* `animation` and `symbol` names go through the codec's own string table; thing keys are
+  sent as raw text once per appearance so long games do not fill the table.
+* Encoder and decoder reset together on `gameStarted`, like the generic codec. A number
+  that is not finite throws `WireError` on the server instead of sending a wrong value.
+* Group visuals hold only lines and squares (`OverlayVisual`), the only kinds the lasers use.
+
+Results, busy 4-player Nightmare match, 5 minutes to player 0: 8.1 MiB (protocol 9) ->
+3.5 MiB; frame building plus encoding 2.0 ms -> 0.63 ms per tick. `npm run bandwidth`,
+coop 4 players: wire 9.2 -> 4.3 KiB/s; coop 16 players: 21.5 -> 12.5 KiB/s.
+
+Consequence: a new field on a character or clip visual, or a new visual kind, needs a change
+in both `DrawListEncoder` and `DrawListDecoder` and a protocol bump. The round-trip tests in
+`test/net/drawListWire.test.ts` fail if a field is dropped.

@@ -104,9 +104,11 @@ export interface SquareVisual {
   readonly solid: boolean;
 }
 
+export type OverlayVisual = LineVisual | SquareVisual;
+
 export interface GroupVisual {
   readonly kind: typeof VisualKind.Group;
-  readonly items: readonly Visual[];
+  readonly items: readonly OverlayVisual[];
 }
 
 export type Visual = CharacterVisual | ClipVisual | LineVisual | SquareVisual | GroupVisual;

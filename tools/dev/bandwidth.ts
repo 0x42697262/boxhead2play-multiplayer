@@ -5,7 +5,7 @@ import type { PlayerCharacter } from '../../src/domain/world/SimulationSettings.
 import { Difficulty, GameAmount, GameSpeed } from '../../src/domain/world/SimulationSettings.ts';
 import { CONTROL_ORDER, controlBit } from '../../src/net/controlMask.ts';
 import { encodeServerMessage, type LobbyOptions, type OnlineMode } from '../../src/net/protocol.ts';
-import { WireDecoder, WireEncoder } from '../../src/net/wire.ts';
+import { ServerWireDecoder, ServerWireEncoder } from '../../src/net/serverWire.ts';
 import { Match } from '../../src/server/Match.ts';
 import { loadGameContent } from '../../src/server/node/content.ts';
 
@@ -17,6 +17,7 @@ const PLAYER_COUNTS = [1, 4, 16] as const;
 const HOLD_TICKS = 20;
 const KIB = 1024;
 const FIRE = 'fire';
+const WS_DEFLATE_THRESHOLD_BYTES = 1024;
 const OPTIONS: LobbyOptions = {
   difficulty: Difficulty.Beginner,
   gameSpeed: GameSpeed.Normal,
@@ -32,6 +33,7 @@ interface Totals {
   jsonDeflate: number;
   wire: number;
   wireDeflate: number;
+  sent: number;
 }
 
 function measure(mode: OnlineMode, players: number, content: Awaited<ReturnType<typeof loadGameContent>>): Totals {
@@ -39,12 +41,13 @@ function measure(mode: OnlineMode, players: number, content: Awaited<ReturnType<
   const match = Match.start({ id: 'm', mode, roomId: ROOM_ID, options: OPTIONS, characters, seed: SEED }, content);
   if (!match) throw new Error('room missing');
   const rng = new SeededRng(SEED);
-  const encoders = new Map<number, WireEncoder>();
-  const decoders = new Map<number, WireDecoder>();
+  const encoders = new Map<number, ServerWireEncoder>();
+  const decoders = new Map<number, ServerWireDecoder>();
   let mismatches = 0;
   const jsonStreams = new Map<number, Deflate>();
   const wireStreams = new Map<number, Deflate>();
-  const totals: Totals = { json: 0, jsonDeflate: 0, wire: 0, wireDeflate: 0 };
+  const sentStreams = new Map<number, Deflate>();
+  const totals: Totals = { json: 0, jsonDeflate: 0, wire: 0, wireDeflate: 0, sent: 0 };
   const ticks = SECONDS * match.ticksPerSecond;
   for (let tick = 0; tick < ticks; tick++) {
     if (tick % HOLD_TICKS === 0) {
@@ -57,10 +60,10 @@ function measure(mode: OnlineMode, players: number, content: Awaited<ReturnType<
     const step = match.step();
     for (const [index, frame] of step.frames) {
       const json = encodeServerMessage(frame);
-      const encoder = encoders.get(index) ?? new WireEncoder();
+      const encoder = encoders.get(index) ?? new ServerWireEncoder();
       encoders.set(index, encoder);
       const wire = encoder.encode(frame);
-      const decoder = decoders.get(index) ?? new WireDecoder();
+      const decoder = decoders.get(index) ?? new ServerWireDecoder();
       decoders.set(index, decoder);
       const decoded = JSON.stringify(sorted(decoder.decode(wire)));
       const expected = JSON.stringify(sorted(JSON.parse(json)));
@@ -80,11 +83,12 @@ function measure(mode: OnlineMode, players: number, content: Awaited<ReturnType<
       totals.wire += wire.byteLength;
       totals.jsonDeflate += deflated(jsonStreams, index, Buffer.from(json));
       totals.wireDeflate += deflated(wireStreams, index, wire);
+      totals.sent += wire.byteLength < WS_DEFLATE_THRESHOLD_BYTES ? wire.byteLength : deflated(sentStreams, index, wire);
     }
   }
   if (mismatches > 0) console.log(`  ${mismatches} decoded frames differ from the JSON`);
   const clients = Math.max(1, players);
-  return { json: totals.json / clients, jsonDeflate: totals.jsonDeflate / clients, wire: totals.wire / clients, wireDeflate: totals.wireDeflate / clients };
+  return { json: totals.json / clients, jsonDeflate: totals.jsonDeflate / clients, wire: totals.wire / clients, wireDeflate: totals.wireDeflate / clients, sent: totals.sent / clients };
 }
 
 function sorted(value: unknown): unknown {
@@ -122,6 +126,6 @@ for (const mode of [GameMode.Coop, GameMode.DeathMatch] as const) {
   for (const players of PLAYER_COUNTS) {
     if (mode === GameMode.DeathMatch && players === 1) continue;
     const totals = measure(mode, players, content);
-    console.log(`${mode} ${players}p per client: json ${perSecond(totals.json)}, json+deflate ${perSecond(totals.jsonDeflate)}, wire ${perSecond(totals.wire)}, wire+deflate ${perSecond(totals.wireDeflate)}`);
+    console.log(`${mode} ${players}p per client: json ${perSecond(totals.json)}, json+deflate ${perSecond(totals.jsonDeflate)}, wire ${perSecond(totals.wire)}, wire+deflate ${perSecond(totals.wireDeflate)}, as sent ${perSecond(totals.sent)}`);
   }
 }
