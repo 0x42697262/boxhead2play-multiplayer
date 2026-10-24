@@ -33,9 +33,9 @@ FFDec you already have, set `FFDEC_JAR=/path/to/ffdec.jar`.
 
 | Action | Keys |
 |---|---|
-| Move | Arrow keys |
-| Fire | `/` or Space |
-| Next / previous weapon | `.` / `,` |
+| Move | W A S D |
+| Fire | Space |
+| Next / previous weapon | E / Q |
 | Select weapon | 0 – 9 |
 | Show upgrade list | P |
 

@@ -90,7 +90,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run extract` -> `public/assets/manifest.json` exists and lists 18 rooms.
 * `npm run extract:debug` -> prints composite SVG paths for ROOM_Single_0001/0002 and
   "FFDec PNG 727x807, library frame bounds 721x800.65 (delta 6x6)" for room 1.
-* `npm run dev`, choose a room, press arrows -> player 1 walks. `/` fires the pistol.
+* `npm run dev`, choose a room, press W A S D -> player 1 walks. Space fires the pistol, E / Q
+  switch weapons.
 * `npm test -- test/domain` -> domain suites pass (map, navigation, collision, affects,
   spawning, upgrades, world completion, camera, ambience).
 * `npx vitest run test/domain/things` -> creature, weapon, object, effect, input latch and
@@ -110,7 +111,7 @@ Add one line per behavior change: what to do, and the result you expect.
 * Let zombies reach the player -> blood decals appear on the floor but never on walls,
   and the life bar above the player shrinks.
 * Press P -> the upgrade list over the running game, no "PAUSED!" (new weapons in green,
-  inactive ones faded); zombies keep moving and arrows still walk; P again hides it; click
+  inactive ones faded); zombies keep moving and W A S D still walk; P again hides it; click
   QUIT? -> back to the single select-world screen.
 * Two browser tabs on `npm run dev`: DEATH MATCH in both, HOST in one, JOIN and the row's JOIN in
   the other, click the level in the host tab -> each tab shows a full 640 x 480 view of its own player, the frags bar
@@ -131,7 +132,7 @@ Add one line per behavior change: what to do, and the result you expect.
 * Main menu, SETTINGS -> the options window titled SETTINGS with Graphics (SHARP, SMOOTH,
   PIXELATED) and Sound volume (OFF, LOW, MEDIUM, FULL); SMOOTH -> the canvas is 640 x 480 at
   once; OFF -> no sounds; RESET -> SHARP, FULL; kept after a reload (settings `version` 3).
-* Hold two arrow keys (for example Down + Right) -> player 1 walks diagonally at the same speed
+* Hold two movement keys (for example S + D) -> player 1 walks diagonally at the same speed
   as straight (0.16 cells per tick).
 * `npm run dev` -> after loading, a fade from black to the main menu: background, BOXHEAD 2PLAY
   title, "SINGLE PLAY", "COOPERATIVE" and "DEATH MATCH" at 50 %. Hover one -> full alpha with
@@ -169,7 +170,7 @@ Add one line per behavior change: what to do, and the result you expect.
   a deathmatch kill is credited to the shooter, and a coop late joiner gets the unlocked
   weapons.
 * Two tabs on `npm run dev`, COOPERATIVE, HOST in tab 1, JOIN in tab 2 (the room lists both names
-  and characters, tab 2 says "WAITING FOR ... TO START"), click the level in tab 1 -> both tabs play the same world with one shared score; arrows
+  and characters, tab 2 says "WAITING FOR ... TO START"), click the level in tab 1 -> both tabs play the same world with one shared score; W A S D
   move only that tab's player; P in tab 2 shows the upgrade list there while both players keep
   playing; QUIT? -> tab 2 is back in the room with "You left the match." and "CLICK TO JOIN GAME";
   clicking the level joins the running match again.

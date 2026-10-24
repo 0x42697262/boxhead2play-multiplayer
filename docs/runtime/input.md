@@ -10,7 +10,11 @@ Settings store the original Flash key codes. `keyCodes.ts` maps them to
 
 | Up | Down | Left | Right | Fire | Next | Previous |
 |---|---|---|---|---|---|---|
-| ArrowUp (38) | ArrowDown (40) | ArrowLeft (37) | ArrowRight (39) | Slash (191) | Period (190) | Comma (188) |
+| KeyW (87) | KeyS (83) | KeyA (65) | KeyD (68) | Space (32) | KeyE (69) | KeyQ (81) |
+
+These defaults replace the original arrows, Slash, Period and Comma (`ORIGINAL_KEYS`).
+Settings version 4 swaps stored keys that still equal the original defaults; rebound keys
+stay (`docs/persistence/settings.md`).
 
 There is one local player (ADR 0005). `KeyP` shows or hides the upgrade list (the game keeps running). `Digit0`..`Digit9` select weapons,
 and Space is a second fire key (`AddAdditionKeyCode`, which the original added when

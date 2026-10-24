@@ -16,10 +16,11 @@ import { DEFAULT_GRAPHICS_QUALITY, GraphicsQuality } from './graphicsQuality.ts'
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 const LEGACY_VERSION = 0;
 const LOCAL_TWO_PLAYER_VERSION = 1;
 const SOUND_SWITCH_VERSION = 2;
+const ORIGINAL_KEYS_VERSION = 3;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -73,8 +74,15 @@ const ARROW_RIGHT = 39;
 const SLASH = 191;
 const PERIOD = 190;
 const COMMA = 188;
+const KEY_W = 87;
+const KEY_A = 65;
+const KEY_S = 83;
+const KEY_D = 68;
+const KEY_E = 69;
+const KEY_Q = 81;
+const SPACE = 32;
 
-export const DEFAULT_KEYS: PlayerKeyCodes = {
+export const ORIGINAL_KEYS: PlayerKeyCodes = {
   up: ARROW_UP,
   down: ARROW_DOWN,
   left: ARROW_LEFT,
@@ -82,6 +90,16 @@ export const DEFAULT_KEYS: PlayerKeyCodes = {
   fire: SLASH,
   nextWeapon: PERIOD,
   prevWeapon: COMMA,
+};
+
+export const DEFAULT_KEYS: PlayerKeyCodes = {
+  up: KEY_W,
+  down: KEY_S,
+  left: KEY_A,
+  right: KEY_D,
+  fire: SPACE,
+  nextWeapon: KEY_E,
+  prevWeapon: KEY_Q,
 };
 
 const DEFAULT_SINGLE_LEVEL = 8;
@@ -145,7 +163,7 @@ export function migrateLegacy(raw: Raw): Raw {
       deathMatch: pick(raw, 'mLevelIndex_DeathMatch', d.levelIndex.deathMatch, asNumber),
     },
     characters: [pick(raw, 'mPlayer1_CharacterIndex', d.character, asNumber)],
-    keys: { player1: legacyKeys(raw, 'mPlayer1', d.keys) },
+    keys: { player1: legacyKeys(raw, 'mPlayer1', ORIGINAL_KEYS) },
     playCount: pick(raw, 'mPlayCount', d.playCount, asNumber),
   };
 }
@@ -173,16 +191,26 @@ export function migrateSoundSwitch(raw: Raw): Raw {
   const { soundActive, ...kept } = raw;
   return {
     ...kept,
-    version: SETTINGS_VERSION,
+    version: ORIGINAL_KEYS_VERSION,
     soundVolume: soundActive === false ? SOUND_VOLUME_OFF : DEFAULT_SETTINGS.soundVolume,
     graphics: DEFAULT_SETTINGS.graphics,
   };
+}
+
+function sameKeys(raw: unknown, keys: PlayerKeyCodes): boolean {
+  const stored = asRaw(raw);
+  return Object.entries(keys).every(([field, code]) => stored[field] === code);
+}
+
+export function migrateOriginalKeys(raw: Raw): Raw {
+  return { ...raw, version: SETTINGS_VERSION, keys: sameKeys(raw.keys, ORIGINAL_KEYS) ? DEFAULT_KEYS : raw.keys };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [LEGACY_VERSION]: migrateLegacy,
   [LOCAL_TWO_PLAYER_VERSION]: migrateLocalTwoPlayer,
   [SOUND_SWITCH_VERSION]: migrateSoundSwitch,
+  [ORIGINAL_KEYS_VERSION]: migrateOriginalKeys,
 };
 
 function versionOf(raw: Raw): number {

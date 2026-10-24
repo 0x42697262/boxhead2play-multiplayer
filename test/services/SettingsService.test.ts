@@ -5,8 +5,10 @@ import { Difficulty, PlayerCharacter } from '../../src/domain/world/SimulationSe
 import { silentLogger } from '../../src/observability/logger.ts';
 import { GraphicsQuality } from '../../src/services/graphicsQuality.ts';
 import {
+  DEFAULT_KEYS,
   DEFAULT_SETTINGS,
   levelIndexFor,
+  ORIGINAL_KEYS,
   readSettings,
   SETTINGS_STORAGE_KEY,
   SETTINGS_VERSION,
@@ -34,7 +36,7 @@ describe('settings reading', () => {
     expect(result.settings.devilsActive).toBe(false);
     expect(result.settings.difficulty).toBe(Difficulty.Expert);
     expect(result.settings.keys.fire).toBe(32);
-    expect(result.settings.keys.up).toBe(38);
+    expect(result.settings.keys.up).toBe(ORIGINAL_KEYS.up);
     expect(result.settings.levelIndex.coop).toBe(4);
   });
 
@@ -63,6 +65,13 @@ describe('settings reading', () => {
     expect(result.migratedFrom).toBe(2);
     expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, soundVolume: 0, difficulty: Difficulty.Expert });
     expect(readSettings(JSON.stringify({ ...v2, soundActive: true })).settings).toMatchObject({ soundVolume: 100, graphics: GraphicsQuality.Sharp });
+  });
+
+  it('migrates version 3 with the original arrow keys to WASD, and keeps rebound keys', () => {
+    const v3 = { ...DEFAULT_SETTINGS, version: 3, keys: ORIGINAL_KEYS };
+    expect(readSettings(JSON.stringify(v3)).settings.keys).toEqual(DEFAULT_KEYS);
+    const rebound = { ...ORIGINAL_KEYS, fire: 70 };
+    expect(readSettings(JSON.stringify({ ...v3, keys: rebound })).settings.keys).toEqual(rebound);
   });
 
   it('rejects invalid JSON, invalid values and future versions', () => {

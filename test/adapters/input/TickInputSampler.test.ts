@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { codeForKeyCode } from '../../../src/adapters/input/keyCodes.ts';
 import { KeyboardState } from '../../../src/adapters/input/KeyboardState.ts';
 import { boundCodes, buildBindings, TickInputSampler } from '../../../src/adapters/input/TickInputSampler.ts';
-import { DEFAULT_KEYS } from '../../../src/services/SettingsService.ts';
+import { DEFAULT_KEYS, ORIGINAL_KEYS } from '../../../src/services/SettingsService.ts';
 
 const EXTRAS = { quitRequested: false, ambienceSamplesPlaying: 0 };
 
@@ -23,18 +23,19 @@ describe('legacy key codes', () => {
     expect(codeForKeyCode(1)).toBeUndefined();
   });
 
-  it('bind the original defaults', () => {
+  it('bind WASD, SPACE, E and Q by default', () => {
     const bindings = buildBindings(DEFAULT_KEYS);
-    expect(bindings.player.left).toEqual(['ArrowLeft']);
-    expect(bindings.player.prevWeapon).toEqual(['Comma']);
+    expect(bindings.player.left).toEqual(['KeyA']);
+    expect(bindings.player.nextWeapon).toEqual(['KeyE']);
+    expect(bindings.player.prevWeapon).toEqual(['KeyQ']);
     expect(bindings.player.select3).toEqual(['Digit3']);
     expect(bindings.upgradeList).toEqual(['KeyP']);
-    expect(boundCodes(bindings).has('KeyD')).toBe(false);
-    expect(boundCodes(bindings).has('Space')).toBe(true);
+    expect(boundCodes(bindings).has('ArrowLeft')).toBe(false);
+    expect(bindings.player.fire).toEqual(['Space']);
   });
 
   it('add space as a second fire key', () => {
-    expect(buildBindings(DEFAULT_KEYS).player.fire).toEqual(['Slash', 'Space']);
+    expect(buildBindings(ORIGINAL_KEYS).player.fire).toEqual(['Slash', 'Space']);
   });
 });
 
@@ -42,21 +43,21 @@ describe('tick input sampling (CInput edges)', () => {
   it('reports a press once and counts held ticks', () => {
     const keyboard = new KeyboardState();
     const input = sampler();
-    keyboard.keyDown('ArrowLeft');
-    keyboard.keyDown('ArrowLeft');
+    keyboard.keyDown('KeyA');
+    keyboard.keyDown('KeyA');
     const first = input.sample(keyboard, EXTRAS).tick.players[0]?.left;
     const second = input.sample(keyboard, EXTRAS).tick.players[0]?.left;
     expect(first).toEqual({ down: true, pressed: true, released: false, heldTicks: 1 });
     expect(second).toEqual({ down: true, pressed: false, released: false, heldTicks: 2 });
-    keyboard.keyUp('ArrowLeft');
+    keyboard.keyUp('KeyA');
     expect(input.sample(keyboard, EXTRAS).tick.players[0]?.left).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
   });
 
   it('keeps a tap between two ticks as a press and a release', () => {
     const keyboard = new KeyboardState();
     const input = sampler();
-    keyboard.keyDown('Slash');
-    keyboard.keyUp('Slash');
+    keyboard.keyDown('Space');
+    keyboard.keyUp('Space');
     expect(input.sample(keyboard, EXTRAS).tick.players[0]?.fire).toEqual({ down: false, pressed: true, released: true, heldTicks: 0 });
   });
 
@@ -76,7 +77,7 @@ describe('tick input sampling (CInput edges)', () => {
   it('releases every key when the window loses focus', () => {
     const keyboard = new KeyboardState();
     const input = sampler();
-    keyboard.keyDown('ArrowUp');
+    keyboard.keyDown('KeyW');
     input.sample(keyboard, EXTRAS);
     keyboard.releaseAll();
     expect(input.sample(keyboard, EXTRAS).tick.players[0]?.up).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });

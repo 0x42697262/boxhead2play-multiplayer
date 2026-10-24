@@ -47,7 +47,7 @@ const SELECT_CONTROLS: readonly PlayerControl[] = [
 ];
 
 function codes(...keyCodes: number[]): string[] {
-  return keyCodes.map(codeForKeyCode).filter((code): code is string => code !== undefined);
+  return [...new Set(keyCodes.map(codeForKeyCode).filter((code): code is string => code !== undefined))];
 }
 
 function playerBindings(keys: PlayerKeyCodes, extraFire: readonly number[]): PlayerBindings {
