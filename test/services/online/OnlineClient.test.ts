@@ -27,7 +27,7 @@ describe('OnlineClient latency', () => {
     clock.nowMs = 1000.123456;
     online.ping();
     const ping = transport.sent.at(-1);
-    expect(ping).toEqual({ type: 'ping', id: 0 });
+    expect(ping).toEqual({ type: 'ping', id: 0, latencyMs: null });
     expect(online.latencyMs()).toBeUndefined();
     clock.nowMs = 1042.123456;
     online.receive({ type: 'pong', id: 0 });

@@ -27,6 +27,7 @@ class ClientSession implements LobbyClient {
   watching: OnlineMode | null = null;
   lobby: Lobby | undefined = undefined;
   cancelExpiry: CancelTimer | undefined = undefined;
+  latencyMs: number | undefined = undefined;
 
   constructor(
     readonly id: string,
@@ -266,6 +267,7 @@ export class Hub {
         session.lobby?.input(session, message);
         return undefined;
       case ClientMessageType.Ping:
+        session.latencyMs = message.latencyMs ?? undefined;
         session.send({ type: ServerMessageType.Pong, id: message.id });
         return undefined;
     }

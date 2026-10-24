@@ -5,7 +5,7 @@ import { CharacterStyle, VisualKind, type DrawEntry } from '../../domain/visuals
 import { INITIAL_AMBIENCE, stepAmbience, type AmbienceState } from '../../domain/world/ambience.ts';
 import { CompletionState } from '../../domain/world/CompletionState.ts';
 import { IDLE_MASKS, sameMasks, type ControlMasks } from '../../net/controlMask.ts';
-import type { GameOver, GameStarted, NetFrame } from '../../net/protocol.ts';
+import type { GameOver, GameStarted, NetFrame, NetHud } from '../../net/protocol.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { LogEvent } from '../../text/logEvents.ts';
 import type { SessionAudio, SessionScene } from '../GameSession.ts';
@@ -75,6 +75,7 @@ export class OnlineGameSession implements GameSink {
   private ambience: AmbienceState = INITIAL_AMBIENCE;
   private sent: ControlMasks = IDLE_MASKS;
   private ticks = 0;
+  private latestPlayers: NetHud['players'] = [];
 
   constructor(private readonly deps: OnlineSessionDependencies) {
     this.matchId = deps.start.matchId;
@@ -92,6 +93,10 @@ export class OnlineGameSession implements GameSink {
 
   get upgradeListShown(): boolean {
     return this.upgradesShown;
+  }
+
+  get players(): NetHud['players'] {
+    return this.latestPlayers;
   }
 
   get completed(): boolean {
@@ -167,6 +172,7 @@ export class OnlineGameSession implements GameSink {
       }
     }
     if (use !== FrameUse.Live) return;
+    this.latestPlayers = frame.hud.players;
     this.stepAmbience(frame);
     this.deps.scene.render(this.worldFrame(frame));
   }

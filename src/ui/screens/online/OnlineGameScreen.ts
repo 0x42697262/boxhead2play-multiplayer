@@ -9,6 +9,8 @@ import { WorldRenderer } from '../../../adapters/render/world/WorldRenderer.ts';
 import { prewarmCollections } from '../../../adapters/render/xsi/collections.ts';
 import { masksOf } from '../../../net/controlMask.ts';
 import { gameOptionsFor, type GameStarted } from '../../../net/protocol.ts';
+import { MAX_LOBBY_PLAYERS } from '../../../net/tuning.ts';
+import { playerListView, type PlayerListView } from '../../../services/online/playerList.ts';
 import type { Logger } from '../../../observability/logger.ts';
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { GameMenu } from '../gameMenu/GameMenu.ts';
@@ -92,6 +94,19 @@ export class OnlineGameScreen implements Screen {
 
   get ticksPerSecond(): number {
     return this.session.ticksPerSecond;
+  }
+
+  get playerList(): PlayerListView {
+    const { client, start } = this.deps;
+    const lobby = client.lobby;
+    return playerListView({
+      members: lobby?.members ?? [],
+      capacity: lobby?.maxPlayers ?? MAX_LOBBY_PLAYERS,
+      players: this.session.players,
+      localPlayerIndex: start.playerIndex,
+      latencyOf: (playerIndex) => (playerIndex === start.playerIndex ? client.latencyMs() : client.latencyOf(playerIndex)),
+      ticksPerSecond: this.session.ticksPerSecond,
+    });
   }
 
   tick(): void {

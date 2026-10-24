@@ -21,12 +21,13 @@ import type { MonitorLobby } from './monitorProtocol.ts';
 import type { Clock, GameContent, StopTicking, Ticker } from './ports.ts';
 import { lobbyName } from './sanitize.ts';
 import { sameFields } from './sameFields.ts';
-import { MATCH_ABANDONED, TICK_TIME_SMOOTHING } from './tuning.ts';
+import { LATENCY_REPORT_SECONDS, MATCH_ABANDONED, TICK_TIME_SMOOTHING } from './tuning.ts';
 
 export interface LobbyClient {
   readonly id: string;
   readonly name: string;
   readonly connected: boolean;
+  readonly latencyMs: number | undefined;
   send(message: ServerMessage): void;
 }
 
@@ -305,7 +306,14 @@ export class Lobby {
       if (frame) member.client.send(frame);
       if (step.upgrades) member.client.send({ type: ServerMessageType.Upgrades, upgrades: step.upgrades });
     }
+    if (match.world.tick % (match.ticksPerSecond * LATENCY_REPORT_SECONDS) === 0) this.sendLatencies();
     if (step.result) this.finish(match, step.result);
+  }
+
+  private sendLatencies(): void {
+    const playing = this.members.filter((member) => member.playerIndex !== undefined);
+    const latencies = playing.map((member) => ({ playerIndex: member.playerIndex ?? 0, latencyMs: member.client.connected ? (member.client.latencyMs ?? null) : null }));
+    for (const member of playing) member.client.send({ type: ServerMessageType.Latencies, latencies });
   }
 
   private finish(match: Match, result: MatchResult): void {

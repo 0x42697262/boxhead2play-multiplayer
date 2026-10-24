@@ -18,6 +18,7 @@ export type PlayerBindings = Readonly<Record<PlayerControl, readonly string[]>>;
 export interface InputBindings {
   readonly player: PlayerBindings;
   readonly upgradeList: readonly string[];
+  readonly playerList: readonly string[];
 }
 
 export interface SampleExtras {
@@ -31,6 +32,7 @@ export interface SampledTick {
 }
 
 export const UPGRADE_LIST_KEY_CODE = TAB_KEY_CODE;
+export const PLAYER_LIST_CODES: readonly string[] = ['Backquote', TouchCode.PlayerList];
 export const EXTRA_FIRE_KEY = ' ';
 export const SELECT_KEYS = '0123456789';
 
@@ -73,11 +75,12 @@ export function buildBindings(keys: PlayerKeyCodes): InputBindings {
   return {
     player: playerBindings(keys, [asciiKeyCode(EXTRA_FIRE_KEY)]),
     upgradeList: [...codes(UPGRADE_LIST_KEY_CODE), TouchCode.UpgradeList],
+    playerList: PLAYER_LIST_CODES,
   };
 }
 
 export function boundCodes(bindings: InputBindings): ReadonlySet<string> {
-  const all = new Set(bindings.upgradeList);
+  const all = new Set([...bindings.upgradeList, ...bindings.playerList]);
   for (const list of Object.values(bindings.player)) for (const code of list) all.add(code);
   return all;
 }

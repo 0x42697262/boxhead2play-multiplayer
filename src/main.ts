@@ -1,6 +1,7 @@
 import './ui/shell/shell.css';
 import './ui/mobile/mobile.css';
 import './ui/touch/touch.css';
+import './ui/hud/playerList.css';
 import { browserFetcher, loadCatalogs } from './adapters/assets/AssetLoader.ts';
 import { fontFamily, loadFonts } from './adapters/assets/FontLoader.ts';
 import { decodeBrowserImage, GraphicImages } from './adapters/assets/GraphicImages.ts';
@@ -11,7 +12,7 @@ import { WebAudioOutput } from './adapters/audio/WebAudioOutput.ts';
 import { KeyboardState } from './adapters/input/KeyboardState.ts';
 import { BrowserLobbyLink } from './adapters/net/BrowserLobbyLink.ts';
 import { defaultServerUrl, ServerConnection } from './adapters/net/ServerConnection.ts';
-import { boundCodes, buildBindings } from './adapters/input/TickInputSampler.ts';
+import { boundCodes, buildBindings, PLAYER_LIST_CODES } from './adapters/input/TickInputSampler.ts';
 import { ClipBuffers } from './adapters/render/clips/ClipBuffers.ts';
 import { LayeredStage } from './adapters/render/menu/LayeredStage.ts';
 import { offscreenSurfaces } from './adapters/render/surface.ts';
@@ -49,6 +50,7 @@ import { Shell, STAGE_HEIGHT_PX, STAGE_WIDTH_PX, type Viewport } from './ui/shel
 import { attachHomeScreenHint, attachRotateHint, setHomeScreenTitle } from './ui/mobile/MobileChrome.ts';
 import { TouchControls } from './ui/touch/TouchControls.ts';
 import { SoftKeyboard } from './ui/mobile/SoftKeyboard.ts';
+import { PlayerListOverlay } from './ui/hud/PlayerListOverlay.ts';
 import { GameMenuKey } from './ui/screens/gameMenu/tuning.ts';
 import { RESIZE_SETTLE_DELAY_MS } from './ui/shell/tuning.ts';
 import { enterLandscapeFullscreen, isHomeScreenCandidate } from './adapters/display/fullscreen.ts';
@@ -177,8 +179,10 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     window.matchMedia(COARSE_POINTER_QUERY).matches,
   );
   const softKeyboard = new SoftKeyboard({ document, entry: () => flow.screen?.textEntry, key: (code, typed) => flow.key(code, typed) });
+  const playerList = new PlayerListOverlay(document, shell.root);
   const syncTouch = (): void => {
     touch.sync(flow.screen?.touchLayout ?? TouchLayout.Hidden);
+    playerList.show(PLAYER_LIST_CODES.some((code) => keyboard.isDown(code)) ? flow.screen?.playerList : undefined);
     softKeyboard.sync();
     window.requestAnimationFrame(syncTouch);
   };

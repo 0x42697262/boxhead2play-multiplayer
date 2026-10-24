@@ -4,6 +4,7 @@ import type { GameStarted, OnlineMode } from '../net/protocol.ts';
 import type { Logger } from '../observability/logger.ts';
 import { LogEvent } from '../text/logEvents.ts';
 import type { SessionResult } from './GameSession.ts';
+import type { PlayerListView } from './online/playerList.ts';
 import { OnlineEnd, type OnlineSessionResult } from './online/OnlineGameSession.ts';
 
 export interface StagePoint {
@@ -59,6 +60,7 @@ export interface Screen {
   readonly cursor: Cursor;
   readonly touchLayout?: TouchLayout;
   readonly textEntry?: TextEntry | undefined;
+  readonly playerList?: PlayerListView | undefined;
   tick(): void;
   present(): void;
   idle(hasTime: () => boolean): void;

@@ -7,6 +7,7 @@ export const TouchCode = {
   NextWeapon: 'TouchNextWeapon',
   PrevWeapon: 'TouchPrevWeapon',
   UpgradeList: 'TouchUpgradeList',
+  PlayerList: 'TouchPlayerList',
 } as const;
 
 export type TouchCode = (typeof TouchCode)[keyof typeof TouchCode];

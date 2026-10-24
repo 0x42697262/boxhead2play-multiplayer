@@ -137,6 +137,10 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/ui/touch` -> a stick key released by a window blur is pressed again by
   the next thumb move in the same sector. Phone, push the stick far from its base, let go and
   touch the base again at once -> the base snaps back to its resting place, not shifted.
+* Two tabs in one coop match, hold the backquote/tilde key in tab 1 -> a dark rounded "PLAYERS
+  2 / 16" card at the top center with both names, "Alive", life bars and green "<n> ms";
+  release -> it disappears. Close tab 2 -> its row says "Offline" with "—". A dead player shows
+  "Respawn in <n>s" counting down.
 * `npm run build`, `PORT=8091 npm start`, open it, then press F5 twice -> the Network panel
   shows only `/` and `manifest.json` from the network; every SVG, MP3, JSON and font says
   "(ServiceWorker)". `npm run dev` registers no service worker.

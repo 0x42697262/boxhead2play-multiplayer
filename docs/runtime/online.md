@@ -118,7 +118,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 5)
+## Protocol (`src/net/protocol.ts`, version 6)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/wire.ts`, ADR 0007): one `WireEncoder` per socket on the server, one
@@ -130,7 +130,8 @@ that every decoded frame equals the JSON one.
 
 Every change to a message schema, including a new enum value such as a HUD message tone
 or a text key a frame may carry, bumps `PROTOCOL_VERSION` (`src/net/tuning.ts`). Version 5
-added the `joined` message tone (`hud.joined`) and the `serverFull` error.
+added the `joined` message tone (`hud.joined`) and the `serverFull` error. Version 6 added
+`latencyMs` to `ping` and the `latencies` message for the player list.
 
 | Client -> server | Purpose |
 |---|---|
@@ -142,7 +143,7 @@ added the `joined` message tone (`hud.joined`) and the `serverFull` error.
 | `startGame` | Host: start the match. Member outside a running match: join it. |
 | `leaveGame` | Leave the running match, stay in the lobby |
 | `input {down, pressed, released}` | Control bit masks (`src/net/controlMask.ts`) |
-| `ping {id}` | Latency probe, once per second during a match |
+| `ping {id, latencyMs}` | Latency probe, once per second during a match; `latencyMs` is the client's own smoothed round trip (or `null` before the first pong), kept on the session for the player list |
 
 | Server -> client | Purpose |
 |---|---|
@@ -154,6 +155,7 @@ added the `joined` message tone (`hud.joined`) and the `serverFull` error.
 | `gameOver {matchId, state, winnerName, score}` | Match result |
 | `error {reason}` | A request failed (`ErrorReason`) |
 | `pong {id}` | Echo of a `ping` |
+| `latencies {latencies: [{playerIndex, latencyMs}]}` | Every match player's reported round trip, once per second (`LATENCY_REPORT_SECONDS`); `null` while offline or unknown |
 
 The `Hub` keeps the last listed summary of every lobby. A lobby change sends `lobbies` to
 the clients watching that mode only when one of the listed fields (name, room, state,
@@ -182,6 +184,35 @@ top-right corner (`PING_POSITION`, 10 px, the player name text with its outline)
 up to 60 ms, yellow up to 120 ms, orange up to 200 ms and red above (`PING_COLORS`).
 Nothing is shown before the first pong or in single play. The value is the round trip
 to the game server, not the delay between players.
+
+## Player list (hold the backquote/tilde key)
+
+Holding the key left of 1 (`Backquote`, the tilde key on US layouts) or the touch players
+button shows a list of everyone in the match over the game; releasing hides it. It covers
+the center top only (300 x up to 340 stage px below the score), so the game stays visible
+around it, and fits all 16 players.
+
+| Column | Source |
+|---|---|
+| Dot and status | `PlayerPresence`: offline when the lobby member is disconnected (reconnect grace), dead while the frame's `respawnTicks` is set ("Respawn in 7s", rounded up), otherwise alive |
+| Name with a thin life bar | lobby member name; `lifeRatio` from the latest live frame |
+| Latency | own: `OnlineClient.latencyMs()`; others: the server's `latencies` message, which repeats what each client reported in its `ping`. Colored like the HUD ping (`pingColor`) |
+| Header | "PLAYERS", `<count> / <lobby maxPlayers>` |
+
+`playerListView` (`src/services/online/playerList.ts`) builds the rows, pure and tested.
+`OnlineGameScreen.playerList` feeds it the lobby, the session's latest `hud.players` and
+the latencies; `main.ts` checks the held keys (`PLAYER_LIST_CODES`) once per animation frame
+and hands the view to `PlayerListOverlay` (`src/ui/hud/`), which rebuilds its DOM only when
+the view changes.
+
+The panel is DOM, not canvas, so text stays sharp at any scale. It uses the game's own
+fonts (Calibri Bold, SWF font 25, the HUD message font, for the title and names; Calibri,
+font 23, for the rest) with Apple-style material: a dark translucent rounded card, hairline
+separators, system green/red/gray status dots, tabular digits, and the local player's row
+tinted. Sizes are stage pixels through container query units (`--u = 100cqw / 640` on
+`.shell`), so it scales with the stage. No backdrop blur, for the same frame-rate reason
+as the touch controls. Reduced motion drops the pop-in; reduced transparency or more
+contrast makes the card opaque. Single play has no list.
 
 ## Input
 

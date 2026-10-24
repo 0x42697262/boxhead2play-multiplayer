@@ -40,7 +40,7 @@ describe('Hub sessions', () => {
   it('echoes a ping as a pong with the same id', () => {
     const setup = testHub();
     const ann = setup.connect('Ann');
-    ann.say({ type: 'ping', id: 7 });
+    ann.say({ type: 'ping', id: 7, latencyMs: null });
     expect(ann.last('pong')).toEqual({ type: 'pong', id: 7 });
   });
 
@@ -118,15 +118,15 @@ describe('Hub limits', () => {
     let time = 0;
     const setup = testHub({ clock: { now: () => time } });
     const ann = setup.connect('Ann');
-    for (let id = 1; id < MESSAGE_BURST; id++) ann.say({ type: 'ping', id });
+    for (let id = 1; id < MESSAGE_BURST; id++) ann.say({ type: 'ping', id, latencyMs: null });
     expect(ann.all('pong')).toHaveLength(MESSAGE_BURST - 1);
     expect(ann.all('error')).toEqual([]);
-    ann.say({ type: 'ping', id: 0 });
+    ann.say({ type: 'ping', id: 0, latencyMs: null });
     expect(ann.last('error')?.reason).toBe(ErrorReason.RateLimited);
     time += MS_PER_SECOND;
-    for (let id = 0; id < MESSAGE_RATE_PER_SECOND; id++) ann.say({ type: 'ping', id });
+    for (let id = 0; id < MESSAGE_RATE_PER_SECOND; id++) ann.say({ type: 'ping', id, latencyMs: null });
     expect(ann.all('pong')).toHaveLength(MESSAGE_BURST - 1 + MESSAGE_RATE_PER_SECOND);
-    ann.say({ type: 'ping', id: 0 });
+    ann.say({ type: 'ping', id: 0, latencyMs: null });
     expect(ann.all('error')).toHaveLength(2);
   });
 
@@ -250,6 +250,26 @@ describe('Hub matches', () => {
     expect(Math.max(...host.all('frame').map((frame) => frame.entries.length))).toBeGreaterThan(0);
     expect(host.last('frame')?.hud.players.map((player) => player.playerIndex).sort()).toEqual([0, 1]);
     expect(lobbyOf(host).state).toBe(LobbyState.Playing);
+  });
+
+  it('sends every player the reported latencies once per second', () => {
+    const setup = testHub();
+    const { host, guest } = hostAndGuest(setup);
+    host.say({ type: 'ping', id: 1, latencyMs: 42 });
+    guest.say({ type: 'ping', id: 1, latencyMs: 120 });
+    host.say({ type: 'startGame' });
+    setup.ticker.tick(50);
+    expect(guest.all('latencies')).toHaveLength(2);
+    expect(host.last('latencies')?.latencies).toEqual([
+      { playerIndex: 0, latencyMs: 42 },
+      { playerIndex: 1, latencyMs: 120 },
+    ]);
+    guest.link?.closed();
+    setup.ticker.tick(25);
+    expect(host.last('latencies')?.latencies).toEqual([
+      { playerIndex: 0, latencyMs: 42 },
+      { playerIndex: 1, latencyMs: null },
+    ]);
   });
 
   it('runs a death match with sixteen players, each at its own index', () => {

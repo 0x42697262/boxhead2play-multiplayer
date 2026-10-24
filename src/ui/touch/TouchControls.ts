@@ -88,7 +88,8 @@ export class TouchControls {
       deps.toggleMenu();
     });
     const list = this.holdButton(this.button([TouchClass.Button, TouchClass.PlayOnly], 'touch.list', Glyph.List), TouchCode.UpgradeList);
-    system.append(this.menuButton, list);
+    const players = this.holdButton(this.button([TouchClass.Button, TouchClass.PlayOnly], 'touch.players', Glyph.Players), TouchCode.PlayerList);
+    system.append(this.menuButton, list, players);
     this.zone = this.element('div', `${TouchClass.Zone} ${TouchClass.PlayOnly}`);
     this.zone.setAttribute('aria-label', t('touch.move'));
     this.base = this.element('div', TouchClass.Base);

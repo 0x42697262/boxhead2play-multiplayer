@@ -18,6 +18,7 @@ import {
   MAX_LOBBY_PLAYERS,
   PLAYER_NAME_MAX_LENGTH,
   PROTOCOL_VERSION,
+  REPORTED_LATENCY_MAX_MS,
   RAW_NAME_MAX_LENGTH,
   ROOM_ID_MAX_LENGTH,
   SESSION_ID_MAX_LENGTH,
@@ -42,6 +43,7 @@ const NameSchema = z.string().max(PLAYER_NAME_MAX_LENGTH);
 const RawNameSchema = z.string().max(RAW_NAME_MAX_LENGTH);
 const LobbyIdSchema = z.string().min(1).max(LOBBY_ID_MAX_LENGTH);
 const RoomIdSchema = z.string().min(1).max(ROOM_ID_MAX_LENGTH);
+const LatencySchema = z.number().int().nonnegative().max(REPORTED_LATENCY_MAX_MS);
 const MaskSchema = z.number().int().min(0).lt(CONTROL_MASK_LIMIT);
 
 export const LobbyOptionsSchema = z.object({
@@ -133,7 +135,7 @@ const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(ClientMessageType.StartGame) }),
   z.object({ type: z.literal(ClientMessageType.LeaveGame) }),
   z.object({ type: z.literal(ClientMessageType.Input), down: MaskSchema, pressed: MaskSchema, released: MaskSchema }),
-  z.object({ type: z.literal(ClientMessageType.Ping), id: z.number().int().nonnegative() }),
+  z.object({ type: z.literal(ClientMessageType.Ping), id: z.number().int().nonnegative(), latencyMs: LatencySchema.nullable() }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -174,6 +176,7 @@ export const ServerMessageType = {
   GameOver: 'gameOver',
   Error: 'error',
   Pong: 'pong',
+  Latencies: 'latencies',
 } as const;
 
 const Point3Schema = z.object({ x: z.number(), y: z.number(), z: z.number() });
@@ -273,6 +276,10 @@ const ServerMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal(ServerMessageType.Error), reason: stringEnum(ErrorReason) }),
   z.object({ type: z.literal(ServerMessageType.Pong), id: z.number().int() }),
+  z.object({
+    type: z.literal(ServerMessageType.Latencies),
+    latencies: z.array(z.object({ playerIndex: z.number().int().min(0).lt(MAX_LOBBY_PLAYERS), latencyMs: LatencySchema.nullable() })).max(MAX_LOBBY_PLAYERS),
+  }),
 ]);
 
 type ParsedServerMessage = z.infer<typeof ServerMessageSchema>;
@@ -301,6 +308,7 @@ export interface NetFrame {
 
 export type GameStarted = Extract<ParsedServerMessage, { type: typeof ServerMessageType.GameStarted }>;
 export type GameOver = Extract<ParsedServerMessage, { type: typeof ServerMessageType.GameOver }>;
+export type PlayerLatency = Extract<ParsedServerMessage, { type: typeof ServerMessageType.Latencies }>['latencies'][number];
 
 export type ServerMessage =
   | Exclude<ParsedServerMessage, { type: typeof ServerMessageType.Frame | typeof ServerMessageType.Upgrades }>

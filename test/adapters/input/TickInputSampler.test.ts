@@ -33,6 +33,8 @@ describe('legacy key codes', () => {
     expect(bindings.upgradeList).toEqual(['Tab', TouchCode.UpgradeList]);
     expect(boundCodes(bindings).has('ArrowLeft')).toBe(false);
     expect(bindings.player.fire).toEqual(['Space', TouchCode.Fire]);
+    expect(bindings.playerList).toEqual(['Backquote', TouchCode.PlayerList]);
+    expect(boundCodes(bindings).has('Backquote')).toBe(true);
   });
 
   it('add space as a second fire key', () => {

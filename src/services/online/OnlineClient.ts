@@ -19,6 +19,7 @@ import {
   type OnlineMode,
   type ServerMessage,
 } from '../../net/protocol.ts';
+import { REPORTED_LATENCY_MAX_MS } from '../../net/tuning.ts';
 import type { Logger } from '../../observability/logger.ts';
 import { LogEvent } from '../../text/logEvents.ts';
 import { LatencyMeter } from './LatencyMeter.ts';
@@ -86,6 +87,7 @@ export class OnlineClient {
   private queued: ClientMessage[] = [];
   private sink: GameSink | undefined = undefined;
   private matchUpgrades: readonly MultiplierListEntry[] = [];
+  private playerLatencies: ReadonlyMap<number, number> = new Map();
   private enterMatchOf: string | undefined = undefined;
   private leaving = false;
   private readonly listeners = new Set<StateListener>();
@@ -187,8 +189,13 @@ export class OnlineClient {
 
   ping(): void {
     if (!this.welcomed) return;
+    const latencyMs = this.latencyMs();
     const id = this.latency.sent(this.deps.now());
-    this.transport?.send({ type: ClientMessageType.Ping, id });
+    this.transport?.send({ type: ClientMessageType.Ping, id, latencyMs: latencyMs === undefined ? null : Math.min(Math.round(latencyMs), REPORTED_LATENCY_MAX_MS) });
+  }
+
+  latencyOf(playerIndex: number): number | undefined {
+    return this.playerLatencies.get(playerIndex);
   }
 
   latencyMs(): number | undefined {
@@ -236,6 +243,7 @@ export class OnlineClient {
       case ServerMessageType.GameStarted:
         if (this.sink?.matchId === message.matchId) return;
         this.matchUpgrades = [];
+        this.playerLatencies = new Map();
         this.deps.onGameStarted(message);
         return;
       case ServerMessageType.Frame:
@@ -251,6 +259,9 @@ export class OnlineClient {
         return;
       case ServerMessageType.Pong:
         this.latency.answered(message.id, this.deps.now());
+        return;
+      case ServerMessageType.Latencies:
+        this.playerLatencies = new Map(message.latencies.flatMap(({ playerIndex, latencyMs }) => (latencyMs === null ? [] : [[playerIndex, latencyMs] as const])));
         return;
       case ServerMessageType.Error:
         this.enterMatchOf = undefined;
