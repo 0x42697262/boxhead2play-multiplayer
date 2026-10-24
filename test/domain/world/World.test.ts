@@ -120,14 +120,26 @@ describe('World completion', () => {
     ]);
   });
 
-  it('credits the opponent for a death without a known killer, as the two-player original did', () => {
+  it('gives nobody a frag for a death without another player as killer, and counts the death', () => {
+    const { world } = makeWorld(basicRoom(), { options: { gameMode: GameMode.DeathMatch, gameAmount: GameAmount.Kills5, playerCharacters: [0, 1, 2] } });
+    const victim = world.things.playerByIndex(0) as unknown as FakePlayer;
+    for (let i = 0; i < 5; i++) world.logKill(victim);
+    victim.lastAttackerIndex = 0;
+    world.logKill(victim);
+    world.playerDead();
+    expect(world.hud.frags.slice(0, 3)).toEqual([0, 0, 0]);
+    expect(world.hud.deathsOf(0)).toBe(6);
+    expect(world.completion).toBeUndefined();
+  });
+
+  it('ends the deathmatch when a player reaches the kill target', () => {
     const { world } = makeWorld(basicRoom(), { options: { gameMode: GameMode.DeathMatch, gameAmount: GameAmount.Kills5 } });
-    const first = world.things.playerByIndex(0);
-    if (!first) throw new Error('missing player');
-    for (let i = 0; i < 4; i++) world.logKill(first);
+    const victim = world.things.playerByIndex(0) as unknown as FakePlayer;
+    victim.lastAttackerIndex = 1;
+    for (let i = 0; i < 4; i++) world.logKill(victim);
     world.playerDead();
     expect(world.completion).toBeUndefined();
-    world.logKill(first);
+    world.logKill(victim);
     world.playerDead();
     expect(world.completion).toBe(CompletionState.PlayerWon);
     expect(world.winnerIndex).toBe(1);
@@ -140,9 +152,9 @@ describe('World completion', () => {
     victim.lastAttackerIndex = 2;
     world.logKill(victim);
     expect(world.hud.frags.slice(0, 3)).toEqual([0, 0, 1]);
-    victim.lastAttackerIndex = 0;
+    victim.lastAttackerIndex = 1;
     world.logKill(victim);
-    expect(world.hud.frags.slice(0, 3)).toEqual([0, 1, 2]);
+    expect(world.hud.frags.slice(0, 3)).toEqual([0, 1, 1]);
   });
 });
 

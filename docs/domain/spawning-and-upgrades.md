@@ -141,9 +141,8 @@ affect owner's `parent` chain (`rootOwner`), so grenades, rockets, mines and bar
 for the player who fired or placed them.
 
 Frags (`HudState.recordDeath`): a player death credits the victim's `lastAttackerIndex`
-when it is another player. Otherwise (suicide by barrel, own grenade, an unknown killer)
-it credits every opponent, which for two players is the original rule (a death counts as
-the other player's kill).
+when it is another player. A death without one (own grenade or barrel, a zombie or devil,
+an unknown killer) still counts as a death but gives nobody a frag.
 | any | QUIT? on the upgrade list | `quit` |
 
 `World.update` emits `WorldCompleted` at the end of the tick in which the state was set,

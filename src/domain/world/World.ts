@@ -359,11 +359,7 @@ export class World implements WorldContext, UpgradesHost {
 
   private recordPlayerDeath(thing: Thing): void {
     if (!isPlayer(thing)) return;
-    const opponents = this.things
-      .players()
-      .filter((player) => player !== thing)
-      .map((player) => player.playerIndex);
-    this.hud.recordDeath({ victim: thing.playerIndex, killer: thing.lastAttackerIndex, opponents });
+    this.hud.recordDeath({ victim: thing.playerIndex, killer: thing.lastAttackerIndex });
     const message = killMessage({ victim: thing.playerIndex, killer: thing.lastAttackerIndex, killerClass: thing.lastAttackerClass });
     this.hud.addMessage(MessageTone.Critical, message.text, undefined, message.names);
   }

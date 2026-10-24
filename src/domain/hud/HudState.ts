@@ -18,7 +18,6 @@ export interface HudClock {
 export interface PlayerDeath {
   readonly victim: number;
   readonly killer: number | undefined;
-  readonly opponents: readonly number[];
 }
 
 function perPlayer(): number[] {
@@ -59,8 +58,8 @@ export class HudState {
 
   recordDeath(death: PlayerDeath): void {
     this.deaths[death.victim] = this.deathsOf(death.victim) + 1;
-    const credited = death.killer !== undefined && death.killer !== death.victim ? [death.killer] : death.opponents;
-    for (const index of credited) this.kills[index] = this.fragsOf(index) + 1;
+    if (death.killer === undefined || death.killer === death.victim) return;
+    this.kills[death.killer] = this.fragsOf(death.killer) + 1;
   }
 
   addMessage(tone: MessageTone, text: TextRef, playerIndex?: number, names?: Readonly<Record<string, number>>): void {
