@@ -9,8 +9,14 @@ brings its own Java:
 
 | Stage | Base | What it does |
 |---|---|---|
-| `build` | `node:24-bookworm-slim` + `openjdk-17-jre-headless` | `npm ci`, `npm run build` (FFDec is downloaded and checked against `FFDEC_ARCHIVE_SHA256`, assets extracted, client and server built, files precompressed), then `npm prune --omit=dev` |
+| `build` | `node:24-bookworm-slim` + `openjdk-17-jre-headless` | `npm ci`; copy only the SWF, `tools/setup`, `tools/extract` and the four `src/` files they import, then `npm run setup:assets` (FFDec is downloaded and checked against `FFDEC_ARCHIVE_SHA256`, assets extracted); copy the rest, `npm run build` (assets already up to date, client and server built, files precompressed), then `npm prune --omit=dev` |
 | runtime | `node:24-bookworm-slim` | Only `package.json`, the production `node_modules` (`ws`, `zod`), `dist/` and `dist-server/`. Runs as the `node` user. No Java, no FFDec. |
+
+The separate asset layer keeps FFDec and the extracted assets in the Docker layer cache: a
+change to game or server code reruns only `npm run build`. The layer is rebuilt when the
+SWF, the extractor or one of its imports changes, the same inputs as the extract stamp.
+`test/tools/dockerAssetLayer.test.ts` fails when the extractor starts importing a file the
+Dockerfile does not copy before `RUN npm run setup:assets`; add a `COPY` line for it.
 
 `.dockerignore` keeps local `node_modules`, builds, extracted assets and `.cache/` out of the
 build context, so the image always extracts from the tracked SWF.
@@ -45,3 +51,5 @@ Delete the variable to turn `/__monitor` off.
   `npm run monitor --token` reads the server, and a two-tab coop game runs. The container
   used 86 MiB.
 * Not yet deployed on Render itself.
+* 2026-10-24: after a change to `src/main.ts`, `docker build` reuses the cached
+  `RUN npm run setup:assets` layer and the build step prints "Game assets are up to date."

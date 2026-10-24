@@ -116,6 +116,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * `docker build -t boxhead2play .`, `docker run --memory 512m -e PORT=10000 -p 10000:10000
   boxhead2play` -> `server.started` with 18 rooms on port 10000; the page loads and a two-tab coop
   game runs. Render: New > Blueprint with `render.yaml` -> the same at `https://<service>.onrender.com`.
+* `docker build` twice with a change to a file in `src/` in between -> the second build shows
+  `RUN npm run setup:assets` as CACHED and prints "Game assets are up to date.".
 * `npm run dev` (or `npm start`), load the page, DevTools Network with "Disable cache" off, F5 ->
   every `.svg`, `.mp3` and `.woff` row says "(disk cache)"/"(memory cache)" (Chrome) or "cached"
   (Firefox); only the page, `manifest.json` and, in dev, the source modules hit the server.

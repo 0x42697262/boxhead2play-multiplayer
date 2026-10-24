@@ -5,6 +5,14 @@ RUN apt-get update \
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
+COPY boxhead2play.swf ./
+COPY tools/setup ./tools/setup/
+COPY tools/extract ./tools/extract/
+COPY src/adapters/assets/schemas.ts ./src/adapters/assets/
+COPY src/config/env.ts ./src/config/
+COPY src/observability/logger.ts ./src/observability/
+COPY src/text/logEvents.ts ./src/text/
+RUN npm run setup:assets
 COPY . .
 RUN npm run build && npm prune --omit=dev --no-audit --no-fund
 
