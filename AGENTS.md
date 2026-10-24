@@ -174,6 +174,8 @@ Add one line per behavior change: what to do, and the result you expect.
   move only that tab's player; P in tab 2 shows the upgrade list there while both players keep
   playing; QUIT? -> tab 2 is back in the room with "You left the match." and "CLICK TO JOIN GAME";
   clicking the level joins the running match again.
+* Two tabs in a coop game with names Ann and Bob -> under each player its name in small text;
+  your own is green, the other one white.
 * Two tabs in a coop game, block one tab for a second (devtools console:
   `const t = performance.now() + 1000; while (performance.now() < t);`)
   -> movement in that tab feels as direct again within half a second (the frame buffer

@@ -173,6 +173,9 @@ hidden); one `HUD.Player` per player (life frame
 title (depth 14) hidden (one row more than a third per column, 17 px rows,
 green for new weapons, 25 % alpha when inactive). The player labels use the previous
 frame's draw origin, as `UpdatePlayer` ran before `Draw_PlayerPlane`.
+Online, each player's name is drawn 14 px below the player with the ammo text's edit text
+(42, Calibri bold) at 10 px and its black glow: green for the local player, white for the
+others. Single play has no names and shows none.
 `hitTest` maps clicks on `_Quit` while the list is shown.
 
 ## Known visual gaps

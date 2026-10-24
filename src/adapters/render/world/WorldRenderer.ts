@@ -125,14 +125,22 @@ export class WorldRenderer {
     const camera = localCamera(frame);
     if (!camera) return [];
     const labelOrigin = this.lastDrawOrigin ?? camera.view.drawOrigin;
-    const labels = frame.hud.players.map((player) => this.label(player, roundedScreenPoint(player.position, labelOrigin, frame.projectionFactor)));
+    const labels = frame.hud.players.map((player) => this.label(frame, player, roundedScreenPoint(player.position, labelOrigin, frame.projectionFactor)));
     this.drawPlane(this.screen, camera, frame.projectionFactor);
     this.lastDrawOrigin = camera.view.drawOrigin;
     return labels;
   }
 
-  private label(player: PlayerHudFrame, screen: PlayerLabel['screen']): PlayerLabel {
-    return { playerIndex: player.playerIndex, screen, lifeRatio: player.status.lifeRatio, text: playerLabelText(player), visible: player.status.visible };
+  private label(frame: WorldFrame, player: PlayerHudFrame, screen: PlayerLabel['screen']): PlayerLabel {
+    return {
+      playerIndex: player.playerIndex,
+      screen,
+      lifeRatio: player.status.lifeRatio,
+      text: playerLabelText(player),
+      visible: player.status.visible,
+      name: frame.hud.playerNames[player.playerIndex] ?? '',
+      local: player.playerIndex === frame.hud.localPlayerIndex,
+    };
   }
 
   private drawPlane(target: Surface, camera: CameraFrame, projectionFactor: number): void {

@@ -62,3 +62,10 @@ export const NEW_WEAPON_UPGRADE_COLOR = 0x00ff00;
 export const INACTIVE_UPGRADE_ALPHA = 0.25;
 
 export const LIVE_CLIP_INFLATE_PX = 8;
+
+export const PLAYER_NAME_CHILD = 'playerName';
+export const PLAYER_NAME_FONT_PX = 10;
+export const PLAYER_NAME_OFFSET_Y_PX = 14;
+export const PLAYER_NAME_BOX_WIDTH_PX = 140;
+export const LOCAL_PLAYER_NAME_COLOR = 0x00ff00;
+export const OTHER_PLAYER_NAME_COLOR = 0xffffff;

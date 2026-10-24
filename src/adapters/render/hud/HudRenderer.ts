@@ -4,6 +4,7 @@ import { OPAQUE_ALPHA } from '../../../domain/visuals.ts';
 import { GameMode } from '../../../domain/world/GameMode.ts';
 import { SCREEN_HEIGHT_PX, SCREEN_WIDTH_PX } from '../../../domain/world/tuning.ts';
 import { t } from '../../../text/i18n.ts';
+import type { DisplayItem } from '../../assets/schemas.ts';
 import { bufferLayout } from '../clips/bufferLayout.ts';
 import { alphaOnly } from '../color/colorTransform.ts';
 import { flashTranslate, multiply, scaling, type Matrix } from '../geometry/Matrix.ts';
@@ -22,6 +23,12 @@ import {
   HudSymbol,
   INACTIVE_UPGRADE_ALPHA,
   LIVE_CLIP_INFLATE_PX,
+  LOCAL_PLAYER_NAME_COLOR,
+  OTHER_PLAYER_NAME_COLOR,
+  PLAYER_NAME_BOX_WIDTH_PX,
+  PLAYER_NAME_CHILD,
+  PLAYER_NAME_FONT_PX,
+  PLAYER_NAME_OFFSET_Y_PX,
   MESSAGE_COLORS,
   NEW_WEAPON_UPGRADE_COLOR,
   PAUSED_TITLE_DEPTH,
@@ -43,6 +50,8 @@ export interface PlayerLabel {
   readonly lifeRatio: number;
   readonly text: string;
   readonly visible: boolean;
+  readonly name: string;
+  readonly local: boolean;
 }
 
 const OPAQUE = 1;
@@ -145,6 +154,8 @@ export class HudRenderer {
       if (!label.visible) continue;
       const bitmap = this.playerClip(label);
       if (bitmap) blit(ctx, bitmap, label.screen, 1, OPAQUE_ALPHA, this.currentResolution);
+      const name = label.name ? this.nameClip(label.name, label.local ? LOCAL_PLAYER_NAME_COLOR : OTHER_PLAYER_NAME_COLOR) : undefined;
+      if (name) blit(ctx, name, { x: label.screen.x, y: label.screen.y + PLAYER_NAME_OFFSET_Y_PX }, 1, OPAQUE_ALPHA, this.currentResolution);
     }
     if (this.upgradeList) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -203,6 +214,39 @@ export class HudRenderer {
       [HudChild.Ammo]: { frame: 0, children: { [HudChild.AmmoText]: { text: label.text, letterSpacing: AMMO_LETTER_SPACING_PX } } },
     };
     return this.clip(HudSymbol.Player, overrides, `player|${lifeFrame}|${label.text}`, LIVE_CLIP_INFLATE_PX);
+  }
+
+  private nameClip(name: string, color: number): BufferedBitmap | undefined {
+    const key = `name|${color}|${name}`;
+    const hit = this.cache.get(key);
+    if (hit) return hit;
+    const library = this.renderer.library;
+    const playerId = library.characterId(HudSymbol.Player);
+    const ammo = playerId === undefined ? undefined : library.findChild(playerId, HudChild.Ammo);
+    const template = ammo ? library.findChild(ammo.characterId, HudChild.AmmoText) : undefined;
+    const character = template ? library.character(template.characterId) : undefined;
+    if (!template || character?.kind !== 'editText') return undefined;
+    const { bounds, fontSize } = character.editText;
+    const scale = PLAYER_NAME_FONT_PX / (fontSize ?? PLAYER_NAME_FONT_PX);
+    const center = (bounds.xMin + bounds.xMax) / 2;
+    const halfWidth = PLAYER_NAME_BOX_WIDTH_PX / scale / 2;
+    const textBounds: Rect = { ...bounds, xMin: center - halfWidth, xMax: center + halfWidth };
+    const item: DisplayItem = {
+      depth: 1,
+      characterId: template.characterId,
+      instance: 0,
+      matrix: [scale, 0, 0, scale, -center * scale, 0],
+      name: PLAYER_NAME_CHILD,
+      ...(template.filters ? { filters: template.filters } : {}),
+    };
+    const resolution = this.currentResolution;
+    const layout = bufferLayout(transformRect(textBounds, item.matrix), 1, 1, LIVE_CLIP_INFLATE_PX, resolution);
+    const surface = this.renderer.createSurface(layout.width, layout.height);
+    this.renderer.drawItems(surface.ctx, [item], layout.matrix, { overrides: { [PLAYER_NAME_CHILD]: { text: name, textColor: color, textBounds } }, resolution });
+    const bitmap = { surface, dispX: layout.dispX, dispY: layout.dispY };
+    if (this.cache.size >= HUD_CACHE_LIMIT) this.cache.clear();
+    this.cache.set(key, bitmap);
+    return bitmap;
   }
 
   private childFrameCount(symbol: string, child: string): number {
