@@ -291,6 +291,7 @@ export class Hub {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby) return ErrorReason.LobbyNotFound;
     if (session.lobby === lobby) return undefined;
+    if (lobby.full) return ErrorReason.LobbyFull;
     this.leaveLobby(session);
     const error = lobby.add(session, character);
     if (error) return error;

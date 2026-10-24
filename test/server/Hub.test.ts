@@ -5,7 +5,8 @@ import { CompletionState } from '../../src/domain/world/CompletionState.ts';
 import { controlBit } from '../../src/net/controlMask.ts';
 import { ErrorReason, LeaveReason, LobbyState, PROTOCOL_VERSION } from '../../src/net/protocol.ts';
 import { MAX_LOBBY_PLAYERS } from '../../src/net/tuning.ts';
-import { RECONNECT_GRACE_MS } from '../../src/server/tuning.ts';
+import type { Ticker } from '../../src/server/ports.ts';
+import { MAX_CLIENTS, MAX_LOBBIES, MAX_MESSAGE_BYTES, MESSAGE_BURST, MESSAGE_RATE_PER_SECOND, MS_PER_SECOND, RECONNECT_GRACE_MS } from '../../src/server/tuning.ts';
 import { FakeConnection, OPTIONS, ROOM_ID, testHub, type TestHub } from './support.ts';
 
 function lobbyOf(connection: FakeConnection) {
@@ -98,6 +99,52 @@ describe('Hub sessions', () => {
   });
 });
 
+describe('Hub limits', () => {
+  it('answers a burst of messages until the bucket is empty, then refills it over time', () => {
+    let time = 0;
+    const setup = testHub({ clock: { now: () => time } });
+    const ann = setup.connect('Ann');
+    for (let id = 1; id < MESSAGE_BURST; id++) ann.say({ type: 'ping', id });
+    expect(ann.all('pong')).toHaveLength(MESSAGE_BURST - 1);
+    expect(ann.all('error')).toEqual([]);
+    ann.say({ type: 'ping', id: 0 });
+    expect(ann.last('error')?.reason).toBe(ErrorReason.RateLimited);
+    time += MS_PER_SECOND;
+    for (let id = 0; id < MESSAGE_RATE_PER_SECOND; id++) ann.say({ type: 'ping', id });
+    expect(ann.all('pong')).toHaveLength(MESSAGE_BURST - 1 + MESSAGE_RATE_PER_SECOND);
+    ann.say({ type: 'ping', id: 0 });
+    expect(ann.all('error')).toHaveLength(2);
+  });
+
+  it('rejects an oversized message without decoding it', () => {
+    const setup = testHub();
+    const ann = setup.connect('Ann');
+    ann.link?.receive(' '.repeat(MAX_MESSAGE_BYTES + 1));
+    expect(ann.last('error')?.reason).toBe(ErrorReason.RateLimited);
+  });
+
+  it('refuses a client beyond the client limit and closes its connection', () => {
+    const setup = testHub();
+    for (let index = 0; index < MAX_CLIENTS; index++) setup.connect(`P${index}`);
+    const extra = setup.connect('Extra');
+    expect(extra.last('welcome')).toBeUndefined();
+    expect(extra.last('error')?.reason).toBe(ErrorReason.RateLimited);
+    expect(extra.closed).toBe(true);
+    expect(setup.hub.clientCount).toBe(MAX_CLIENTS);
+  });
+
+  it('refuses a lobby beyond the lobby limit', () => {
+    const setup = testHub();
+    const hosts = Array.from({ length: MAX_LOBBIES }, (_unused, index) => setup.connect(`P${index}`));
+    for (const host of hosts) host.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    expect(setup.hub.lobbyCount).toBe(MAX_LOBBIES);
+    const first = hosts[0];
+    first?.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    expect(first?.last('error')?.reason).toBe(ErrorReason.LobbyLimit);
+    expect(setup.hub.lobbyCount).toBe(MAX_LOBBIES);
+  });
+});
+
 describe('Hub lobbies', () => {
   it('lists lobbies to clients watching the same mode', () => {
     const setup = testHub();
@@ -134,6 +181,21 @@ describe('Hub lobbies', () => {
     extra.say({ type: 'joinLobby', lobbyId, character: 0 });
     expect(MAX_LOBBY_PLAYERS).toBe(16);
     expect(extra.last('error')?.reason).toBe(ErrorReason.LobbyFull);
+  });
+
+  it('keeps a member in its lobby when the lobby it tries to join is full', () => {
+    const setup = testHub();
+    const { lobbyId } = hostAndGuest(setup);
+    for (let index = 2; index < MAX_LOBBY_PLAYERS; index++) setup.connect(`P${index}`).say({ type: 'joinLobby', lobbyId, character: 0 });
+    const other = setup.connect('Other');
+    other.say({ type: 'createLobby', mode: GameMode.Coop, roomId: ROOM_ID, options: OPTIONS, character: 0 });
+    const ownId = lobbyOf(other).id;
+    other.say({ type: 'joinLobby', lobbyId, character: 0 });
+    expect(other.last('error')?.reason).toBe(ErrorReason.LobbyFull);
+    expect(other.last('lobbyLeft')).toBeUndefined();
+    expect(setup.hub.lobby(ownId)?.size).toBe(1);
+    other.say({ type: 'startGame' });
+    expect(other.last('gameStarted')?.lobbyId).toBe(ownId);
   });
 
   it('moves the host role to the next member and closes an empty lobby', () => {
@@ -215,6 +277,30 @@ describe('Hub matches', () => {
     expect(guest.last('gameOver')?.matchId).toBe(match?.setup.id);
     expect(lobbyOf(host).state).toBe(LobbyState.Waiting);
     expect(setup.ticker.running).toBe(0);
+  });
+
+  it('ignores ticks that arrive after its match ended', () => {
+    const ticks: (() => void)[] = [];
+    const ticker: Ticker = {
+      start(_rate, onTick) {
+        ticks.push(onTick);
+        return () => undefined;
+      },
+    };
+    const setup = testHub({ ticker });
+    const { host, lobbyId } = hostAndGuest(setup, GameMode.DeathMatch);
+    host.say({ type: 'startGame' });
+    setup.hub.lobby(lobbyId)?.activeMatch?.world.complete(CompletionState.Quit);
+    const lateTick = ticks[0];
+    lateTick?.();
+    const sent = host.received.length;
+    host.say({ type: 'startGame' });
+    const restarted = host.received.length;
+    lateTick?.();
+    lateTick?.();
+    expect(host.all('gameOver')).toHaveLength(1);
+    expect(restarted).toBeGreaterThan(sent);
+    expect(host.received.length).toBe(restarted);
   });
 
   it('holds a disconnected player for the grace period, then removes it', () => {

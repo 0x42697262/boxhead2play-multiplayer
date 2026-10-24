@@ -15,6 +15,10 @@ first visits about 4x smaller.
 | Validation | `staticFiles.ts` | Every response carries a weak ETag from the file's SHA-256 (`W/"<32 hex>"`). A matching `If-None-Match` gets `304` without a body. Content hashes, not modification times, because the Nix store sets every file's mtime to 1970. Hashes are computed once per file and cached by size and mtime. |
 | Precompression | `tools/build/precompress.ts`, run by `npm run build` | Writes `.br` (quality 11) and `.gz` (level 9) next to every `.html`, `.js`, `.css`, `.json`, `.map` and `.svg` file of at least 1 KiB, if it saves at least 10%. The server sends the variant the browser accepts (`br` first, then `gzip`) with `Content-Encoding` and `Vary: accept-encoding`. Nothing is compressed at request time: brotli quality 11 takes about 5.6 s for `characters/xsi.json`, and the game server shares the process. |
 
+A read error before the headers are sent answers `500`. A read error after that, or a
+client that disconnects mid-download, ends the response and closes the file
+(`stream.pipeline`), so aborted downloads do not leak file descriptors.
+
 A wrong `v` is still served (the current file) but with `no-cache`, so a stale client
 never pins the wrong content under an immutable URL.
 

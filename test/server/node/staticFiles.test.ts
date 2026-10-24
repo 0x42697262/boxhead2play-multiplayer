@@ -1,14 +1,50 @@
 import { createHash } from 'node:crypto';
+import type * as FileSystem from 'node:fs';
+import type * as FileSystemPromises from 'node:fs/promises';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { gzipSync } from 'node:zlib';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { contentVersion } from '../../../src/adapters/assets/urls.ts';
 import { CachePolicy } from '../../../src/server/node/httpCaching.ts';
 import { staticFileHandler } from '../../../src/server/node/staticFiles.ts';
+
+const failures = vi.hoisted(() => ({ read: false, hash: false }));
+
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof FileSystem>();
+  const failingStream = (): Readable =>
+    new Readable({
+      read() {
+        this.destroy(new Error('read failed'));
+      },
+    });
+  return { ...actual, createReadStream: (...args: Parameters<typeof actual.createReadStream>) => (failures.read ? failingStream() : actual.createReadStream(...args)) };
+});
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof FileSystemPromises>();
+  return { ...actual, readFile: (...args: Parameters<typeof actual.readFile>) => (failures.hash ? Promise.reject(new Error('hash failed')) : actual.readFile(...args)) };
+});
+
+type Outcome = 'complete' | 'aborted';
+
+function outcome(path: string): Promise<Outcome> {
+  return new Promise((resolve) => {
+    const req = request({ host: '127.0.0.1', port, path }, (res) => {
+      res.on('error', () => resolve('aborted'));
+      res.on('aborted', () => resolve('aborted'));
+      res.on('end', () => resolve(res.complete ? 'complete' : 'aborted'));
+      res.resume();
+    });
+    req.on('error', () => resolve('aborted'));
+    req.end();
+  });
+}
 
 interface Reply {
   readonly status: number;
@@ -41,6 +77,7 @@ beforeAll(async () => {
   writeFileSync(join(root, 'assets', 'index-BVrz_ycd.js'), 'console.log(1)');
   writeFileSync(join(root, 'assets', 'library', 'symbols.json'), symbolsJson);
   writeFileSync(join(root, 'assets', 'library', 'symbols.json.gz'), gzipSync(symbolsJson));
+  writeFileSync(join(root, 'broken.json'), symbolsJson);
   server = createServer(staticFileHandler(root));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   port = (server.address() as AddressInfo).port;
@@ -94,5 +131,27 @@ describe('static file caching', () => {
     expect(head.body.length).toBe(0);
     expect((await get('/', {}, 'POST')).status).toBe(405);
     expect((await get('/missing.json')).status).toBe(404);
+  });
+});
+
+describe('static file failures', () => {
+  it('cuts the response off when reading the file fails after the headers went out, and keeps serving', async () => {
+    failures.read = true;
+    try {
+      expect(await outcome('/assets/library/symbols.json')).toBe('aborted');
+    } finally {
+      failures.read = false;
+    }
+    expect(await outcome('/assets/library/symbols.json')).toBe('complete');
+  });
+
+  it('answers 500 when the file facts cannot be read', async () => {
+    failures.hash = true;
+    try {
+      expect((await get('/broken.json')).status).toBe(500);
+    } finally {
+      failures.hash = false;
+    }
+    expect((await get('/broken.json')).status).toBe(200);
   });
 });

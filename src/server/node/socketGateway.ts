@@ -40,16 +40,31 @@ function text(data: RawData): string {
   return Buffer.from(data instanceof ArrayBuffer ? new Uint8Array(data) : data).toString('utf8');
 }
 
+function pathname(url: string | undefined): string | undefined {
+  try {
+    return new URL(url ?? '', REQUEST_BASE).pathname;
+  } catch {
+    return undefined;
+  }
+}
+
+export interface SocketGatewayOptions {
+  readonly rejectForeignUpgrades: boolean;
+}
+
 export interface SocketGateway {
   traffic(): Traffic;
   close(): void;
 }
 
-export function attachSocketGateway(server: Server, hub: Hub): SocketGateway {
+export function attachSocketGateway(server: Server, hub: Hub, options: SocketGatewayOptions): SocketGateway {
   const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_BYTES, perMessageDeflate: true });
   const watched = new WeakMap<WebSocket, Watched>();
   const upgrade = (request: IncomingMessage, socket: Duplex, head: Buffer): void => {
-    if (new URL(request.url ?? '', REQUEST_BASE).pathname !== SOCKET_PATH) return;
+    if (pathname(request.url) !== SOCKET_PATH) {
+      if (options.rejectForeignUpgrades) socket.destroy();
+      return;
+    }
     sockets.handleUpgrade(request, socket, head, (client) => sockets.emit('connection', client, request));
   };
   server.on('upgrade', upgrade);

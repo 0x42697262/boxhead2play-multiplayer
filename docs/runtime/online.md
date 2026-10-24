@@ -216,7 +216,7 @@ and the match. A `welcome` with `resumed: false` ends a running online game.
 | Limit | Value | Where |
 |---|---|---|
 | Players per lobby and per match | 16 | `MAX_LOBBY_PLAYERS`, `MAX_PLAYERS` |
-| Lobbies | 32 | `MAX_LOBBIES` |
+| Lobbies | 256 | `MAX_LOBBIES` |
 | Clients | 256 | `MAX_CLIENTS` |
 | Message size | 4096 bytes | `MAX_MESSAGE_BYTES` (also the socket `maxPayload`) |
 | Message rate | 120/s, burst 240 | `MESSAGE_RATE_PER_SECOND`, `MESSAGE_BURST` |
@@ -225,3 +225,16 @@ and the match. A `welcome` with `resumed: false` ends a running online game.
 | Catch-up ticks per timer callback | 5 | `MAX_CATCH_UP_TICKS` |
 
 A match that throws while stepping ends with `error`, logged as `server.failed`.
+
+The match timer (`fixedStepTicker` in `src/server/node/timing.ts`) runs at most
+`MAX_CATCH_UP_TICKS` ticks per timer callback. When it is still more than that many periods
+behind (a stall, a suspended host), it skips ahead to the clock instead of replaying the
+backlog. A match that ends inside a catch-up burst stops at once: no further ticks, no new
+timer, and `Lobby` ignores ticks for a match that is no longer its current one, so
+`match.ended` and `gameOver` go out once.
+
+Joining a full lobby answers `lobbyFull` and keeps the client in the lobby it was in.
+
+The production server (`src/server/main.ts`) closes WebSocket upgrade requests for any path
+other than `/ws` at once (`rejectForeignUpgrades`). The dev server leaves them alone, because
+Vite's HMR socket upgrades on the same HTTP server.

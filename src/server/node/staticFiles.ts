@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { pipeline } from 'node:stream';
 import { extname, join, normalize, relative, resolve, sep } from 'node:path';
 import { contentVersion, VERSION_PARAM } from '../../adapters/assets/urls.ts';
 import { CachePolicy, chooseEncoding, etagMatches, isHashedBundle, type ContentEncoding } from './httpCaching.ts';
@@ -12,6 +13,7 @@ const HTTP_OK = 200;
 const HTTP_NOT_MODIFIED = 304;
 const HTTP_NOT_FOUND = 404;
 const HTTP_METHOD_NOT_ALLOWED = 405;
+const HTTP_INTERNAL_ERROR = 500;
 const ALLOWED_METHODS: ReadonlySet<string> = new Set(['GET', 'HEAD']);
 const DEFAULT_TYPE = 'application/octet-stream';
 const ETAG_HEX_LENGTH = 32;
@@ -84,8 +86,13 @@ class FactsCache {
 export function staticFileHandler(root: string): (request: IncomingMessage, response: ServerResponse) => void {
   const cache = new FactsCache();
   return (request, response) => {
-    void serve(root, cache, request, response);
+    serve(root, cache, request, response).catch(() => fail(response));
   };
+}
+
+function fail(response: ServerResponse): void {
+  if (response.headersSent) response.destroy();
+  else response.writeHead(HTTP_INTERNAL_ERROR).end();
 }
 
 async function serve(root: string, cache: FactsCache, request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -130,5 +137,7 @@ async function serve(root: string, cache: FactsCache, request: IncomingMessage, 
     response.end();
     return;
   }
-  createReadStream(body).pipe(response);
+  pipeline(createReadStream(body), response, (error) => {
+    if (error) response.destroy();
+  });
 }

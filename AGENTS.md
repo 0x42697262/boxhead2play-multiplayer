@@ -152,6 +152,14 @@ Add one line per behavior change: what to do, and the result you expect.
   (bottom right), type the code in lower case, Enter -> the same room; a wrong code -> "No game
   has that code.". In the game, Esc -> COPY LINK: XXXXX copies the link.
 * Two tabs both named "Player" in one lobby -> the room lists PLAYER and PLAYER #2.
+* `npx vitest run test/server/node` -> the match ticker catches up at most 5 ticks after a stall,
+  then follows the clock, and stops inside a burst when the match ends; upgrades to paths other
+  than `/ws` are closed; a failing file read cuts the response off and the next request works.
+* `npm start`, `curl -i -H 'Connection: Upgrade' -H 'Upgrade: websocket' http://localhost:8080/other`
+  -> the connection closes at once instead of hanging.
+* `npx vitest run test/server/Hub.test.ts` -> joining a full lobby answers `lobbyFull` and keeps
+  the player in their own lobby; a burst of 240 messages passes, the next is `rateLimited`, one
+  second later 120 more pass; client 257 and lobby 257 are refused.
 * `npx vitest run test/server` -> a 17th player gets `lobbyFull`; a death match starts with 16
   players at 16 different indices. The lobby room lists at most 11 players, your own line and
   "+N MORE", under "PLAYERS: n/16".

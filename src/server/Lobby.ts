@@ -92,6 +92,10 @@ export class Lobby {
     return this.members.length;
   }
 
+  get full(): boolean {
+    return this.members.length >= MAX_LOBBY_PLAYERS;
+  }
+
   get activeMatch(): Match | undefined {
     return this.match;
   }
@@ -133,7 +137,7 @@ export class Lobby {
 
   add(client: LobbyClient, character: PlayerCharacter): ErrorReason | undefined {
     if (this.has(client)) return undefined;
-    if (this.members.length >= MAX_LOBBY_PLAYERS) return ErrorReason.LobbyFull;
+    if (this.full) return ErrorReason.LobbyFull;
     this.members.push({ client, character, playerIndex: undefined });
     this.changed();
     return undefined;
@@ -275,6 +279,7 @@ export class Lobby {
   }
 
   private tick(match: Match): void {
+    if (match !== this.match) return;
     const started = this.deps.clock.now();
     this.step(match);
     const elapsed = this.deps.clock.now() - started;
