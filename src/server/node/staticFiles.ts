@@ -5,7 +5,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { pipeline } from 'node:stream';
 import { extname, join, normalize, relative, resolve, sep } from 'node:path';
 import { contentVersion, VERSION_PARAM } from '../../adapters/assets/urls.ts';
-import { CachePolicy, chooseEncoding, etagMatches, isHashedBundle, type ContentEncoding } from './httpCaching.ts';
+import { CachePolicy, chooseEncoding, etagMatches, isHashedBundle, PRECOMPRESSED_SUFFIX, type ContentEncoding } from './httpCaching.ts';
 
 const INDEX_FILE = 'index.html';
 const REQUEST_BASE = 'http://localhost';
@@ -34,8 +34,6 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.ttf': 'font/ttf',
 };
 
-const ENCODING_SUFFIX: Readonly<Record<ContentEncoding, string>> = { br: '.br', gzip: '.gz' };
-
 interface FileFacts {
   readonly key: string;
   readonly sha256: string;
@@ -52,7 +50,7 @@ export function resolveStaticPath(root: string, url: string): string | undefined
 
 async function variantSizes(target: string): Promise<ReadonlyMap<ContentEncoding, number>> {
   const variants = new Map<ContentEncoding, number>();
-  for (const [encoding, suffix] of Object.entries(ENCODING_SUFFIX) as [ContentEncoding, string][]) {
+  for (const [encoding, suffix] of Object.entries(PRECOMPRESSED_SUFFIX) as [ContentEncoding, string][]) {
     const found = await stat(`${target}${suffix}`).catch(() => undefined);
     if (found?.isFile()) variants.set(encoding, found.size);
   }
@@ -129,7 +127,7 @@ async function serve(root: string, cache: FactsCache, request: IncomingMessage, 
     return;
   }
   const encoding = chooseEncoding(request.headers['accept-encoding'], [...facts.variants.keys()]);
-  const body = encoding === undefined ? target : `${target}${ENCODING_SUFFIX[encoding]}`;
+  const body = encoding === undefined ? target : `${target}${PRECOMPRESSED_SUFFIX[encoding]}`;
   if (encoding !== undefined) headers['content-encoding'] = encoding;
   headers['content-length'] = encoding === undefined ? found.size : (facts.variants.get(encoding) ?? found.size);
   response.writeHead(HTTP_OK, headers);

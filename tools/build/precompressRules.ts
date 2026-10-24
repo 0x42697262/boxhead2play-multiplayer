@@ -1,6 +1,7 @@
-import { COMPRESSIBLE_EXTENSIONS, MAX_COMPRESSED_RATIO, MIN_COMPRESS_BYTES, PrecompressedSuffix } from './tuning.ts';
+import { PRECOMPRESSED_SUFFIX } from '../../src/server/node/httpCaching.ts';
+import { COMPRESSIBLE_EXTENSIONS, MAX_COMPRESSED_RATIO, MIN_COMPRESS_BYTES } from './tuning.ts';
 
-const PRECOMPRESSED_SUFFIXES: readonly string[] = Object.values(PrecompressedSuffix);
+const PRECOMPRESSED_SUFFIXES: readonly string[] = Object.values(PRECOMPRESSED_SUFFIX);
 
 export function extensionOf(path: string): string {
   const dot = path.lastIndexOf('.');

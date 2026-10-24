@@ -6,8 +6,3 @@ export const GZIP_LEVEL = 9;
 export const PARALLEL_COMPRESSIONS = 4;
 export const DEFAULT_PRECOMPRESS_DIR = 'dist';
 export const FAILURE_EXIT_CODE = 1;
-
-export const PrecompressedSuffix = {
-  Brotli: '.br',
-  Gzip: '.gz',
-} as const;

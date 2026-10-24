@@ -10,6 +10,11 @@ export const ContentEncoding = {
 
 export type ContentEncoding = (typeof ContentEncoding)[keyof typeof ContentEncoding];
 
+export const PRECOMPRESSED_SUFFIX: Readonly<Record<ContentEncoding, string>> = {
+  [ContentEncoding.Brotli]: '.br',
+  [ContentEncoding.Gzip]: '.gz',
+};
+
 const ENCODING_PREFERENCE: readonly ContentEncoding[] = [ContentEncoding.Brotli, ContentEncoding.Gzip];
 const HASHED_BUNDLE = /^assets\/[^/]+-[A-Za-z0-9_-]{8,}\.(?:js|css)(?:\.map)?$/;
 const LIST_SEPARATOR = ',';

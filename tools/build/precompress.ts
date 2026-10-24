@@ -2,8 +2,9 @@ import { readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { brotliCompress, constants, gzip } from 'node:zlib';
+import { ContentEncoding, PRECOMPRESSED_SUFFIX } from '../../src/server/node/httpCaching.ts';
 import { isCompressible, worthKeeping } from './precompressRules.ts';
-import { BROTLI_QUALITY, DEFAULT_PRECOMPRESS_DIR, FAILURE_EXIT_CODE, GZIP_LEVEL, PARALLEL_COMPRESSIONS, PrecompressedSuffix } from './tuning.ts';
+import { BROTLI_QUALITY, DEFAULT_PRECOMPRESS_DIR, FAILURE_EXIT_CODE, GZIP_LEVEL, PARALLEL_COMPRESSIONS } from './tuning.ts';
 
 const brotli = promisify(brotliCompress);
 const gzipAsync = promisify(gzip);
@@ -48,8 +49,8 @@ async function precompressFile(file: string): Promise<{ readonly raw: number; re
     brotli(raw, { params: { [constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY, [constants.BROTLI_PARAM_SIZE_HINT]: raw.length } }),
     gzipAsync(raw, { level: GZIP_LEVEL }),
   ]);
-  const brBytes = await writeIfWorth(`${file}${PrecompressedSuffix.Brotli}`, raw, br);
-  await writeIfWorth(`${file}${PrecompressedSuffix.Gzip}`, raw, gz);
+  const brBytes = await writeIfWorth(`${file}${PRECOMPRESSED_SUFFIX[ContentEncoding.Brotli]}`, raw, br);
+  await writeIfWorth(`${file}${PRECOMPRESSED_SUFFIX[ContentEncoding.Gzip]}`, raw, gz);
   return { raw: raw.length, brotli: brBytes === 0 ? raw.length : brBytes };
 }
 
