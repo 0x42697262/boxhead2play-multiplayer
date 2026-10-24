@@ -41,6 +41,9 @@ One full tick runs, which calls every thing's first `process()`. Then
    * `upgrades.process()`, `tick++`.
    * `present()` (the logic half of `CWorld.Draw`): decay the shake, compute the cameras,
      decay the brightness, prune HUD messages, count visible zombies, step the ambience.
+     The last two run only when `settings.presentAmbience` is on. The online server builds
+     its settings with `SERVER_SIMULATION_HOST`, which turns them off: it would only throw
+     the ambience events away, because clients step the ambience from their own frames.
 4. Emit `worldCompleted` when the state was set during this tick.
 
 The service calls `update` at `settings.ticksPerSecond` with at most one tick per rendered

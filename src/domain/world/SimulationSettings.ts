@@ -51,7 +51,16 @@ export interface GameOptions {
 export interface SimulationSettings extends GameOptions {
   readonly ticksPerSecond: number;
   readonly loadTicksPerSecond: number;
+  readonly presentAmbience: boolean;
 }
+
+export interface SimulationHost {
+  readonly presentAmbience: boolean;
+}
+
+export const LOCAL_SIMULATION_HOST: SimulationHost = { presentAmbience: true };
+
+export const SERVER_SIMULATION_HOST: SimulationHost = { presentAmbience: false };
 
 export const DEFAULT_GAME_OPTIONS: GameOptions = {
   gameMode: GameMode.Single,
@@ -69,9 +78,10 @@ export function speedFactor(speed: GameSpeed): number {
   return speed === GameSpeed.Slow ? SLOW_SPEED_FACTOR : speed;
 }
 
-export function createSimulationSettings(options: GameOptions): SimulationSettings {
+export function createSimulationSettings(options: GameOptions, host: SimulationHost = LOCAL_SIMULATION_HOST): SimulationSettings {
   return Object.freeze({
     ...options,
+    presentAmbience: host.presentAmbience,
     playerCharacters: Object.freeze(options.playerCharacters.slice(0, MAX_PLAYERS)),
     damageActive: options.gameMode === GameMode.DeathMatch ? true : options.damageActive,
     ticksPerSecond: BASE_TICKS_PER_SECOND * speedFactor(options.gameSpeed),

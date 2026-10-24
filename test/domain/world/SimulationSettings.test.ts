@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EventQueue, DomainEventType } from '../../../src/domain/events.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
-import { createSimulationSettings, DEFAULT_GAME_OPTIONS, GameSpeed } from '../../../src/domain/world/SimulationSettings.ts';
+import { createSimulationSettings, DEFAULT_GAME_OPTIONS, GameSpeed, SERVER_SIMULATION_HOST } from '../../../src/domain/world/SimulationSettings.ts';
 
 describe('SimulationSettings', () => {
   it('derives ticks per second from the game speed, with slow at half speed', () => {
@@ -14,6 +14,11 @@ describe('SimulationSettings', () => {
     const settings = createSimulationSettings({ ...DEFAULT_GAME_OPTIONS, gameMode: GameMode.DeathMatch, damageActive: false });
     expect(settings.damageActive).toBe(true);
     expect(Object.isFrozen(settings)).toBe(true);
+  });
+
+  it('presents the ambience by default and not for the server', () => {
+    expect(createSimulationSettings(DEFAULT_GAME_OPTIONS).presentAmbience).toBe(true);
+    expect(createSimulationSettings(DEFAULT_GAME_OPTIONS, SERVER_SIMULATION_HOST).presentAmbience).toBe(false);
   });
 });
 

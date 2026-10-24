@@ -2,7 +2,7 @@ import { SeededRng } from '../domain/math/Rng.ts';
 import type { CompletionState } from '../domain/world/CompletionState.ts';
 import { IDLE_TICK_INPUT, type PlayerInput } from '../domain/world/input.ts';
 import type { PlayerCharacter } from '../domain/world/SimulationSettings.ts';
-import { createSimulationSettings } from '../domain/world/SimulationSettings.ts';
+import { createSimulationSettings, SERVER_SIMULATION_HOST } from '../domain/world/SimulationSettings.ts';
 import type { MultiplierListEntry } from '../domain/upgrades/Upgrades.ts';
 import { World } from '../domain/world/World.ts';
 import { RemoteControls, type ControlMasks } from '../net/controlMask.ts';
@@ -48,7 +48,7 @@ export class Match {
   static start(setup: MatchSetup, content: GameContent): Match | undefined {
     const room = content.rooms.get(setup.roomId);
     if (!room) return undefined;
-    const settings = createSimulationSettings(gameOptionsFor(setup.mode, setup.options, setup.characters));
+    const settings = createSimulationSettings(gameOptionsFor(setup.mode, setup.options, setup.characters), SERVER_SIMULATION_HOST);
     const world = World.create(room, settings, { rng: new SeededRng(setup.seed), factory: content.factory, animations: content.animations });
     return new Match(setup, world);
   }

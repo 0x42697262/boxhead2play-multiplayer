@@ -12,8 +12,10 @@ import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import {
   createSimulationSettings,
   DEFAULT_GAME_OPTIONS,
+  LOCAL_SIMULATION_HOST,
   PlayerCharacter,
   type GameOptions,
+  type SimulationHost,
   type SimulationSettings,
 } from '../../../src/domain/world/SimulationSettings.ts';
 import { World } from '../../../src/domain/world/World.ts';
@@ -152,20 +154,21 @@ export interface TestWorldOptions {
   readonly rng?: Rng;
   readonly spawnRng?: Rng;
   readonly start?: boolean;
+  readonly host?: SimulationHost;
 }
 
 export const TWO_PLAYERS: readonly PlayerCharacter[] = [PlayerCharacter.Bambo, PlayerCharacter.Swat];
 
-export function settingsWith(options: Partial<GameOptions> = {}): SimulationSettings {
+export function settingsWith(options: Partial<GameOptions> = {}, host: SimulationHost = LOCAL_SIMULATION_HOST): SimulationSettings {
   const multiplayer = options.gameMode !== undefined && options.gameMode !== GameMode.Single;
   const playerCharacters = options.playerCharacters ?? (multiplayer ? TWO_PLAYERS : DEFAULT_GAME_OPTIONS.playerCharacters);
-  return createSimulationSettings({ ...DEFAULT_GAME_OPTIONS, ...options, playerCharacters });
+  return createSimulationSettings({ ...DEFAULT_GAME_OPTIONS, ...options, playerCharacters }, host);
 }
 
 export function makeWorld(definition: RoomDefinition, test: TestWorldOptions = {}): { world: World; factory: FakeFactory } {
   const factory = new FakeFactory();
   const dependencies = { rng: test.rng ?? new SequenceRng([0]), spawnRng: test.spawnRng ?? new SequenceRng([0]), factory, animations: EMPTY_ANIMATION_CATALOG };
-  const settings = settingsWith(test.options);
+  const settings = settingsWith(test.options, test.host);
   const world = test.start === false ? new World(definition, settings, dependencies) : World.create(definition, settings, dependencies);
   return { world, factory };
 }

@@ -190,7 +190,9 @@ connection allows:
   rest of the match.
 * Beyond `MAX_BUFFERED_FRAMES` (6) the oldest frames are dropped. Their decals are still
   stamped, so blood and scorch marks are never lost; their sounds and popups are skipped.
-* Ambience runs locally from the number of zombies in the frame.
+* Ambience runs locally from the number of zombies in the frame. The server's `World` skips
+  it (`presentAmbience` off in `SERVER_SIMULATION_HOST`), so it does not walk every camera's
+  draw order each tick just to count zombies.
 * `OnlineClient` keeps the match's last `upgrades` message and hands it to the session
   when it attaches. A background tab creates the game screen only on its next animation
   frame, so the list sent with `gameStarted` would otherwise be lost.

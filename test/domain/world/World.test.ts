@@ -8,11 +8,11 @@ import { CompletionState } from '../../../src/domain/world/CompletionState.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { IDLE_TICK_INPUT } from '../../../src/domain/world/input.ts';
 import { InitKind } from '../../../src/domain/world/RoomDefinition.ts';
-import { GameAmount, GameSpeed } from '../../../src/domain/world/SimulationSettings.ts';
+import { GameAmount, GameSpeed, LOCAL_SIMULATION_HOST, SERVER_SIMULATION_HOST, type SimulationHost } from '../../../src/domain/world/SimulationSettings.ts';
 import { MAX_PLAYERS, PLAYER_SPAWN_CLEARANCE_CELLS } from '../../../src/domain/world/tuning.ts';
 import type { World } from '../../../src/domain/world/World.ts';
 import type { FakePlayer } from '../support/fakes.ts';
-import { FakeThing, at, cellObject, makeWorld, room, solid } from '../support/fakes.ts';
+import { FakeThing, at, cellObject, makeWorld, place, room, solid } from '../support/fakes.ts';
 
 const basicRoom = () =>
   room(20, 12, [
@@ -279,5 +279,22 @@ describe('World players joining and leaving', () => {
     expect(world.hud.messages.slice(before)).toEqual([expect.objectContaining({ tone: MessageTone.Joined, text: { key: 'hud.joined' }, names: { player: 2 } })]);
     expect(world.joinPlayer(2, 3)).toBe(false);
     expect(world.hud.messages.length).toBe(before + 1);
+  });
+});
+
+describe('World zombie ambience', () => {
+  const AMBIENCE_EVENTS: readonly DomainEvent['type'][] = [DomainEventType.AmbienceRequested, DomainEventType.AmbienceStopped];
+
+  function ambienceEvents(host: SimulationHost): DomainEvent[] {
+    const { world } = makeWorld(basicRoom(), { host });
+    for (let index = 0; index < 9; index++) place(world, new FakeThing(world, at(10.5 + index, 6.5), ThingClass.Zombie));
+    world.events.drain();
+    for (let tick = 0; tick < 3; tick++) world.update();
+    return world.events.drain().filter((event) => AMBIENCE_EVENTS.includes(event.type));
+  }
+
+  it('plays the ambience for visible zombies locally and skips it on the server', () => {
+    expect(ambienceEvents(LOCAL_SIMULATION_HOST).length).toBeGreaterThan(0);
+    expect(ambienceEvents(SERVER_SIMULATION_HOST)).toEqual([]);
   });
 });

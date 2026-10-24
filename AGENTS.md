@@ -283,3 +283,6 @@ Add one line per behavior change: what to do, and the result you expect.
   a leaving player frees his map cell, leaving while being shot to death lowers the coop live
   count once, and a late joiner on a freed index starts with 0 kills and 0 deaths (TAB in a
   death match shows him with 0 / 0).
+* `npx vitest run test/domain/world/World.test.ts test/domain/world/SimulationSettings.test.ts`
+  -> visible zombies produce ambience events in a local world and none in a world built with
+  `SERVER_SIMULATION_HOST`; single play still plays the zombie moans.

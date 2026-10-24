@@ -316,6 +316,12 @@ export class World implements WorldContext, UpgradesHost {
     if (first) this.drawOrigin = first.drawOrigin;
     const brightness = this.settings.detail ? this.screen.decayBrightness() : 0;
     this.hud.pruneMessages();
+    if (this.settings.presentAmbience) this.presentAmbience(cameras);
+    this.view = { cameras, shake: { x: this.screen.shakeX, y: this.screen.shakeY }, brightness };
+    this.trackTargets.clear();
+  }
+
+  private presentAmbience(cameras: readonly CameraView[]): void {
     const visibleZombies = new Set<Thing>();
     for (const camera of cameras) {
       for (const thing of this.map.drawOrder(camera.rect)) if (thing.classId === ThingClass.Zombie) visibleZombies.add(thing);
@@ -323,8 +329,6 @@ export class World implements WorldContext, UpgradesHost {
     const ambience = stepAmbience(this.ambience, visibleZombies.size, this.tickInput.ambienceSamplesPlaying);
     this.ambience = ambience.state;
     for (const event of ambience.events) this.events.emit(event);
-    this.view = { cameras, shake: { x: this.screen.shakeX, y: this.screen.shakeY }, brightness };
-    this.trackTargets.clear();
   }
 
   private playerCameras(): CameraView[] {
