@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cellToScreen, flashRange, followTarget, trackCamera } from '../../../src/domain/world/camera.ts';
+import { cellToScreen, flashRange, followTarget, panFreeCamera, trackCamera } from '../../../src/domain/world/camera.ts';
+import { FREE_CAMERA_SPEED_CELLS } from '../../../src/domain/world/tuning.ts';
 
 const base = {
   last: undefined,
@@ -10,6 +11,23 @@ const base = {
   areaHeightPx: 960,
   projectionFactor: 1,
 };
+
+describe('free camera of a dead player', () => {
+  const area = { viewWidth: 640, viewHeight: 480, areaWidthPx: 1280, areaHeightPx: 960, projectionFactor: 1 };
+  const still = { up: false, down: false, left: false, right: false };
+
+  it('moves at a fixed speed, diagonals included, and flattens the height into y', () => {
+    expect(panFreeCamera({ x: 20, y: 15, z: 0 }, { ...still, right: true }, area)).toEqual({ x: 20 + FREE_CAMERA_SPEED_CELLS, y: 15, z: 0 });
+    const diagonal = panFreeCamera({ x: 20, y: 15, z: 0 }, { ...still, up: true, left: true }, area);
+    expect(Math.hypot(diagonal.x - 20, diagonal.y - 15)).toBeCloseTo(FREE_CAMERA_SPEED_CELLS);
+    expect(panFreeCamera({ x: 20, y: 15, z: 1 }, still, area)).toEqual({ x: 20, y: 16, z: 0 });
+  });
+
+  it('stops where the camera stops, so pressing back moves it at once', () => {
+    expect(panFreeCamera({ x: 100, y: 100, z: 0 }, still, area)).toEqual({ x: 29, y: 21.5, z: 0 });
+    expect(panFreeCamera({ x: -5, y: -5, z: 0 }, still, area)).toEqual({ x: 11, y: 8.5, z: 0 });
+  });
+});
 
 describe('camera tracking', () => {
   it('clamps like CMath.Range, which returns max when min > max', () => {

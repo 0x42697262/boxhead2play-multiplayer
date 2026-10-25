@@ -1,4 +1,5 @@
 import { EMPTY_ANIMATION_CATALOG } from '../../../src/domain/animation/AnimationCatalog.ts';
+import { ThingFlag } from '../../../src/domain/things/ThingFlag.ts';
 import type { Angle } from '../../../src/domain/math/Angle.ts';
 import { Position } from '../../../src/domain/math/Position.ts';
 import { SequenceRng, type Rng } from '../../../src/domain/math/Rng.ts';
@@ -64,7 +65,7 @@ export class FakePlayer extends FakeThing implements PlayerThing {
   override process(): void {
     super.process();
     this.world.map.mapwho.moveThing(this);
-    this.world.trackPlayer(this);
+    if (!this.hasFlag(ThingFlag.Dead)) this.world.trackPlayer(this);
   }
 
   newWeapon(name: WeaponName): void {

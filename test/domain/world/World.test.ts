@@ -6,7 +6,7 @@ import { ThingClass } from '../../../src/domain/things/ThingClass.ts';
 import { ThingFlag } from '../../../src/domain/things/ThingFlag.ts';
 import { CompletionState } from '../../../src/domain/world/CompletionState.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
-import { IDLE_TICK_INPUT } from '../../../src/domain/world/input.ts';
+import { IDLE_CONTROL, IDLE_PLAYER_INPUT, IDLE_TICK_INPUT } from '../../../src/domain/world/input.ts';
 import { InitKind, type RoomInitObject } from '../../../src/domain/world/RoomDefinition.ts';
 import { GameAmount, GameSpeed, LOCAL_SIMULATION_HOST, SERVER_SIMULATION_HOST, type SimulationHost } from '../../../src/domain/world/SimulationSettings.ts';
 import { cellDistance } from '../../../src/domain/world/spawning.ts';
@@ -207,6 +207,26 @@ describe('World screen effects', () => {
     world.update();
     expect(world.cameraFor(1)?.rect.x).toBe(336);
     expect(world.cameraFor(0)?.rect.x).toBe(32);
+  });
+
+  it('lets a dead player pan the camera with the movement keys and returns it on respawn', () => {
+    const { world } = makeWorld(room(40, 30, [cellObject(InitKind.Player1, 5, 5), cellObject(InitKind.Player2, 20, 12)]), {
+      options: { gameMode: GameMode.DeathMatch },
+    });
+    const second = world.things.playerByIndex(1);
+    if (!second) throw new Error('missing player');
+    second.move(at(20.5, 12.5));
+    world.update();
+    second.flags |= ThingFlag.Dead;
+    const right = { ...IDLE_PLAYER_INPUT, right: { ...IDLE_CONTROL, down: true } };
+    for (let tick = 0; tick < 10; tick++) world.update({ ...IDLE_TICK_INPUT, players: [IDLE_PLAYER_INPUT, right] });
+    expect(world.cameraFor(1)?.rect.x).toBe(336 + 128);
+    expect(world.cameraFor(0)?.rect.x).toBe(32);
+    for (let tick = 0; tick < 100; tick++) world.update({ ...IDLE_TICK_INPUT, players: [IDLE_PLAYER_INPUT, right] });
+    expect(world.cameraFor(1)?.rect.x).toBe(1280 - 640 - 32);
+    second.flags &= ~ThingFlag.Dead;
+    world.update();
+    expect(world.cameraFor(1)?.rect.x).toBe(336);
   });
 });
 

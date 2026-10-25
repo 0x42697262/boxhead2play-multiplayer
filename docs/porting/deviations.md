@@ -79,6 +79,7 @@
 | Join messages | none | A player entering a running online match shows a yellow "<NAME> joined the game!" message | Owner request: see who connects, like the kill messages. |
 | Asset service worker | none (Flash loaded one SWF) | Production builds cache the content-versioned assets in a service worker, so a refresh needs no asset requests in any browser, Safari included (`docs/runtime/http-caching.md`) | Owner report: refreshes kept transferring the assets. |
 | Player list | none | Holding TAB in an online match shows every player with alive/dead/offline status, respawn countdown, life and latency (`docs/runtime/online.md`) | Owner request. |
+| Camera while dead | The camera stayed where the player died (single and coop) or on the corpse (deathmatch) | W A S D pan the camera freely until the respawn (`docs/domain/world-lifecycle.md`) | Owner request: look around while waiting to respawn. |
 | Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
 | Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |

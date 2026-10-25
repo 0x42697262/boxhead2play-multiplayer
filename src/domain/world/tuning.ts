@@ -24,6 +24,7 @@ export const BRIGHTNESS_STEP = 0.2;
 export const SCREEN_EFFECT_SOURCE_MARGIN_PX = 112;
 
 export const CAMERA_FOLLOW_SPEED_CELLS = 0.16;
+export const FREE_CAMERA_SPEED_CELLS = 0.4;
 export const CAMERA_CATCH_UP_DIVISOR = 5;
 
 export const AMBIENCE_LEVELS = [

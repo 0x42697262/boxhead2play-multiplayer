@@ -1,6 +1,6 @@
 import type { Point2, Point3 } from '../events.ts';
 import { CELL_SIZE_PX } from '../map/tuning.ts';
-import { CAMERA_CATCH_UP_DIVISOR, CAMERA_FOLLOW_SPEED_CELLS } from './tuning.ts';
+import { CAMERA_CATCH_UP_DIVISOR, CAMERA_FOLLOW_SPEED_CELLS, FREE_CAMERA_SPEED_CELLS } from './tuning.ts';
 
 export interface CameraRect {
   readonly x: number;
@@ -43,6 +43,39 @@ export function cellToScreen(point: Point3, projectionFactor: number): Point2 {
   return {
     x: Math.round(point.x * CELL_SIZE_PX),
     y: Math.round((point.y + point.z * projectionFactor) * CELL_SIZE_PX),
+  };
+}
+
+export interface PanDirections {
+  readonly up: boolean;
+  readonly down: boolean;
+  readonly left: boolean;
+  readonly right: boolean;
+}
+
+export interface CameraArea {
+  readonly viewWidth: number;
+  readonly viewHeight: number;
+  readonly areaWidthPx: number;
+  readonly areaHeightPx: number;
+  readonly projectionFactor: number;
+}
+
+function centreRange(viewPx: number, areaPx: number): { readonly min: number; readonly max: number } {
+  return { min: (CELL_SIZE_PX + viewPx / 2) / CELL_SIZE_PX, max: (areaPx - viewPx / 2 - CELL_SIZE_PX) / CELL_SIZE_PX };
+}
+
+export function panFreeCamera(point: Point3, directions: PanDirections, area: CameraArea): Point3 {
+  const dx = (directions.right ? 1 : 0) - (directions.left ? 1 : 0);
+  const dy = (directions.down ? 1 : 0) - (directions.up ? 1 : 0);
+  const length = Math.hypot(dx, dy);
+  const step = length === 0 ? 0 : FREE_CAMERA_SPEED_CELLS / length;
+  const xRange = centreRange(area.viewWidth, area.areaWidthPx);
+  const yRange = centreRange(area.viewHeight, area.areaHeightPx);
+  return {
+    x: flashRange(point.x + dx * step, xRange.min, xRange.max),
+    y: flashRange(point.y + point.z * area.projectionFactor + dy * step, yRange.min, yRange.max),
+    z: 0,
   };
 }
 

@@ -55,10 +55,18 @@ frame (`CMain.mFrameCap = 1`), and renders `presentation` and `drawList(camera)`
 * One 640 x 480 camera per player, in player index order (`World.cameraFor(index)`).
   Players call `world.trackPlayer(this)` each tick while alive.
 * Single and coop: the camera follows its player at 0.16 cells per tick, multiplied by
-  `(distance - 0.16) / 5 + 1` when further behind. With no target (a dead player) it stays
-  put. The original coop camera followed the running average of both players
+  `(distance - 0.16) / 5 + 1` when further behind. The original coop camera followed the running average of both players
   (`(previous + p) / 2`); that is removed with the shared screen.
-* Deathmatch: each camera is locked to its player, also while the player is dead.
+* Deathmatch: each camera is locked to its living player.
+* Dead player, every mode (`World.freeCamera`, `panFreeCamera`): the camera is free. It
+  starts where it was, and the player's own movement controls (W A S D, the touch stick)
+  pan it at 0.4 cells per tick (`FREE_CAMERA_SPEED_CELLS`, same speed diagonally), with no
+  smoothing. The point is clamped to where the view rectangle can go, so pushing against a
+  room edge never builds up a dead stretch. The inputs still reach the world while the
+  player is dead (locally from the keyboard, online from `RemoteControls`), so online play
+  needs no protocol change: the server's camera for that player moves. On respawn the
+  player tracks again; coop then pans back from the free point (smooth follow), deathmatch
+  snaps to the player.
 * The view rectangle is centred on the projected target and clamped with `CMath.Range` to
   `[32, roomSize - (view + 32)]`. If the room is smaller than the view, `Range` returns the
   max bound.

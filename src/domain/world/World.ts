@@ -18,7 +18,7 @@ import { ThingIds } from '../things/ThingIds.ts';
 import { Upgrades, type UpgradesHost } from '../upgrades/Upgrades.ts';
 import type { DrawEntry } from '../visuals.ts';
 import { INITIAL_AMBIENCE, stepAmbience, type AmbienceState } from './ambience.ts';
-import { cellToScreen, trackCamera, type CameraRect } from './camera.ts';
+import { cellToScreen, panFreeCamera, trackCamera, type CameraArea, type CameraRect } from './camera.ts';
 import { CameraEffects, NO_CAMERA_EFFECTS, type CameraEffectsView } from './CameraEffects.ts';
 import type { ScreenEffects } from './ScreenEffects.ts';
 import { CompletionState } from './CompletionState.ts';
@@ -105,6 +105,7 @@ export class World implements WorldContext, UpgradesHost {
   private readonly spawnRng: Rng;
   private readonly trackTargets = new Map<number, Point3>();
   private readonly lastTracked = new Map<number, Point3>();
+  private readonly freeCameras = new Map<number, Point3>();
   private ambience: AmbienceState = INITIAL_AMBIENCE;
   private readonly screens = new CameraEffects();
   private view: Presentation = { cameras: [], effects: new Map() };
@@ -210,6 +211,7 @@ export class World implements WorldContext, UpgradesHost {
     player.delete();
     this.trackTargets.delete(playerIndex);
     this.lastTracked.delete(playerIndex);
+    this.freeCameras.delete(playerIndex);
     this.screens.close(playerIndex);
     return true;
   }
@@ -374,20 +376,45 @@ export class World implements WorldContext, UpgradesHost {
 
   private playerCameras(indexes: readonly number[]): CameraView[] {
     const smooth = this.settings.gameMode !== GameMode.DeathMatch;
+    const area = this.cameraArea();
     return indexes.map((index) => {
+      const free = this.freeCamera(index, area);
       const result = trackCamera({
-        target: smooth ? this.trackTargets.get(index) : this.lockedTarget(index),
+        target: free ?? (smooth ? this.trackTargets.get(index) : this.lockedTarget(index)),
         last: this.lastTracked.get(index),
-        smooth,
-        viewWidth: SCREEN_WIDTH_PX,
-        viewHeight: SCREEN_HEIGHT_PX,
-        areaWidthPx: this.room.widthPx,
-        areaHeightPx: this.room.heightPx,
-        projectionFactor: this.projectionFactor,
+        smooth: smooth && free === undefined,
+        ...area,
       });
       if (result.tracked) this.lastTracked.set(index, result.tracked);
       return this.cameraView(index, result.rect);
     });
+  }
+
+  private cameraArea(): CameraArea {
+    return {
+      viewWidth: SCREEN_WIDTH_PX,
+      viewHeight: SCREEN_HEIGHT_PX,
+      areaWidthPx: this.room.widthPx,
+      areaHeightPx: this.room.heightPx,
+      projectionFactor: this.projectionFactor,
+    };
+  }
+
+  private freeCamera(playerIndex: number, area: CameraArea): Point3 | undefined {
+    const player = this.things.playerByIndex(playerIndex);
+    if (this.trackTargets.has(playerIndex) || !player?.hasFlag(ThingFlag.Dead)) {
+      this.freeCameras.delete(playerIndex);
+      return undefined;
+    }
+    const start = this.freeCameras.get(playerIndex) ?? this.lastTracked.get(playerIndex) ?? player.position;
+    const controls = this.tickInput.players[playerIndex] ?? IDLE_PLAYER_INPUT;
+    const moved = panFreeCamera(
+      { x: start.x, y: start.y, z: start.z },
+      { up: controls.up.down, down: controls.down.down, left: controls.left.down, right: controls.right.down },
+      area,
+    );
+    this.freeCameras.set(playerIndex, moved);
+    return moved;
   }
 
   private lockedTarget(playerIndex: number): Point3 | undefined {
