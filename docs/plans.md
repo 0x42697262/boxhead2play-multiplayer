@@ -13,8 +13,8 @@ Observed 2026-10-24 on the Render Singapore service: ping is usually about 55 ms
 occasional spikes to 170-220 ms. The server was not the cause (monitor LOOP delay max
 0.7 ms). During a spike `FrameBuffer` (`src/services/online/tuning.ts`, target 1 to 3
 frames = 40 to 120 ms) runs empty, so the picture stops; the late frames then arrive
-together and the surplus is caught up, so the picture jumps. tanka-maze hides the same
-spikes with a fixed 140 ms interpolation delay.
+together and the surplus is caught up, so the picture jumps. A fixed interpolation delay of
+about 140 ms would hide the same spikes.
 
 | Option | How | Feel | Effort |
 |---|---|---|---|
@@ -52,7 +52,7 @@ frame, ADR 0007): decals about 180 B, sounds about 50 B, other players' HUD posi
 
 | Idea | Expected effect | Effort | Decides it |
 |---|---|---|---|
-| 12.5 frames per second with client interpolation (as tanka-maze does at 15) | About half the bytes and encoding CPU; adds about 80 ms of delay | Days | Monitor LOOP row still high with 4+ players |
+| 12.5 frames per second with client interpolation | About half the bytes and encoding CPU; adds about 80 ms of delay | Days | Monitor LOOP row still high with 4+ players |
 | Decals and sounds in the fixed layout too | About 100 of 180 decal bytes per frame (estimate) | Half a day | Same |
 | Stop listing unchanged entries; the client keeps them and sorts by depth itself | About 50 B per frame (one byte per unchanged thing) | Half a day; client must sort like the server | Same |
 | Client runs walk animations; the server sends only animation changes | A few bytes per walking zombie per tick | About a day; visuals may drift from the server's frame count | Owner unsure (2026-10-25) |
