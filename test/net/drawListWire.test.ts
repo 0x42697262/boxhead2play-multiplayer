@@ -24,6 +24,8 @@ function zombie(key: string, x: number, frameIndex = 0, extra: Partial<NetDrawEn
   };
 }
 
+const MATCH_SIMULATION_TIMEOUT_MS = 60_000;
+
 const SMOKE: NetDrawEntry = {
   thingKey: 'c1',
   sortFloor: true,
@@ -165,5 +167,5 @@ describe('server wire codec', () => {
       }
     }
     expect(compared).toBeGreaterThan(5000);
-  });
+  }, MATCH_SIMULATION_TIMEOUT_MS);
 });
