@@ -835,7 +835,7 @@ The full list with verified PDF links is in §17.
 
 ## 17. Literature list (verified links)
 
-171 papers, books, courses and posts, grouped by topic. The ★ marks about 70 core
+172 papers, books, courses and posts, grouped by topic. The ★ marks about 70 core
 readings, a typical related-literature review. The rest go deeper on one topic.
 
 **How each link was checked (2026-10-25):**
@@ -1144,6 +1144,7 @@ Background for the "Bot AI" entry in `docs/plans.md`: picking between specialist
 | | Sarkar et al. (2025). Evolution Strategies at the Hyperscale. *arXiv* | EGGROLL: evolution strategies with low-rank (rank-r) perturbations, so a whole population runs about as fast as batched inference on a GPU, for networks up to billions of parameters. Includes theory on ES in high dimensions and a minimal reference implementation (nano-egg). For this project it matters only if the networks grow large or the simulation moves to the GPU; today the CPU simulation is the bottleneck. | [PDF](https://arxiv.org/pdf/2511.16652) · [arXiv](https://arxiv.org/abs/2511.16652) · [Site](https://eshyperscale.github.io/) · [Code](https://github.com/ESHyperscale/HyperscaleES) · [nano-egg](https://github.com/ESHyperscale/nano-egg) |
 | | Qiu et al. (2025). Evolution Strategies at Scale: LLM Fine-Tuning Beyond Reinforcement Learning. *arXiv* | ES fine-tuning of language models as an alternative to RL; the EGGROLL page builds on it. Evidence that ES scales far beyond small control networks. | [PDF](https://arxiv.org/pdf/2509.24372) · [arXiv](https://arxiv.org/abs/2509.24372) |
 | | Cammarata (2026). Neural Networks Are Already Clean. *Goodfire, essay* | An informal working hypothesis (an essay, not a peer-reviewed paper): most neurons in vision and language models are individually understandable, and the evidence for "superposition" was misread. Relevant to inspecting your bots: with small evolved networks you can look at single neurons directly (which fire when the bot retreats or switches weapons), as §11's debug overlay suggests. | [Link](https://already-clean.goodfire.com/) |
+| | Herring et al. (2026). Targeted Neuron Modulation via Contrastive Pair Search. *arXiv* | Contrastive neuron attribution (CNA): run the network on two contrasting sets of inputs and find the few MLP neurons whose activations differ most. It needs only forward passes, no gradients or extra training. Ablating or scaling those neurons changes behavior without degrading the rest. Shown on language-model refusal (Llama and Qwen, 1B to 72B), but the method is simple enough to try on a bot: compare "enemy close and life low" with "enemy close and life high" to find the neurons behind retreating, then inspect them, or ablate and scale them as a style or difficulty knob. That transfer to small policy networks is my extrapolation, not something the paper tests. | [PDF](https://arxiv.org/pdf/2605.12290) · [HTML](https://arxiv.org/html/2605.12290v1) · [arXiv](https://arxiv.org/abs/2605.12290) |
 
 ### Not included
 
