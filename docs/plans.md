@@ -58,6 +58,39 @@ frame, ADR 0007): decals about 180 B, sounds about 50 B, other players' HUD posi
 | Client runs walk animations; the server sends only animation changes | A few bytes per walking zombie per tick | About a day; visuals may drift from the server's frame count | Owner unsure (2026-10-25) |
 | Sounds only for players who can hear them (like screen shake, per camera) | About 50 B per frame, and no gunfire from across the room | About an hour | Owner decision: changes what players hear |
 
+## Bot AI (after the first milestone)
+
+Parked on purpose: none of this starts before the first milestone in
+`docs/ai/neuroevolution-guide.md` §13 (a frozen zombie-mode bot that beats the scripted
+kiter on validation seeds). Papers for each option are in the guide's §17.20.
+
+### Combining specialist bots
+
+Several frozen bots, each good at something, used together. Discussed 2026-10-25.
+
+| Option | How | Learns during a match? | Effort | Notes |
+|---|---|---|---|---|
+| A. Pick a style per match (bandit) | A roster of frozen bots with different styles (aggressive, cautious, precise). A multi-armed bandit (UCB or Thompson sampling, with a sliding window) scores the current style against these opponents and switches toward what works | Yes; statistics only, reset per lobby | About 50 lines on top of the roster | Switch on respawn (co-op: at wave start). Reward with the bot's own rates (damage taken per minute, kills per minute), because deaths are rare in co-op and a human teammate must not skew it. Measure later lives against early lives, with and without the bandit |
+| B. Pick a skill per situation (manager network; recommended first) | Freeze skill specialists (fight, retreat, loot); evolve only a small manager network that hands control to one of them | No; the manager is trained, then frozen | Small: the manager has a few hundred weights, so evolution is fast | The manager commits to a choice for a minimum number of ticks so the bot does not jitter. Log which skill was chosen and why |
+| C. Merge into one network (distillation) | Train one student network to imitate all specialists | No | Medium | One compact model; useful once B or A works |
+| D. Average the weights | Add separately evolved weight files together | No | — | Rejected: separately evolved networks use hidden neurons differently, so averaging scrambles them. It only works for models fine-tuned from the same base |
+| E. Ensemble (average or vote on actions) | Each specialist proposes an action | No | Small | Not planned: averaging opposite moves gives standing still; voting is mediocre |
+
+Prerequisite for A: a style roster. The cheap way is 3 runs with different fitness weightings
+(kills, survival, accuracy); MAP-Elites (guide §5.6) gives more and truly distinct styles.
+
+Decides it: a working frozen bot, then whether playtesters find it predictable (favours A)
+or weak in some situations (favours B).
+
+### Networks that adapt within a match
+
+A recurrent network that learns from its own deaths during a match (RL², weights frozen,
+memory reset per lobby), or evolved plasticity (weights change during play, reset per
+lobby). Deferred by the owner on 2026-10-25: more effort for little visible gain over a few
+waves. Papers are kept in the guide's §17.20 ("Deferred").
+
+Decides it: curiosity after B or A works.
+
 ## Accepted for now
 
 * Encoder CPU cost after the writer reuse (ADR 0007, "Update: encoder CPU cost"). Revisit if

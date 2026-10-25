@@ -710,6 +710,9 @@ previous stage for a while (§7.5).
   fine-tuning) also work.
 * **Scale:** more rooms × difficulties × modes means more evaluation time. Prioritize with
   a curriculum; don't evaluate everything every generation.
+* **Planned extensions after the first milestone** (style roster, a bandit that picks a style
+  per match, a manager network over skill specialists) are parked in `docs/plans.md` under
+  "Bot AI", with their papers in §17.20.
 * **Analysis grows into its own project:** with Parquet episode logs you can study what
   makes play good (Cox models of risk, clustering of play styles). That's data science on
   data you didn't have to collect from humans.
@@ -832,7 +835,7 @@ The full list with verified PDF links is in §17.
 
 ## 17. Literature list (verified links)
 
-154 papers, books, courses and posts, grouped by topic. The ★ marks about 65 core
+171 papers, books, courses and posts, grouped by topic. The ★ marks about 70 core
 readings, a typical related-literature review. The rest go deeper on one topic.
 
 **How each link was checked (2026-10-25):**
@@ -1105,6 +1108,42 @@ configurations).
 |  | Toklu et al. (2023). EvoTorch: Scalable Evolutionary Computation in Python. *arXiv* | EvoTorch: scalable evolutionary computation in PyTorch. | [PDF](https://arxiv.org/pdf/2302.12600) · [arXiv](https://arxiv.org/abs/2302.12600) |
 |  | Lange (2022). evosax: JAX-based Evolution Strategies. *arXiv* | evosax: evolution strategies in JAX. | [PDF](https://arxiv.org/pdf/2212.04180) · [arXiv](https://arxiv.org/abs/2212.04180) |
 |  | Tang et al. (2022). EvoJAX: Hardware-Accelerated Neuroevolution. *arXiv* | EvoJAX: hardware-accelerated neuroevolution. | [PDF](https://arxiv.org/pdf/2202.05008) · [arXiv](https://arxiv.org/abs/2202.05008) |
+
+### 17.20 Combining specialists and in-match adaptation (planned work, see `docs/plans.md`)
+
+Background for the "Bot AI" entry in `docs/plans.md`: picking between specialists per match
+(bandit), per situation (manager network), or merging them into one network.
+
+| | Paper | Why read it | Links |
+|---|---|---|---|
+| ★ | Lattimore & Szepesvári (2020). Bandit Algorithms. *Cambridge University Press* | The bandit textbook: UCB, Thompson sampling, and non-stationary bandits for picking a style per match. The author hosts a free PDF at tor-lattimore.com/downloads/book/book.pdf; that server was too slow to verify from here. | [DOI](https://doi.org/10.1017/9781108571401) |
+| ★ | Jacobs et al. (1991). Adaptive Mixtures of Local Experts. *Neural Computation* | Mixture of experts: a gating network hands each input to a specialist. The idea behind the "manager" option. | [DOI](https://doi.org/10.1162/neco.1991.3.1.79) |
+| ★ | Sutton et al. (1999). Between MDPs and semi-MDPs: A framework for temporal abstraction in reinforcement learning. *Artificial Intelligence* | The options framework: sub-behaviors that run for a while once chosen, which prevents jittery switching. | [DOI](https://doi.org/10.1016/S0004-3702(99)00052-1) |
+| | Rusu et al. (2015). Policy Distillation. *arXiv* | Training one student network to imitate several specialists. | [PDF](https://arxiv.org/pdf/1511.06295) · [arXiv](https://arxiv.org/abs/1511.06295) |
+| | Teh et al. (2017). Distral: Robust Multitask Reinforcement Learning. *arXiv* | Distillation across tasks, keeping a shared policy and task policies close. | [PDF](https://arxiv.org/pdf/1707.04175) · [arXiv](https://arxiv.org/abs/1707.04175) |
+| | Wortsman et al. (2022). Model soups: averaging weights of multiple fine-tuned models improves accuracy without increasing inference time. *arXiv* | Why weight averaging only works for models fine-tuned from the same base, and so not for separately evolved bots. | [PDF](https://arxiv.org/pdf/2203.05482) · [arXiv](https://arxiv.org/abs/2203.05482) |
+
+**Deferred: networks that adapt within a match.** Parked for scope (owner decision,
+2026-10-25). Kept here in case it comes back.
+
+| | Paper | Why read it | Links |
+|---|---|---|---|
+| | Duan et al. (2016). RL²: Fast Reinforcement Learning via Slow Reinforcement Learning. *arXiv* | A recurrent network whose memory makes it adapt within an episode while its weights stay frozen. | [PDF](https://arxiv.org/pdf/1611.02779) · [arXiv](https://arxiv.org/abs/1611.02779) |
+| | Wang et al. (2016). Learning to reinforcement learn. *arXiv* | The same idea, published at the same time. | [PDF](https://arxiv.org/pdf/1611.05763) · [arXiv](https://arxiv.org/abs/1611.05763) |
+| | Finn et al. (2017). Model-Agnostic Meta-Learning for Fast Adaptation of Deep Networks. *arXiv* | MAML: a base model trained so that a few gradient steps adapt it. | [PDF](https://arxiv.org/pdf/1703.03400) · [arXiv](https://arxiv.org/abs/1703.03400) |
+| | Soltoggio et al. (2017). Born to Learn: the Inspiration, Progress, and Future of Evolved Plastic Artificial Neural Networks. *arXiv* | Review of evolving learning rules (plasticity), neuroevolution's own form of learning during play. | [PDF](https://arxiv.org/pdf/1703.10371) · [arXiv](https://arxiv.org/abs/1703.10371) |
+| | Najarro & Risi (2020). Meta-Learning through Hebbian Plasticity in Random Networks. *arXiv* | Evolving Hebbian rules so weights self-organize during an episode. | [PDF](https://arxiv.org/pdf/2007.02686) · [arXiv](https://arxiv.org/abs/2007.02686) |
+| | Miconi et al. (2018). Differentiable plasticity: training plastic neural networks with backpropagation. *arXiv* | Plastic connections trained with gradients. | [PDF](https://arxiv.org/pdf/1804.02464) · [arXiv](https://arxiv.org/abs/1804.02464) |
+| | Sun et al. (2019). Test-Time Training with Self-Supervision for Generalization under Distribution Shifts. *arXiv* | Adapting a copy of a model while it is being used. | [PDF](https://arxiv.org/pdf/1909.13231) · [arXiv](https://arxiv.org/abs/1909.13231) |
+| | Wang et al. (2020). Tent: Fully Test-time Adaptation by Entropy Minimization. *arXiv* | Test-time adaptation without labels. | [PDF](https://arxiv.org/pdf/2006.10726) · [arXiv](https://arxiv.org/abs/2006.10726) |
+
+### 17.21 Recent work worth knowing
+
+| | Paper | Why read it | Links |
+|---|---|---|---|
+| | Sarkar et al. (2025). Evolution Strategies at the Hyperscale. *arXiv* | EGGROLL: evolution strategies with low-rank (rank-r) perturbations, so a whole population runs about as fast as batched inference on a GPU, for networks up to billions of parameters. Includes theory on ES in high dimensions and a minimal reference implementation (nano-egg). For this project it matters only if the networks grow large or the simulation moves to the GPU; today the CPU simulation is the bottleneck. | [PDF](https://arxiv.org/pdf/2511.16652) · [arXiv](https://arxiv.org/abs/2511.16652) · [Site](https://eshyperscale.github.io/) · [Code](https://github.com/ESHyperscale/HyperscaleES) · [nano-egg](https://github.com/ESHyperscale/nano-egg) |
+| | Qiu et al. (2025). Evolution Strategies at Scale: LLM Fine-Tuning Beyond Reinforcement Learning. *arXiv* | ES fine-tuning of language models as an alternative to RL; the EGGROLL page builds on it. Evidence that ES scales far beyond small control networks. | [PDF](https://arxiv.org/pdf/2509.24372) · [arXiv](https://arxiv.org/abs/2509.24372) |
+| | Cammarata (2026). Neural Networks Are Already Clean. *Goodfire, essay* | An informal working hypothesis (an essay, not a peer-reviewed paper): most neurons in vision and language models are individually understandable, and the evidence for "superposition" was misread. Relevant to inspecting your bots: with small evolved networks you can look at single neurons directly (which fire when the bot retreats or switches weapons), as §11's debug overlay suggests. | [Link](https://already-clean.goodfire.com/) |
 
 ### Not included
 
