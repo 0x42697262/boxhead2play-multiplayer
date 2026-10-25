@@ -18,9 +18,10 @@ export const BACKGROUND_COLOR = 0x000000;
 export interface EffectPreferences {
   readonly screenShake: boolean;
   readonly blood: boolean;
+  readonly flashes: boolean;
 }
 
-export const ALL_EFFECTS: EffectPreferences = { screenShake: true, blood: true };
+export const ALL_EFFECTS: EffectPreferences = { screenShake: true, blood: true, flashes: true };
 
 export interface WorldRendererOptions {
   readonly detail: boolean;
@@ -31,6 +32,11 @@ export interface WorldRendererOptions {
 
 export function viewOrigin(camera: CameraFrame, effects: EffectPreferences): Point2 {
   return effects.screenShake ? camera.view.drawOrigin : { x: camera.view.rect.x, y: camera.view.rect.y };
+}
+
+export function flashLevel(brightness: number, detail: boolean, effects: EffectPreferences): number | undefined {
+  if (!effects.flashes || !detail || brightness <= 0) return undefined;
+  return Math.round(Math.min(brightness, 1) * CHANNEL_MAX);
 }
 
 export function decalShown(decal: DecalRequested, effects: EffectPreferences): boolean {
@@ -115,7 +121,7 @@ export class WorldRenderer {
     this.syncResolution();
     this.syncBlood();
     this.hud.updatePlayers(this.renderCamera(frame));
-    this.applyBrightness(frame.brightness);
+    this.applyBrightness(flashLevel(frame.brightness, this.options.detail, this.effects));
     this.hud.drawBitmapLayer(this.screen.ctx, frame.hud, frame.tick, frame.ticksPerSecond);
   }
 
@@ -207,10 +213,9 @@ export class WorldRenderer {
     copyClipped(ctx, this.planes.cover, source.x, source.y, width, height, scale);
   }
 
-  private applyBrightness(brightness: number): void {
-    if (!this.options.detail || brightness <= 0) return;
+  private applyBrightness(level: number | undefined): void {
+    if (level === undefined) return;
     const ctx = this.screen.ctx;
-    const level = Math.round(Math.min(brightness, 1) * CHANNEL_MAX);
     ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = `rgb(${level}, ${level}, ${level})`;
     ctx.fillRect(0, 0, this.screen.width, this.screen.height);

@@ -17,7 +17,7 @@ import { DEFAULT_ROOM_DETAIL, RoomDetail } from './roomDetail.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 8;
+export const SETTINGS_VERSION = 9;
 export const FRAME_RATES = [0, 30, 60, 120] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 export const UNCAPPED_FRAME_RATE: FrameRate = 0;
@@ -29,6 +29,7 @@ const EFFECT_SWITCHES_VERSION = 4;
 const FRAME_RATE_VERSION = 5;
 const PING_DISPLAY_VERSION = 6;
 const ROOM_DETAIL_VERSION = 7;
+const FLASHES_VERSION = 8;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -61,6 +62,7 @@ export const UserSettingsSchema = z.object({
   roomDetail: z.enum(Object.values(RoomDetail) as [RoomDetail, ...RoomDetail[]]),
   screenShake: z.boolean(),
   blood: z.boolean(),
+  flashes: z.boolean(),
   frameRate: z.number().refine((value): value is FrameRate => (FRAME_RATES as readonly number[]).includes(value)),
   showPing: z.boolean(),
   musicActive: z.boolean(),
@@ -124,6 +126,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   roomDetail: DEFAULT_ROOM_DETAIL,
   screenShake: true,
   blood: true,
+  flashes: true,
   frameRate: UNCAPPED_FRAME_RATE,
   showPing: true,
   musicActive: true,
@@ -237,7 +240,11 @@ export function migratePingDisplay(raw: Raw): Raw {
 }
 
 export function migrateRoomDetail(raw: Raw): Raw {
-  return { ...raw, version: SETTINGS_VERSION, roomDetail: DEFAULT_SETTINGS.roomDetail };
+  return { ...raw, version: FLASHES_VERSION, roomDetail: DEFAULT_SETTINGS.roomDetail };
+}
+
+export function migrateFlashes(raw: Raw): Raw {
+  return { ...raw, version: SETTINGS_VERSION, flashes: DEFAULT_SETTINGS.flashes };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
@@ -249,6 +256,7 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [FRAME_RATE_VERSION]: migrateFrameRate,
   [PING_DISPLAY_VERSION]: migratePingDisplay,
   [ROOM_DETAIL_VERSION]: migrateRoomDetail,
+  [FLASHES_VERSION]: migrateFlashes,
 };
 
 function versionOf(raw: Raw): number {

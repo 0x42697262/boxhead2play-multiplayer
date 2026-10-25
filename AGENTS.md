@@ -253,7 +253,8 @@ Add one line per behavior change: what to do, and the result you expect.
 * Search the running game (menus, CONTROLS, lobby, HUD, scoreboard) for "Player 2" -> none;
   a player without a name is shown as "Player".
 * SETTINGS -> Screen shake OFF, shoot a barrel -> the view does not shake; Blood OFF -> zombies
-  hit by bullets leave no blood, existing blood disappears; ON brings it back.
+  hit by bullets leave no blood, existing blood disappears; ON brings it back. Flashes OFF
+  (row under Blood) -> a barrel explosion no longer lights the screen white; it still shakes.
 * Online coop, let a zombie kill a player -> red "<NAME> was killed by a zombie!" at the bottom
   for everyone; deathmatch grenade kill -> red "<KILLER> killed <VICTIM>!" and the frag goes to
   the thrower.
@@ -304,10 +305,10 @@ Add one line per behavior change: what to do, and the result you expect.
   no 2-pixel steps; barrel outlines stay 1 stage pixel thick.
 * Main menu, SETTINGS -> the options window titled SETTINGS with Graphics (SHARP, SMOOTH,
   PIXELATED) and Sound volume (OFF, LOW, MEDIUM, FULL); SMOOTH -> the canvas is 640 x 480 at
-  once; OFF -> no sounds; RESET -> SHARP, AUTO, FULL; kept after a reload (settings `version` 8).
+  once; OFF -> no sounds; RESET -> SHARP, AUTO, FULL; kept after a reload (settings `version` 9).
 * SETTINGS -> a ROOM DETAIL row (AUTO, HIGH, LOW) under Graphics, AUTO selected on a fresh profile;
-  all seven rows and RESET/CLOSE fit inside the window. LOW, reload -> still LOW (settings
-  `version` 8); a stored version 7 blob loads with AUTO.
+  all eight rows and RESET/CLOSE fit inside the window. LOW, reload -> still LOW (settings
+  `version` 9); a stored version 7 blob loads with AUTO.
 * Safari (macOS or iPad) in a 1080p window, SHARP, ROOM DETAIL AUTO or HIGH, play level 18 ->
   the room draws (no blank or red floor, no crash); the floor is a bit softer than the
   characters.

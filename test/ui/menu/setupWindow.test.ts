@@ -3,7 +3,7 @@ import { MemoryStore } from '../../../src/adapters/storage/KeyValueStore.ts';
 import { silentLogger } from '../../../src/observability/logger.ts';
 import { GraphicsQuality } from '../../../src/services/graphicsQuality.ts';
 import { RoomDetail } from '../../../src/services/roomDetail.ts';
-import { soundGain } from '../../../src/services/menuSettings.ts';
+import { effectPreferences, soundGain } from '../../../src/services/menuSettings.ts';
 import { SettingsService } from '../../../src/services/SettingsService.ts';
 import { applySetupAction, SetupAction, SetupOutcome } from '../../../src/ui/screens/menu/SetupWindow.ts';
 
@@ -26,5 +26,14 @@ describe('SETTINGS window actions', () => {
     expect(settings.settings.roomDetail).toBe(RoomDetail.Low);
     applySetupAction(settings, { kind: SetupAction.Reset });
     expect(settings.settings.roomDetail).toBe(RoomDetail.Auto);
+  });
+
+  it('switches the explosion flashes off and resets them to on', () => {
+    const settings = new SettingsService(new MemoryStore(), silentLogger);
+    expect(settings.settings.flashes).toBe(true);
+    applySetupAction(settings, { kind: SetupAction.Flashes, value: false });
+    expect(effectPreferences(settings.settings).flashes).toBe(false);
+    applySetupAction(settings, { kind: SetupAction.Reset });
+    expect(settings.settings.flashes).toBe(true);
   });
 });

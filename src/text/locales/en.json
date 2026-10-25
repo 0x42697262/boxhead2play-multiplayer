@@ -303,6 +303,8 @@
   "setup.shake.info": "Shakes the view when something explodes.",
   "setup.blood.title": "Blood:",
   "setup.blood.info": "Blood splats on the floor when someone is hit.",
+  "setup.flashes.title": "Flashes:",
+  "setup.flashes.info": "Lights up the screen when something explodes. Turn off if flashing lights bother you.",
   "setup.frameRate.title": "Frame rate:",
   "setup.frameRate.info": "Highest number of frames drawn per second. The game itself runs at 25 steps per second.",
   "setup.ping.title": "Ping:",

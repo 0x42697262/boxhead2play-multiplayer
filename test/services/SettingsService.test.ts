@@ -110,7 +110,16 @@ describe('settings reading', () => {
 
   it('keeps a stored room detail', () => {
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, roomDetail: RoomDetail.Low })).settings.roomDetail).toBe(RoomDetail.Low);
-    expect(SETTINGS_VERSION).toBe(8);
+    expect(SETTINGS_VERSION).toBe(9);
+  });
+
+  it('migrates version 8 to flashes on and keeps a stored choice', () => {
+    const v8: Record<string, unknown> = { ...DEFAULT_SETTINGS, version: 8, blood: false };
+    delete v8.flashes;
+    const result = readSettings(JSON.stringify(v8));
+    expect(result.migratedFrom).toBe(8);
+    expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, blood: false, flashes: true });
+    expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, flashes: false })).settings.flashes).toBe(false);
   });
 
   it('rejects invalid JSON, invalid values and future versions', () => {

@@ -6,7 +6,7 @@ import {
   thingScreenPoint,
 } from '../../../src/adapters/render/world/projection.ts';
 import { roomBitmapSize } from '../../../src/adapters/render/world/RoomPlanes.ts';
-import { decalShown, playerLabelText, viewOrigin } from '../../../src/adapters/render/world/WorldRenderer.ts';
+import { decalShown, flashLevel, playerLabelText, viewOrigin } from '../../../src/adapters/render/world/WorldRenderer.ts';
 import { DecalKind, DomainEventType } from '../../../src/domain/events.ts';
 import { assetRoomFile, assetsMissing } from '../assets/support.ts';
 
@@ -42,10 +42,19 @@ describe('world projection', () => {
 describe('effect preferences', () => {
   it('drops the shake offset from the view and hides blood decals but not scorch marks', () => {
     const camera = { view: { playerIndex: 0, rect: { x: 100, y: 50, width: 640, height: 480 }, drawOrigin: { x: 112, y: 41 } }, entries: [] };
-    expect(viewOrigin(camera, { screenShake: true, blood: true })).toEqual({ x: 112, y: 41 });
-    expect(viewOrigin(camera, { screenShake: false, blood: true })).toEqual({ x: 100, y: 50 });
+    expect(viewOrigin(camera, { screenShake: true, blood: true, flashes: true })).toEqual({ x: 112, y: 41 });
+    expect(viewOrigin(camera, { screenShake: false, blood: true, flashes: true })).toEqual({ x: 100, y: 50 });
     const decal = (kind: DecalKind) => ({ type: DomainEventType.DecalRequested, decal: kind, symbol: 's', xPx: 0, yPx: 0, frame: 0, rotationIndex: 0, rotationCount: 1, scaleX: 1, scaleY: 1 });
-    expect(decalShown(decal(DecalKind.BloodSplat), { screenShake: true, blood: false })).toBe(false);
-    expect(decalShown(decal(DecalKind.ScorchMark), { screenShake: true, blood: false })).toBe(true);
+    expect(decalShown(decal(DecalKind.BloodSplat), { screenShake: true, blood: false, flashes: true })).toBe(false);
+    expect(decalShown(decal(DecalKind.ScorchMark), { screenShake: true, blood: false, flashes: true })).toBe(true);
+  });
+
+  it('draws the explosion flash only with flashes on, room detail on and a positive brightness', () => {
+    const all = { screenShake: true, blood: true, flashes: true };
+    expect(flashLevel(0.5, true, all)).toBe(128);
+    expect(flashLevel(2, true, all)).toBe(255);
+    expect(flashLevel(0.5, true, { ...all, flashes: false })).toBeUndefined();
+    expect(flashLevel(0.5, false, all)).toBeUndefined();
+    expect(flashLevel(0, true, all)).toBeUndefined();
   });
 });

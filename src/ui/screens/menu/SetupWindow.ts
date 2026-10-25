@@ -2,7 +2,7 @@ import type { DisplayItem, Filter } from '../../../adapters/assets/schemas.ts';
 import type { Matrix } from '../../../adapters/render/geometry/Matrix.ts';
 import { depthKey, type ButtonState, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import type { GraphicsQuality } from '../../../services/graphicsQuality.ts';
-import { resetSetup, withBlood, withFrameRate, withGraphics, withRoomDetail, withScreenShake, withShowPing, withSoundVolume } from '../../../services/menuSettings.ts';
+import { resetSetup, withBlood, withFlashes, withFrameRate, withGraphics, withRoomDetail, withScreenShake, withShowPing, withSoundVolume } from '../../../services/menuSettings.ts';
 import type { RoomDetail } from '../../../services/roomDetail.ts';
 import type { FrameRate } from '../../../services/SettingsService.ts';
 import type { SettingsService, UserSettings } from '../../../services/SettingsService.ts';
@@ -14,6 +14,7 @@ import { Trigger, type MenuTarget } from './MenuPointer.ts';
 import type { OverrideTree } from './overrideTree.ts';
 import {
   BLOOD_ROW,
+  FLASHES_ROW,
   FRAME_RATE_ROW,
   PING_ROW,
   GRAPHICS_ROW,
@@ -44,6 +45,7 @@ export const SetupAction = {
   Volume: 'volume',
   ScreenShake: 'screenShake',
   Blood: 'blood',
+  Flashes: 'flashes',
   FrameRate: 'frameRate',
   Ping: 'ping',
 } as const;
@@ -56,6 +58,7 @@ export type SetupAction =
   | { readonly kind: typeof SetupAction.Volume; readonly value: number }
   | { readonly kind: typeof SetupAction.ScreenShake; readonly value: boolean }
   | { readonly kind: typeof SetupAction.Blood; readonly value: boolean }
+  | { readonly kind: typeof SetupAction.Flashes; readonly value: boolean }
   | { readonly kind: typeof SetupAction.FrameRate; readonly value: FrameRate }
   | { readonly kind: typeof SetupAction.Ping; readonly value: boolean };
 
@@ -82,6 +85,7 @@ export interface SetupWindowLayout {
   readonly volume: SetupRowLayout<number>;
   readonly shake: SetupRowLayout<boolean>;
   readonly blood: SetupRowLayout<boolean>;
+  readonly flashes: SetupRowLayout<boolean>;
   readonly frameRate: SetupRowLayout<FrameRate>;
   readonly ping: SetupRowLayout<boolean>;
   readonly bottomButtons: readonly { readonly name: string; readonly matrix: Matrix }[];
@@ -120,6 +124,9 @@ export function applySetupAction(settings: SettingsService, action: SetupAction)
       return SetupOutcome.Open;
     case SetupAction.Blood:
       settings.update((current) => withBlood(current, action.value));
+      return SetupOutcome.Open;
+    case SetupAction.Flashes:
+      settings.update((current) => withFlashes(current, action.value));
       return SetupOutcome.Open;
     case SetupAction.FrameRate:
       settings.update((current) => withFrameRate(current, action.value));
@@ -175,6 +182,7 @@ export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | 
   const volume = row(VOLUME_ROW);
   const shake = row(SHAKE_ROW);
   const blood = row(BLOOD_ROW);
+  const flashes = row(FLASHES_ROW);
   const frameRate = row(FRAME_RATE_ROW);
   const ping = row(PING_ROW);
   const kept = new Set<string>([
@@ -192,6 +200,7 @@ export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | 
     volume,
     shake,
     blood,
+    flashes,
     frameRate,
     ping,
     bottomButtons: [Child.Close, Child.Reset].map((name) => bottomButton(children, name)).filter((button) => button !== undefined),
@@ -221,6 +230,7 @@ export class SetupWindow {
       ...this.layout.volume.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Volume, value: button.spec.value })),
       ...this.layout.shake.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.ScreenShake, value: button.spec.value })),
       ...this.layout.blood.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Blood, value: button.spec.value })),
+      ...this.layout.flashes.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Flashes, value: button.spec.value })),
       ...this.layout.frameRate.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.FrameRate, value: button.spec.value })),
       ...this.layout.ping.buttons.map((button) => release(buttonPath(button.spec.instance), { kind: SetupAction.Ping, value: button.spec.value })),
       { path: [...WINDOW, Child.Lock], trigger: Trigger.Block },
@@ -231,11 +241,11 @@ export class SetupWindow {
     tree.set(WINDOW, { visible: open });
     if (!open) return;
     for (const key of this.layout.hidden) tree.set([...WINDOW, key], { visible: false });
-    const { graphics, roomDetail, volume, shake, blood, frameRate, ping } = this.layout;
+    const { graphics, roomDetail, volume, shake, blood, flashes, frameRate, ping } = this.layout;
     const { title } = this.layout;
     const texts = [
       title && this.text(tree, { name: Child.Title, depth: SETUP_ATTACHED_DEPTH, style: TextStyles.WindowTitle, anchorX: SETUP_TITLE_CENTER_X, top: title.top }, t('setup.title'), WINDOW_TEXT_COLOR),
-      ...[graphics, roomDetail, volume, shake, blood, frameRate, ping].flatMap((row, index) => {
+      ...[graphics, roomDetail, volume, shake, blood, flashes, frameRate, ping].flatMap((row, index) => {
         const depth = SETUP_ATTACHED_DEPTH + (index + 1) * 2;
         const rowTitle = row.title;
         const info = row.info;
@@ -245,13 +255,14 @@ export class SetupWindow {
         ];
       }),
     ].filter((item): item is DisplayItem => item !== undefined);
-    const clones = roomDetail.buttons.map((button) => button.attached).filter((item) => item !== undefined);
+    const clones = [...roomDetail.buttons, ...flashes.buttons].map((button) => button.attached).filter((item) => item !== undefined);
     tree.set(WINDOW, { attach: [...texts, ...clones] });
     this.buttons(tree, graphics, settings.graphics, buttonState);
     this.buttons(tree, roomDetail, settings.roomDetail, buttonState);
     this.buttons(tree, volume, settings.soundVolume, buttonState);
     this.buttons(tree, shake, settings.screenShake, buttonState);
     this.buttons(tree, blood, settings.blood, buttonState);
+    this.buttons(tree, flashes, settings.flashes, buttonState);
     this.buttons(tree, frameRate, settings.frameRate, buttonState);
     this.buttons(tree, ping, settings.showPing, buttonState);
     for (const { name, matrix } of this.layout.bottomButtons) tree.set([...WINDOW, name], { matrix: itemMatrix(matrix) });

@@ -83,12 +83,16 @@ export function withBlood(settings: UserSettings, blood: boolean): UserSettings 
   return { ...settings, blood };
 }
 
+export function withFlashes(settings: UserSettings, flashes: boolean): UserSettings {
+  return { ...settings, flashes };
+}
+
 export function withShowPing(settings: UserSettings, showPing: boolean): UserSettings {
   return { ...settings, showPing };
 }
 
-export function effectPreferences(settings: UserSettings): { readonly screenShake: boolean; readonly blood: boolean } {
-  return { screenShake: settings.screenShake, blood: settings.blood };
+export function effectPreferences(settings: UserSettings): { readonly screenShake: boolean; readonly blood: boolean; readonly flashes: boolean } {
+  return { screenShake: settings.screenShake, blood: settings.blood, flashes: settings.flashes };
 }
 
 export function withFrameRate(settings: UserSettings, frameRate: UserSettings['frameRate']): UserSettings {
@@ -96,8 +100,8 @@ export function withFrameRate(settings: UserSettings, frameRate: UserSettings['f
 }
 
 export function resetSetup(settings: UserSettings): UserSettings {
-  const { graphics, roomDetail, soundVolume, screenShake, blood, frameRate, showPing } = DEFAULT_SETTINGS;
-  return { ...settings, graphics, roomDetail, soundVolume, screenShake, blood, frameRate, showPing };
+  const { graphics, roomDetail, soundVolume, screenShake, blood, flashes, frameRate, showPing } = DEFAULT_SETTINGS;
+  return { ...settings, graphics, roomDetail, soundVolume, screenShake, blood, flashes, frameRate, showPing };
 }
 
 export function soundGain(settings: UserSettings): number {

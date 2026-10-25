@@ -170,6 +170,12 @@ is 1, otherwise a scaled draw with alpha. `Static` and `OmniDirectional` ignore 
   `floor(xPx * plane + mDisp * plane / screen)`. The masking happens in one scratch surface per renderer that only grows (cleared
   before each stamp), so stamping hundreds of decals again after a resolution change or a
   blood toggle allocates no canvases.
+* Explosion flash: `flashLevel` turns the frame's `brightness` into a `lighter` white fill
+  over the screen, only with room detail on (`mDetail`, as in the original) and the
+  `flashes` setting on (SETTINGS, "Flashes", default on). The setting is client-only like
+  Screen shake and Blood: the world and the server still compute the brightness, the
+  renderer just skips the fill, so online players choose for themselves. The explosion
+  sprites themselves are not flashing lights and stay.
 * `WorldRenderer.render` ports `CWorld.Draw` for the local player's camera
   (`localCamera`: the frame's `localPlayerIndex`, 0 in single play):
   floor copy at `-round(-(rect + shake))` in screen pixels, divided by `screen / plane`

@@ -75,7 +75,7 @@ export interface SetupButtonSpec<Value> {
 const SETUP_COLUMN_X = [-76, 4, 84, 164.1] as const;
 
 export const SETUP_FIRST_ROW_Y = -100.1;
-export const SETUP_ROW_SPACING_PX = 36;
+export const SETUP_ROW_SPACING_PX = 31;
 export const SETUP_BOTTOM_BUTTONS_Y = 152;
 
 export interface SetupRowSpec<Value> {
@@ -153,6 +153,20 @@ export const BLOOD_ROW: SetupRowSpec<boolean> = {
   buttons: [
     { instance: '_Speed_Slow', value: false, label: 'setup.switch.off' },
     { instance: '_Speed_Normal', value: true, label: 'setup.switch.on' },
+  ],
+};
+
+const FLASHES_TEMPLATE = '_Damage_Off';
+
+export const FLASHES_ROW: SetupRowSpec<boolean> = {
+  titleDepth: 53,
+  infoDepth: 75,
+  rowOf: '_Speed_Slow',
+  title: 'setup.flashes.title',
+  info: 'setup.flashes.info',
+  buttons: [
+    { instance: 'setupFlashesOff', value: false, label: 'setup.switch.off', x: SETUP_COLUMN_X[0], clone: { of: FLASHES_TEMPLATE, depth: 153 } },
+    { instance: 'setupFlashesOn', value: true, label: 'setup.switch.on', x: SETUP_COLUMN_X[1], clone: { of: FLASHES_TEMPLATE, depth: 154 } },
   ],
 };
 

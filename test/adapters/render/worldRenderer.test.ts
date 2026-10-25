@@ -24,7 +24,7 @@ function setup() {
   const renderer = recordingRenderer(catalog, surfaces);
   const clips = new ClipBuffers(renderer);
   const painter = new VisualPainter(clips, new XsiFrameCache(emptyXsi(), new FakeRasterizer(surfaces)));
-  const view = { resolution: 1, planeResolution: undefined as number | undefined, effects: { screenShake: true, blood: true } as EffectPreferences };
+  const view = { resolution: 1, planeResolution: undefined as number | undefined, effects: { screenShake: true, blood: true, flashes: true } as EffectPreferences };
   const world = new WorldRenderer(TEST_ROOM, renderer, clips, painter, new HudRenderer(renderer, GameMode.Single), {
     detail: false,
     resolution: () => view.resolution,
@@ -83,12 +83,12 @@ describe('world renderer planes and decals', () => {
     const { world, view, stampPositions } = setup();
     world.stampDecal(decal(DecalKind.BloodSplat, BLOOD, 5, 5));
     world.stampDecal(decal(DecalKind.ScorchMark, SCORCH, 30, 20));
-    view.effects = { screenShake: true, blood: false };
+    view.effects = { screenShake: true, blood: false, flashes: true };
     world.render(emptyWorldFrame());
     expect(stampPositions()).toEqual([stampAt(30, 20, 1)]);
     world.stampDecal(decal(DecalKind.BloodSplat, BLOOD, 40, 10));
     expect(stampPositions()).toEqual([stampAt(30, 20, 1)]);
-    view.effects = { screenShake: true, blood: true };
+    view.effects = { screenShake: true, blood: true, flashes: true };
     world.render(emptyWorldFrame());
     expect(stampPositions()).toEqual([stampAt(5, 5, 1), stampAt(30, 20, 1), stampAt(40, 10, 1)]);
   });

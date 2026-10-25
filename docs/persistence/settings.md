@@ -10,16 +10,17 @@ validated with Zod and written back on every change (`CSaveData` flushed on ever
 Unreadable storage or a failed write is logged (`save.rejected`, `save.write_failed`) and
 the game continues with the values in memory.
 
-## Version 8
+## Version 9
 
 | Field | Type | Default | Original |
 |---|---|---|---|
-| `version` | `8` | | |
+| `version` | `9` | | |
 | `soundVolume` | 0..100 | 100 | `mSoundActive` (on/off) |
 | `graphics` | `sharp`, `smooth`, `pixelated` | `sharp` | none (ADR 0006) |
 | `roomDetail` | `auto`, `high`, `low` | `auto` | none (ADR 0008) |
 | `screenShake` | boolean | true | none (explosions always shake) |
 | `blood` | boolean | true | none (blood splats always drawn) |
+| `flashes` | boolean | true | none (explosions always flashed the screen white) |
 | `frameRate` | 0 (display), 30, 60, 120 | 0 | none (Flash drew at 25 fps) |
 | `showPing` | boolean | true | none (online play is new) |
 | `musicActive` | boolean | true | `mMusicActive` (no music is registered) |
@@ -61,11 +62,12 @@ current version, then validates.
   frame).
 * Version 6 had no ping display. `migratePingDisplay` adds `showPing: true`.
 * Version 7 had no room detail. `migrateRoomDetail` adds `roomDetail: auto`.
+* Version 8 had no flashes switch. `migrateFlashes` adds `flashes: true`.
 
 A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 9: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[8]`
-that turns a version 8 object into a version 9 object.
+To add version 10: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[9]`
+that turns a version 9 object into a version 10 object.
