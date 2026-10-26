@@ -4,7 +4,7 @@ import type { Room } from '../../adapters/assets/schemas.ts';
 import { toRoomDefinition } from '../../adapters/assets/mapping.ts';
 import type { SoundMixer } from '../../adapters/audio/SoundMixer.ts';
 import type { KeyboardState } from '../../adapters/input/KeyboardState.ts';
-import { buildBindings, TickInputSampler } from '../../adapters/input/TickInputSampler.ts';
+import { LiveInputSampler } from '../../adapters/input/TickInputSampler.ts';
 import type { ClipBuffers } from '../../adapters/render/clips/ClipBuffers.ts';
 import { HudAction, HudRenderer } from '../../adapters/render/hud/HudRenderer.ts';
 import type { SymbolRenderer } from '../../adapters/render/symbols/SymbolRenderer.ts';
@@ -83,7 +83,7 @@ export class GameScreen implements Screen {
     for (const collection of prewarmCollections(options)) deps.kit.characters.enqueue(collection);
     deps.keyboard.releaseAll();
     deps.keyboard.clearEdges();
-    const sampler = new TickInputSampler(buildBindings(settings.keys));
+    const input = new LiveInputSampler(() => deps.settings.settings.keys);
     this.session = GameSession.start({
       room: toRoomDefinition(room),
       options,
@@ -92,11 +92,20 @@ export class GameScreen implements Screen {
       animations: deps.animations,
       audio: deps.audio,
       scene: this.renderer,
-      input: { sample: (extras) => sampler.sample(deps.keyboard, extras) },
+      input: { sample: (extras) => input.sampler.sample(deps.keyboard, extras) },
       logger: deps.logger,
       onCompleted: (result) => deps.controls.finishGame(result),
     });
-    this.menu = new GameMenu({ shell: deps.shell, renderer: deps.kit.renderer, audio: deps.audio, settings: deps.settings, rng: deps.uiRng, quit: () => this.session.requestQuit() });
+    this.menu = new GameMenu({
+      shell: deps.shell,
+      renderer: deps.kit.renderer,
+      audio: deps.audio,
+      settings: deps.settings,
+      rng: deps.uiRng,
+      logger: deps.logger,
+      ticksPerSecond: () => this.ticksPerSecond,
+      quit: () => this.session.requestQuit(),
+    });
     deps.shell.hideOverlay();
   }
 

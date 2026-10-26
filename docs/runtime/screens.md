@@ -187,11 +187,18 @@ covers the stage and swallows clicks, so the window is modal.
 The original has no in-game menu. Esc opens one in single and online play (owner request):
 
 * A white backdrop at 75 % alpha over the running game (no pause), then the main menu's
-  `mcCoopPlay` and `mcDeathPlay` slots with attached labels SETTINGS and QUIT, styled and
+  `mcCoopPlay`, `mcDeathPlay` and `mcInstructions` slots with attached labels SETTINGS,
+  CONTROLS and QUIT (online, COPY LINK takes `mcSinglePlay` above them), styled and
   rolled over like the main menu buttons. The menu background and title are not drawn
   (`StageScene.transparent`).
 * SETTINGS opens the same `mcWindow_Options` SETTINGS window as the main menu
   (`SetupWindow`); CLOSE or Esc returns to the choices. Esc on the choices closes the menu.
+* CONTROLS opens the select-world screen's `mcWindow_Controls` key window. Both screens use
+  one `ControlsWindow` (`src/ui/screens/menu/ControlsWindow.ts`): click a key, press the new
+  one (Esc cancels the prompt, not the window), RESET, CLOSE or Esc back to the choices.
+  The game reads its bindings through `LiveInputSampler`, which rebuilds them when the
+  stored keys change, so a new key works the moment the window closes, in single and
+  online play.
 * QUIT does what QUIT? on the upgrade list does: single play ends the game, online play
   leaves to the lobby room.
 * The game keeps reading the keyboard while the menu is open; the pointer goes to the menu.

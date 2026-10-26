@@ -3,7 +3,8 @@ import { MainMenuChild } from '../menu/tuning.ts';
 export const GameMenuButton = {
   Invite: MainMenuChild.SinglePlay,
   Settings: MainMenuChild.CoopPlay,
-  Quit: MainMenuChild.DeathPlay,
+  Controls: MainMenuChild.DeathPlay,
+  Quit: MainMenuChild.Options,
 } as const;
 
 export type GameMenuButton = (typeof GameMenuButton)[keyof typeof GameMenuButton];

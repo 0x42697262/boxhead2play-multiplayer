@@ -115,3 +115,22 @@ export class TickInputSampler {
     return { down, pressed, released, heldTicks };
   }
 }
+
+export class LiveInputSampler {
+  private keys: PlayerKeyCodes;
+  private current: TickInputSampler;
+
+  constructor(private readonly readKeys: () => PlayerKeyCodes) {
+    this.keys = readKeys();
+    this.current = new TickInputSampler(buildBindings(this.keys));
+  }
+
+  get sampler(): TickInputSampler {
+    const keys = this.readKeys();
+    if (keys !== this.keys) {
+      this.keys = keys;
+      this.current = new TickInputSampler(buildBindings(keys));
+    }
+    return this.current;
+  }
+}

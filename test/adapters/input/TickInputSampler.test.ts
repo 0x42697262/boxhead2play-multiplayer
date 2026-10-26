@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { codeForKeyCode } from '../../../src/adapters/input/keyCodes.ts';
 import { KeyboardState } from '../../../src/adapters/input/KeyboardState.ts';
 import { TouchCode } from '../../../src/adapters/input/touchCodes.ts';
-import { boundCodes, buildBindings, TickInputSampler } from '../../../src/adapters/input/TickInputSampler.ts';
+import { boundCodes, buildBindings, LiveInputSampler, TickInputSampler } from '../../../src/adapters/input/TickInputSampler.ts';
 import { DEFAULT_KEYS, ORIGINAL_KEYS } from '../../../src/services/SettingsService.ts';
 
 const EXTRAS = { quitRequested: false, ambienceSamplesPlaying: 0 };
@@ -97,5 +97,18 @@ describe('tick input sampling (CInput edges)', () => {
     input.sample(keyboard, EXTRAS);
     keyboard.releaseAll();
     expect(input.sample(keyboard, EXTRAS).tick.players[0]?.up).toEqual({ down: false, pressed: false, released: true, heldTicks: 0 });
+  });
+});
+
+describe('live input sampler', () => {
+  it('uses keys rebound during a match from the next sample on', () => {
+    let keys = DEFAULT_KEYS;
+    const live = new LiveInputSampler(() => keys);
+    const keyboard = new KeyboardState();
+    keyboard.keyDown('KeyK');
+    expect(live.sampler.player(keyboard).up.down).toBe(false);
+    keys = { ...DEFAULT_KEYS, up: 75 };
+    expect(live.sampler.player(keyboard).up.down).toBe(true);
+    expect(live.sampler).toBe(live.sampler);
   });
 });

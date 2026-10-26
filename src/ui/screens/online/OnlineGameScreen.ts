@@ -2,7 +2,7 @@ import type { AnimationCatalog } from '../../../domain/animation/AnimationCatalo
 import type { GameCatalogs } from '../../../adapters/assets/AssetLoader.ts';
 import type { SoundMixer } from '../../../adapters/audio/SoundMixer.ts';
 import type { KeyboardState } from '../../../adapters/input/KeyboardState.ts';
-import { buildBindings, TickInputSampler } from '../../../adapters/input/TickInputSampler.ts';
+import { LiveInputSampler } from '../../../adapters/input/TickInputSampler.ts';
 import { HudAction, HudRenderer } from '../../../adapters/render/hud/HudRenderer.ts';
 import type { HudFrame } from '../../../adapters/render/world/WorldFrame.ts';
 import { WorldRenderer } from '../../../adapters/render/world/WorldRenderer.ts';
@@ -63,13 +63,14 @@ export class OnlineGameScreen implements Screen {
     for (const collection of prewarmCollections(gameOptionsFor(start.mode, start.options, characters))) deps.kit.characters.enqueue(collection);
     keyboard.releaseAll();
     keyboard.clearEdges();
-    const sampler = new TickInputSampler(buildBindings(deps.settings.settings.keys));
+    const live = new LiveInputSampler(() => deps.settings.settings.keys);
     this.session = new OnlineGameSession({
       start,
       audio: deps.audio,
       scene: this.renderer,
       input: {
         sample: () => {
+          const { sampler } = live;
           const masks = masksOf(sampler.player(keyboard));
           const upgradeListPressed = sampler.upgradeListPressed(keyboard);
           keyboard.clearEdges();
@@ -83,7 +84,17 @@ export class OnlineGameScreen implements Screen {
       logger: deps.logger,
       onFinished: (result) => deps.controls.finishOnlineGame(result, client.lobby !== undefined),
     });
-    this.menu = new GameMenu({ shell: deps.shell, renderer: deps.kit.renderer, audio: deps.audio, settings: deps.settings, rng: deps.uiRng, quit: () => this.session.requestQuit(), invite: deps.invite });
+    this.menu = new GameMenu({
+      shell: deps.shell,
+      renderer: deps.kit.renderer,
+      audio: deps.audio,
+      settings: deps.settings,
+      rng: deps.uiRng,
+      logger: deps.logger,
+      ticksPerSecond: () => this.ticksPerSecond,
+      quit: () => this.session.requestQuit(),
+      invite: deps.invite,
+    });
     deps.shell.hideOverlay();
   }
 

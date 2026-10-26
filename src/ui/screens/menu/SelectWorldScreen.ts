@@ -1,5 +1,4 @@
 import type { DisplayItem, RoomIndex } from '../../../adapters/assets/schemas.ts';
-import { keyCodeForCode, validKey } from '../../../adapters/input/validKeys.ts';
 import type { StageScene } from '../../../adapters/render/menu/LayeredStage.ts';
 import { depthKey, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import { SoundId } from '../../../domain/sounds.ts';
@@ -8,17 +7,13 @@ import { PlayerCharacter } from '../../../domain/world/SimulationSettings.ts';
 import type { Logger } from '../../../observability/logger.ts';
 import {
   optionValue,
-  resetKeys,
   resetOptions,
   withCharacter,
-  withKey,
   withOption,
   type OptionField,
 } from '../../../services/menuSettings.ts';
 import type { Cursor, FlowControls, PointerInput, Screen } from '../../../services/ScreenFlow.ts';
 import { levelIndexFor, toLobbyOptions, withLevelIndex, type SettingsService, type UserSettings } from '../../../services/SettingsService.ts';
-import { t } from '../../../text/i18n.ts';
-import { LogEvent } from '../../../text/logEvents.ts';
 import { roomIdForLevel, type RoomPanel } from '../online/lobbyModel.ts';
 import type { SelectWorldRoom } from '../online/LobbyRoom.ts';
 import { clipBefore, placedText, staticTextFrame, textOverride, type PlacedText, type StaticTextFrame } from '../online/stageText.ts';
@@ -34,37 +29,22 @@ import {
   ROW_LABEL_COLOR,
   RoomChild,
   TextStyles,
-  WINDOW_TEXT_COLOR,
 } from '../online/tuning.ts';
 import { cycleFrame } from './frameCycle.ts';
-import { KeyCapture, KeyPressOutcome, type KeyTarget } from './KeyCapture.ts';
 import { itemMatrix } from './MainMenuScreen.ts';
 import { MenuCore, type MenuKit } from './MenuCore.ts';
-import { Trigger, type MenuTarget } from './MenuPointer.ts';
+import { mapTargets, Trigger, type MenuTarget } from './MenuPointer.ts';
+import { ControlsOutcome, ControlsWindow, controlsWindowLayout, type ControlsAction, type ControlsWindowLayout } from './ControlsWindow.ts';
 import { OverrideTree } from './overrideTree.ts';
 import {
-  CHANGE_KEY_PREFIX,
-  CONTROL_PANEL,
-  CONTROLS_ATTACHED_DEPTH,
-  CONTROLS_INFO_DEPTH,
-  CONTROLS_PANEL_X,
-  CONTROLS_TEXT_CENTER_X,
-  CONTROLS_TEXT_WIDTH_PX,
-  CONTROLS_TITLE_DEPTH,
-  ControlsWindowText,
   HISCORE_NOTE,
   OPTION_INFO_CLIP_MARGIN_PX,
-  KEY_ROWS,
-  KEY_TEXT_PREFIX,
   MENU_TICKS_PER_SECOND,
   MenuSymbol,
-  MS_PER_SECOND,
   OPTION_GROUPS,
   PLAYER_CHARACTER_CARD,
   SECOND_CHARACTER_CARD,
   SECOND_CHARACTER_LABEL_DEPTH,
-  SECOND_CONTROL_PANEL,
-  SECOND_CONTROLS_TITLE_DEPTH,
   SELECT_WORLD_BANNER_DEPTHS,
   SELECT_WORLD_EXPANDED,
   SELECT_WORLD_REMOVED_NAMES,
@@ -78,13 +58,11 @@ export const SelectAction = {
   CloseOptions: 'closeOptions',
   ResetOptions: 'resetOptions',
   OpenControls: 'openControls',
-  CloseControls: 'closeControls',
-  ResetControls: 'resetControls',
+  Controls: 'controls',
   Option: 'option',
   Character: 'character',
   Level: 'level',
   Play: 'play',
-  ChangeKey: 'changeKey',
   CopyLink: 'copyLink',
 } as const;
 
@@ -94,14 +72,12 @@ export type SelectAction =
   | { readonly kind: typeof SelectAction.CloseOptions }
   | { readonly kind: typeof SelectAction.ResetOptions }
   | { readonly kind: typeof SelectAction.OpenControls }
-  | { readonly kind: typeof SelectAction.CloseControls }
-  | { readonly kind: typeof SelectAction.ResetControls }
+  | { readonly kind: typeof SelectAction.Controls; readonly action: ControlsAction }
   | { readonly kind: typeof SelectAction.Option; readonly field: OptionField; readonly value: number }
   | { readonly kind: typeof SelectAction.Character; readonly delta: number }
   | { readonly kind: typeof SelectAction.Level; readonly delta: number }
   | { readonly kind: typeof SelectAction.Play }
-  | { readonly kind: typeof SelectAction.CopyLink }
-  | { readonly kind: typeof SelectAction.ChangeKey; readonly target: KeyTarget };
+  | { readonly kind: typeof SelectAction.CopyLink };
 
 export interface SelectWorldDependencies {
   readonly kit: MenuKit;
@@ -119,11 +95,9 @@ export interface SelectWorldLayout {
   readonly levelIcons: DisplayItem | undefined;
   readonly levelCount: number;
   readonly characterCount: number;
-  readonly pressAKeyFrames: number;
   readonly prompt: StaticTextFrame | undefined;
   readonly levelCenterX: number;
-  readonly controlsTitle: StaticTextFrame | undefined;
-  readonly controlsInfo: StaticTextFrame | undefined;
+  readonly controls: ControlsWindowLayout;
   readonly optionInfoClips: readonly { readonly key: string; readonly clip: Rect }[];
 }
 
@@ -136,13 +110,10 @@ const SUB = [Child.SubScreenContainer] as const;
 const LEVEL = [...SUB, Child.LevelSelection] as const;
 const LEVEL_ICONS = [...LEVEL, Child.LevelIcons] as const;
 const OPTIONS = [Child.WindowOptions] as const;
-const CONTROLS = [Child.WindowControls] as const;
-const PRESS_KEY = [...CONTROLS, Child.PressKey] as const;
 
 const OWN_CARD = [...SUB, PLAYER_CHARACTER_CARD] as const;
 const HIDDEN_CARD = [...SUB, SECOND_CHARACTER_CARD] as const;
 const HIDDEN_CARD_LABEL = [...SUB, depthKey(SECOND_CHARACTER_LABEL_DEPTH)] as const;
-const OWN_KEYS = [...CONTROLS, CONTROL_PANEL] as const;
 
 function frameCount(library: SymbolLibrary, item: DisplayItem | undefined): number {
   return (item ? library.sprite(item.characterId)?.frameCount : undefined) ?? SINGLE_FRAME;
@@ -172,24 +143,17 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
         };
   const card = subScreenId === undefined ? undefined : library.findChild(subScreenId, PLAYER_CHARACTER_CARD);
   const character = card ? library.findChild(card.characterId, Child.Character) : undefined;
-  const controls = library.resolve(items, PRESS_KEY, undefined);
-  const pressAKey = controls ? library.findChild(controls.item.characterId, Child.PressAKey) : undefined;
-  const windowItem = items.find((item) => item.name === Child.WindowControls);
-  const windowChildren = windowItem ? library.frameItems(windowItem.characterId, 0) : [];
   const optionsItem = items.find((item) => item.name === Child.WindowOptions);
   const optionsChildren = optionsItem ? library.frameItems(optionsItem.characterId, 0) : [];
-  const windowText = (depth: number): StaticTextFrame | undefined => staticTextFrame(library, windowChildren.find((item) => item.depth === depth));
   return {
     items,
     subScreenId,
     levelIcons,
     levelCount: levelIconsId === undefined ? SINGLE_FRAME : (library.sprite(levelIconsId)?.frameCount ?? SINGLE_FRAME),
     characterCount: frameCount(library, character),
-    pressAKeyFrames: frameCount(library, pressAKey),
     prompt: staticTextFrame(library, selectionItems.find((item) => item.depth === ROOM_PROMPT_DEPTH)),
     levelCenterX: selection?.matrix[4] ?? 0,
-    controlsTitle: windowText(CONTROLS_TITLE_DEPTH),
-    controlsInfo: windowText(CONTROLS_INFO_DEPTH),
+    controls: controlsWindowLayout(library, items),
     optionInfoClips: optionsChildren.flatMap((item) => {
       const text = library.staticText(item.characterId);
       const clip = text ? clipBefore(text, HISCORE_NOTE, OPTION_INFO_CLIP_MARGIN_PX) : undefined;
@@ -202,24 +166,26 @@ function buttonPath(...path: string[]): string[] {
   return [...path, Child.Button];
 }
 
-function keyButtonPath(variable: string): string[] {
-  return [...OWN_KEYS, `${CHANGE_KEY_PREFIX}${variable}`];
-}
 
 export class SelectWorldScreen implements Screen {
   readonly name = 'selectWorld';
   readonly ticksPerSecond = MENU_TICKS_PER_SECOND;
   private readonly core: MenuCore<SelectAction>;
   private readonly layout: SelectWorldLayout;
-  private readonly capture = new KeyCapture();
+  private readonly controlsWindow: ControlsWindow;
   private optionsOpen = false;
   private controlsOpen = false;
-  private ticks = 0;
-  private captureTick = 0;
 
   constructor(private readonly deps: SelectWorldDependencies) {
     this.core = new MenuCore(deps.kit);
     this.layout = selectWorldLayout(deps.kit.renderer.library, deps.mode);
+    this.controlsWindow = new ControlsWindow({
+      library: deps.kit.renderer.library,
+      layout: this.layout.controls,
+      settings: deps.settings,
+      logger: deps.logger,
+      ticksPerSecond: () => MENU_TICKS_PER_SECOND,
+    });
   }
 
   get cursor(): Cursor {
@@ -249,7 +215,7 @@ export class SelectWorldScreen implements Screen {
   }
 
   tick(): void {
-    this.ticks++;
+    this.controlsWindow.tick();
     this.core.tick(
       () => this.scene(),
       () => this.targets(),
@@ -270,14 +236,8 @@ export class SelectWorldScreen implements Screen {
   }
 
   key(code: string): boolean {
-    if (!this.capture.active) return false;
-    const result = this.capture.press(keyCodeForCode(code), this.nowMs());
-    if (result.outcome === KeyPressOutcome.Assigned) {
-      const { field } = result.target;
-      this.deps.settings.update((settings) => withKey(settings, field, result.keyCode));
-      this.deps.logger.info(LogEvent.KeyRebound, { field, keyCode: result.keyCode });
-    }
-    if (!this.capture.active) this.core.refresh(this.scene(), this.targets());
+    if (!this.controlsWindow.key(code)) return false;
+    if (!this.controlsWindow.capturing) this.core.refresh(this.scene(), this.targets());
     return true;
   }
 
@@ -322,11 +282,8 @@ export class SelectWorldScreen implements Screen {
       case SelectAction.OpenControls:
         this.controlsOpen = true;
         return;
-      case SelectAction.CloseControls:
-        this.controlsOpen = false;
-        return;
-      case SelectAction.ResetControls:
-        settings.update(resetKeys);
+      case SelectAction.Controls:
+        if (this.controlsWindow.perform(action.action) === ControlsOutcome.Closed) this.controlsOpen = false;
         return;
       case SelectAction.Option:
         if (!this.configurable) return;
@@ -348,16 +305,11 @@ export class SelectWorldScreen implements Screen {
         settings.update((current) => withLevelIndex(current, this.deps.mode, next));
         return;
       }
-      case SelectAction.ChangeKey:
-        this.capture.begin(action.target);
-        this.captureTick = this.ticks;
-        return;
     }
   }
 
   targets(): readonly MenuTarget<SelectAction>[] {
-    if (this.capture.active) return [{ path: [...PRESS_KEY, Child.Lock], trigger: Trigger.Block }];
-    if (this.controlsOpen) return this.controlsTargets();
+    if (this.controlsOpen) return mapTargets(this.controlsWindow.targets(), (action) => ({ kind: SelectAction.Controls, action }));
     if (this.optionsOpen) return this.optionsTargets();
     const release = (path: readonly string[], action: SelectAction): MenuTarget<SelectAction> => ({ path, trigger: Trigger.Release, action });
     const cards = [
@@ -388,7 +340,7 @@ export class SelectWorldScreen implements Screen {
       this.button(tree, buttonPath(name));
     }
     this.sceneOptions(tree);
-    this.sceneControls(tree);
+    this.controlsWindow.scene(tree, this.controlsOpen, (path) => this.core.pointer.buttonState(path));
     const roomItems = this.sceneRoom(tree);
     if (roomItems.length > 0) tree.set(SUB, { attach: [...(tree.at(SUB).attach ?? []), ...roomItems] });
     return { items: this.layout.items, overrides: tree.overrides, expand: SELECT_WORLD_EXPANDED };
@@ -459,20 +411,6 @@ export class SelectWorldScreen implements Screen {
     return [{ path: buttonPath(...OPTIONS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetOptions } }, close, ...options, lock];
   }
 
-  private controlsTargets(): MenuTarget<SelectAction>[] {
-    const keys = KEY_ROWS.map((row) => ({
-      path: keyButtonPath(row.variable),
-      trigger: Trigger.Release,
-      action: { kind: SelectAction.ChangeKey, target: { field: row.field } } as const,
-    }));
-    return [
-      { path: buttonPath(...CONTROLS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetControls } },
-      { path: buttonPath(...CONTROLS, Child.Close), trigger: Trigger.Release, action: { kind: SelectAction.CloseControls } },
-      ...keys,
-      { path: [...CONTROLS, Child.Lock], trigger: Trigger.Block },
-    ];
-  }
-
   private button(tree: OverrideTree, path: readonly string[]): void {
     tree.set(path, { buttonState: this.core.pointer.buttonState(path) });
   }
@@ -510,51 +448,6 @@ export class SelectWorldScreen implements Screen {
     for (const { key, clip } of this.layout.optionInfoClips) tree.set([...OPTIONS, key], { clip });
   }
 
-  private sceneControls(tree: OverrideTree): void {
-    tree.set(CONTROLS, { visible: this.controlsOpen });
-    if (!this.controlsOpen) return;
-    for (const key of [Child.TwoPlayerCover, SECOND_CONTROL_PANEL, ...[CONTROLS_TITLE_DEPTH, SECOND_CONTROLS_TITLE_DEPTH, CONTROLS_INFO_DEPTH].map(depthKey)]) {
-      tree.set([...CONTROLS, key], { visible: false });
-    }
-    tree.set(OWN_KEYS, { matrix: [1, 0, 0, 1, CONTROLS_PANEL_X, this.ownKeysY()] });
-    this.controlsTexts(tree);
-    const keys = this.deps.settings.settings.keys;
-    for (const row of KEY_ROWS) {
-      const key = validKey(keys[row.field]);
-      tree.set([...OWN_KEYS, `${KEY_TEXT_PREFIX}${row.variable}`], { text: key ? t(key.name) : '' });
-      this.button(tree, keyButtonPath(row.variable));
-    }
-    this.windowButtons(tree, CONTROLS);
-    tree.set(PRESS_KEY, { visible: this.capture.active });
-    if (!this.capture.active) return;
-    const display = this.capture.display(this.nowMs());
-    const blink = (this.ticks - this.captureTick) % this.layout.pressAKeyFrames;
-    tree.set([...PRESS_KEY, Child.PressAKey], { frame: blink, alpha: display.pressAKeyAlpha });
-    tree.set([...PRESS_KEY, Child.InvalidKey], { visible: display.invalidVisible, alpha: display.invalidAlpha });
-  }
-
-  private ownKeysY(): number {
-    const panel = this.deps.kit.renderer.library.resolve(this.layout.items, OWN_KEYS, undefined);
-    return panel?.item.matrix[5] ?? 0;
-  }
-
-  private controlsTexts(tree: OverrideTree): void {
-    const library = this.deps.kit.renderer.library;
-    const { controlsTitle, controlsInfo } = this.layout;
-    const texts = [
-      { frame: controlsTitle, name: ControlsWindowText.Title, style: TextStyles.Heading, text: t('controls.title') },
-      { frame: controlsInfo, name: ControlsWindowText.Info, style: TextStyles.Small, text: t('controls.info', { upgradeKey: t('controls.upgradeListKey'), playerKey: t('controls.playerListKey') }) },
-    ];
-    const attached = texts.flatMap(({ frame, name, style, text }, index) => {
-      if (!frame) return [];
-      const placed = placedText(library, { name, depth: CONTROLS_ATTACHED_DEPTH + index, style, anchorX: CONTROLS_TEXT_CENTER_X, top: frame.top, width: CONTROLS_TEXT_WIDTH_PX });
-      if (!placed) return [];
-      tree.set([...CONTROLS, name], textOverride(placed, text, WINDOW_TEXT_COLOR));
-      return [placed.item];
-    });
-    tree.set(CONTROLS, { attach: attached });
-  }
-
   private windowButtons(tree: OverrideTree, window: readonly string[]): void {
     for (const name of [Child.Close, Child.Reset]) {
       tree.set([...window, name, Child.Selected], { visible: false });
@@ -562,7 +455,4 @@ export class SelectWorldScreen implements Screen {
     }
   }
 
-  private nowMs(): number {
-    return (this.ticks * MS_PER_SECOND) / MENU_TICKS_PER_SECOND;
-  }
 }

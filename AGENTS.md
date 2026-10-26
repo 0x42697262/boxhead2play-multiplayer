@@ -262,9 +262,11 @@ Add one line per behavior change: what to do, and the result you expect.
   middle of your view, gone when you respawn.
 * SETTINGS -> Frame rate 30 -> the game draws 30 frames per second (DevTools performance
   panel); DISPLAY draws every display frame. Online timing and the server do not change.
-* In a game press Esc -> SETTINGS and QUIT over a light backdrop, the game keeps running;
-  SETTINGS -> the graphics/volume window, Esc -> back to the choices; QUIT -> the select-world
-  screen (online: the lobby room).
+* In a game press Esc -> SETTINGS, CONTROLS and QUIT over a light backdrop, the game keeps
+  running; SETTINGS -> the graphics/volume window, Esc -> back to the choices; CONTROLS -> the
+  key window: click MOVE UP, press K -> 'K', Esc during "PRESS A KEY" cancels only the prompt;
+  CLOSE, Esc -> the game, K walks up at once; QUIT -> the select-world screen (online: the
+  lobby room).
 * `npx vitest run test/entry` -> a screen whose tick throws twice still gets its next frames,
   and the failure is reported once. Playing, press Ctrl+S (Cmd+S on macOS) -> the browser's
   save dialog opens and the player does not walk; hold W and Cmd, let go of W, then Cmd -> the player

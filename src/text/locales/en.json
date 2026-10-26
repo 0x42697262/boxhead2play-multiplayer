@@ -288,6 +288,7 @@
   "controls.playerListKey": "TAB",
   "setup.menuButton": "SETTINGS",
   "gameMenu.quit": "QUIT",
+  "gameMenu.controls": "CONTROLS",
   "setup.title": "SETTINGS",
   "setup.graphics.title": "Graphics:",
   "setup.graphics.info": "SHARP draws at your screen's resolution. SMOOTH and PIXELATED draw at 640 x 480 like the original.",

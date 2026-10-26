@@ -95,7 +95,7 @@ describe('menu layouts from the real library', () => {
       expect(layout.items.some((item) => [50, 56, 60, 65].includes(item.depth))).toBe(false);
       expect(layout.levelCount).toBe(18);
       expect(layout.characterCount).toBe(4);
-      expect(layout.pressAKeyFrames).toBe(8);
+      expect(layout.controls.pressAKeyFrames).toBe(8);
       expect(layout.levelIcons?.depth).toBe(7);
       expect(layout.levelIcons?.filters?.map((filter) => filter.type)).toEqual(['dropShadow', 'bevel']);
     }
