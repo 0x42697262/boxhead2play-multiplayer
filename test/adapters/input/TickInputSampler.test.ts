@@ -24,15 +24,15 @@ describe('legacy key codes', () => {
     expect(codeForKeyCode(1)).toBeUndefined();
   });
 
-  it('bind WASD, SPACE, E and Q by default', () => {
+  it('bind WASD, J to fire (Space too), L and K by default', () => {
     const bindings = buildBindings(DEFAULT_KEYS);
     expect(bindings.player.left).toEqual(['KeyA', TouchCode.Left]);
-    expect(bindings.player.nextWeapon).toEqual(['KeyE', TouchCode.NextWeapon]);
-    expect(bindings.player.prevWeapon).toEqual(['KeyQ', TouchCode.PrevWeapon]);
+    expect(bindings.player.nextWeapon).toEqual(['KeyL', TouchCode.NextWeapon]);
+    expect(bindings.player.prevWeapon).toEqual(['KeyK', TouchCode.PrevWeapon]);
     expect(bindings.player.select3).toEqual(['Digit3']);
     expect(bindings.upgradeList).toEqual(['Backquote', TouchCode.UpgradeList]);
     expect(boundCodes(bindings).has('ArrowLeft')).toBe(false);
-    expect(bindings.player.fire).toEqual(['Space', TouchCode.Fire]);
+    expect(bindings.player.fire).toEqual(['KeyJ', 'Space', TouchCode.Fire]);
     expect(bindings.playerList).toEqual(['Tab', TouchCode.PlayerList]);
     expect(boundCodes(bindings).has('Tab')).toBe(true);
   });

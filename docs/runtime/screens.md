@@ -173,7 +173,7 @@ covers the stage and swallows clicks, so the window is modal.
     ignored;
   * any other key (digits, P, Tab, Enter, modifiers, F-keys) shows "INVALID KEY!" for 500 ms,
     then cross-fades back to "PRESS A KEY" over 500 ms.
-* Reset applies the port's default keys (W, S, A, D, Space, E, Q) instead of the original
+* Reset applies the port's default keys (W, S, A, D, J, L, K) instead of the original
   `ResetControls` keys (arrows, `/`, `.`, `,`).
 * Duplicate bindings are allowed, as in the original.
 * Browser key codes are mapped back to legacy codes with `keyCodeForCode`, the inverse of

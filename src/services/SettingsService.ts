@@ -17,7 +17,7 @@ import { DEFAULT_ROOM_DETAIL, RoomDetail } from './roomDetail.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 9;
+export const SETTINGS_VERSION = 10;
 export const FRAME_RATES = [0, 30, 60, 120] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 export const UNCAPPED_FRAME_RATE: FrameRate = 0;
@@ -30,6 +30,7 @@ const FRAME_RATE_VERSION = 5;
 const PING_DISPLAY_VERSION = 6;
 const ROOM_DETAIL_VERSION = 7;
 const FLASHES_VERSION = 8;
+const SPACE_FIRE_KEYS_VERSION = 9;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -95,6 +96,9 @@ const KEY_S = 83;
 const KEY_D = 68;
 const KEY_E = 69;
 const KEY_Q = 81;
+const KEY_J = 74;
+const KEY_K = 75;
+const KEY_L = 76;
 const SPACE = 32;
 
 export const ORIGINAL_KEYS: PlayerKeyCodes = {
@@ -107,7 +111,7 @@ export const ORIGINAL_KEYS: PlayerKeyCodes = {
   prevWeapon: COMMA,
 };
 
-export const DEFAULT_KEYS: PlayerKeyCodes = {
+export const SPACE_FIRE_KEYS: PlayerKeyCodes = {
   up: KEY_W,
   down: KEY_S,
   left: KEY_A,
@@ -115,6 +119,13 @@ export const DEFAULT_KEYS: PlayerKeyCodes = {
   fire: SPACE,
   nextWeapon: KEY_E,
   prevWeapon: KEY_Q,
+};
+
+export const DEFAULT_KEYS: PlayerKeyCodes = {
+  ...SPACE_FIRE_KEYS,
+  fire: KEY_J,
+  nextWeapon: KEY_L,
+  prevWeapon: KEY_K,
 };
 
 const DEFAULT_SINGLE_LEVEL = 8;
@@ -244,7 +255,11 @@ export function migrateRoomDetail(raw: Raw): Raw {
 }
 
 export function migrateFlashes(raw: Raw): Raw {
-  return { ...raw, version: SETTINGS_VERSION, flashes: DEFAULT_SETTINGS.flashes };
+  return { ...raw, version: SPACE_FIRE_KEYS_VERSION, flashes: DEFAULT_SETTINGS.flashes };
+}
+
+export function migrateSpaceFireKeys(raw: Raw): Raw {
+  return { ...raw, version: SETTINGS_VERSION, keys: sameKeys(raw.keys, SPACE_FIRE_KEYS) ? DEFAULT_KEYS : raw.keys };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
@@ -257,6 +272,7 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [PING_DISPLAY_VERSION]: migratePingDisplay,
   [ROOM_DETAIL_VERSION]: migrateRoomDetail,
   [FLASHES_VERSION]: migrateFlashes,
+  [SPACE_FIRE_KEYS_VERSION]: migrateSpaceFireKeys,
 };
 
 function versionOf(raw: Raw): number {

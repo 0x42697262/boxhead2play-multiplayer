@@ -95,8 +95,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npm run extract` -> `public/assets/manifest.json` exists and lists 18 rooms.
 * `npm run extract:debug` -> prints composite SVG paths for ROOM_Single_0001/0002 and
   "FFDec PNG 727x807, library frame bounds 721x800.65 (delta 6x6)" for room 1.
-* `npm run dev`, choose a room, press W A S D -> player 1 walks. Space fires the pistol, E / Q
-  switch weapons.
+* `npm run dev`, choose a room, press W A S D -> player 1 walks. J (or Space) fires the pistol,
+  L / K switch to the next / previous weapon. Settings saved with W A S D, Space, E, Q load as
+  W A S D, J, L, K; rebound keys stay.
 * `npm test -- test/domain` -> domain suites pass (map, navigation, collision, affects,
   spawning, upgrades, world completion, camera, ambience).
 * `npx vitest run test/domain/things` -> creature, weapon, object, effect, input latch and
@@ -350,7 +351,7 @@ Add one line per behavior change: what to do, and the result you expect.
   and Friendly Fire end without "Forfeits hiscore!".
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET
   -> Beginner, Normal, on, on, on, first to 10. CONTROLS -> one centered panel titled
-  CONTROLS with the key names (SHOOT/USE: SPACE), no player 2 panel; click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->
+  CONTROLS with the key names (SHOOT/USE: 'J'), no player 2 panel; click a key, press Enter -> "INVALID KEY!" fading back to "PRESS A KEY", press K ->
   `'K'` stored; Escape cancels; RESET restores the defaults.
 * `npx vitest run test/ui test/services test/adapters/render/hitTest.test.ts` -> menu rules
   (wraparound, roll-over filters, valid keys, key capture, pointer, transition), option

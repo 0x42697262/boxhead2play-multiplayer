@@ -10,11 +10,14 @@ Settings store the original Flash key codes. `keyCodes.ts` maps them to
 
 | Up | Down | Left | Right | Fire | Next | Previous |
 |---|---|---|---|---|---|---|
-| KeyW (87) | KeyS (83) | KeyA (65) | KeyD (68) | Space (32) | KeyE (69) | KeyQ (81) |
+| KeyW (87) | KeyS (83) | KeyA (65) | KeyD (68) | KeyJ (74) | KeyL (76) | KeyK (75) |
 
 These defaults replace the original arrows, Slash, Period and Comma (`ORIGINAL_KEYS`).
 Settings version 4 swaps stored keys that still equal the original defaults; rebound keys
-stay (`docs/persistence/settings.md`).
+stay (`docs/persistence/settings.md`). Fire, next and previous sat on Space, E and Q until
+settings version 10 (`SPACE_FIRE_KEYS`); the owner moved them to J, L and K so the right
+hand fires and switches weapons while the left hand moves. Version 10 swaps stored keys
+that still equal the old set. Space keeps firing as the extra fire key.
 
 There is one local player (ADR 0005). `KeyP` shows or hides the upgrade list (the game keeps running). `Digit0`..`Digit9` select weapons,
 and Space is a second fire key (`AddAdditionKeyCode`, which the original added when

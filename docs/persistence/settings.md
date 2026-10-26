@@ -31,7 +31,7 @@ the game continues with the values in memory.
 | `gameAmount` | 0..3 | 1 | `mGameAmount` (5/10/20/50 kills) |
 | `levelIndex.single/coop/deathMatch` | integer >= 0 | 8 / 0 / 0 | `mLevelIndex_*` |
 | `character` | 0..3 | 3 | `mPlayer1_CharacterIndex` (0 SWAT, 1 Bond, 2 GI Joe, 3 Bambo) |
-| `keys` | Flash key codes 0..255 for up, down, left, right, fire, nextWeapon, prevWeapon | W, S, A, D, Space, E, Q | `mPlayer1_Key*` |
+| `keys` | Flash key codes 0..255 for up, down, left, right, fire, nextWeapon, prevWeapon | W, S, A, D, J, L, K | `mPlayer1_Key*` |
 | `playerName` | string, at most 16 characters | `''` | none (the online name; the server shows "Player" for an empty one) |
 | `playCount` | integer >= 0 | 0 | `mPlayCount` |
 
@@ -55,7 +55,7 @@ current version, then validates.
 * Version 2 had `soundActive`. `migrateSoundSwitch` turns it into `soundVolume` (on 100,
   off 0) and adds `graphics: sharp`.
 * Version 3 had the original keys as defaults. `migrateOriginalKeys` replaces keys that
-  still equal them (arrows, `/`, `.`, `,`) with W, S, A, D, Space, E, Q; rebound keys stay.
+  still equal them (arrows, `/`, `.`, `,`) with the defaults; rebound keys stay.
 * Version 4 had no effect switches. `migrateEffectSwitches` adds `screenShake: true` and
   `blood: true`.
 * Version 5 had no frame rate. `migrateFrameRate` adds `frameRate: 0` (draw every display
@@ -63,11 +63,14 @@ current version, then validates.
 * Version 6 had no ping display. `migratePingDisplay` adds `showPing: true`.
 * Version 7 had no room detail. `migrateRoomDetail` adds `roomDetail: auto`.
 * Version 8 had no flashes switch. `migrateFlashes` adds `flashes: true`.
+* Version 9 had W, S, A, D, Space, E, Q as defaults (`SPACE_FIRE_KEYS`).
+  `migrateSpaceFireKeys` replaces keys that still equal them with W, S, A, D, J, L, K;
+  rebound keys stay.
 
 A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 10: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[9]`
-that turns a version 9 object into a version 10 object.
+To add version 11: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[10]`
+that turns a version 10 object into a version 11 object.

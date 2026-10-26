@@ -14,6 +14,7 @@ import {
   SETTINGS_STORAGE_KEY,
   SETTINGS_VERSION,
   SettingsService,
+  SPACE_FIRE_KEYS,
   toGameOptions,
   toLobbyOptions,
   withLevelIndex,
@@ -110,7 +111,7 @@ describe('settings reading', () => {
 
   it('keeps a stored room detail', () => {
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, roomDetail: RoomDetail.Low })).settings.roomDetail).toBe(RoomDetail.Low);
-    expect(SETTINGS_VERSION).toBe(9);
+    expect(SETTINGS_VERSION).toBe(10);
   });
 
   it('migrates version 8 to flashes on and keeps a stored choice', () => {
@@ -120,6 +121,15 @@ describe('settings reading', () => {
     expect(result.migratedFrom).toBe(8);
     expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, blood: false, flashes: true });
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, flashes: false })).settings.flashes).toBe(false);
+  });
+
+  it('migrates version 9 with the WASD + Space, E, Q keys to J, L, K, and keeps rebound keys', () => {
+    const v9 = { ...DEFAULT_SETTINGS, version: 9, keys: SPACE_FIRE_KEYS };
+    const result = readSettings(JSON.stringify(v9));
+    expect(result.migratedFrom).toBe(9);
+    expect(result.settings.keys).toEqual({ up: 87, down: 83, left: 65, right: 68, fire: 74, nextWeapon: 76, prevWeapon: 75 });
+    const rebound = { ...SPACE_FIRE_KEYS, up: 38 };
+    expect(readSettings(JSON.stringify({ ...v9, keys: rebound })).settings.keys).toEqual(rebound);
   });
 
   it('rejects invalid JSON, invalid values and future versions', () => {
