@@ -17,6 +17,24 @@ function client(session = new MemorySessionToken()) {
   return { online, transport, starts, session, clock };
 }
 
+describe('OnlineClient name', () => {
+  it('sends a changed name once, also from inside a lobby, and nothing while it is unchanged', () => {
+    let name = 'Ann';
+    const transport = new FakeTransport();
+    const online = new OnlineClient({ session: new MemorySessionToken(), name: () => name, logger: silentLogger, onGameStarted: () => undefined, now: () => 0 });
+    online.bind(transport);
+    online.start();
+    online.opened();
+    online.receive({ type: 'welcome', clientId: 'c1', sessionId: 's', resumed: false });
+    online.syncName();
+    expect(transport.types().filter((type) => type === 'setName')).toHaveLength(0);
+    name = 'Sam';
+    online.syncName();
+    online.syncName();
+    expect(transport.sent.filter((message) => message.type === 'setName')).toEqual([{ type: 'setName', name: 'Sam' }]);
+  });
+});
+
 describe('OnlineClient latency', () => {
   it('pings only while welcomed and turns the echoed pong into a round-trip time', () => {
     const { online, transport, clock } = client();

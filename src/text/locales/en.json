@@ -333,6 +333,8 @@
   "menu.joinCodeDraft": "CODE: {code}",
   "online.menu.noName": "PLAYER",
   "online.menu.caret": "_",
+  "room.name.hint": "Click your name to change it",
+  "room.name.editing": "Type your name. Enter saves, Esc cancels.",
   "online.menu.status": "{mode} · Open games: {games}",
   "online.join.title": "SELECT A GAME TO JOIN!",
   "online.join.row": "{name}",

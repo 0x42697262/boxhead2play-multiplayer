@@ -102,11 +102,12 @@ export const FAKE_INVITE: InviteView = { code: undefined, copied: false, copy: (
 
 export function onlineSetup(clientId = 'c1') {
   const transport = new FakeTransport();
-  const client = new OnlineClient({ session: new MemorySessionToken(), name: () => 'Ann', logger: silentLogger, onGameStarted: () => undefined, now: () => 0 });
+  const settings = new SettingsService(new MemoryStore(), silentLogger);
+  const client = new OnlineClient({ session: new MemorySessionToken(), name: () => settings.settings.playerName, logger: silentLogger, onGameStarted: () => undefined, now: () => 0 });
   client.bind(transport);
   client.start();
   client.opened();
   client.receive({ type: 'welcome', clientId, sessionId: 's', resumed: false });
-  const settings = new SettingsService(new MemoryStore(), silentLogger);
+  settings.subscribe(() => client.syncName());
   return { client, transport, settings, controls: new RecordingControls() };
 }

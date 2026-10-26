@@ -119,6 +119,7 @@ export const RoomChild = {
   Options: 'roomOptions',
   Notice: 'roomNotice',
   Invite: 'roomInvite',
+  NameHint: 'roomNameHint',
 } as const;
 
 export const ROOM_PROMPT_DEPTH = 1;
@@ -128,3 +129,5 @@ export const ROOM_INVITE = { depth: 399, anchorX: 632, top: 8, width: 420, align
 export const ROOM_MEMBERS = { depth: 400, left: 6, top: 242, lineHeight: 17, width: 196 } as const;
 export const ROOM_OPTIONS = { depth: 450, top: 342, width: 420 } as const;
 export const ROOM_NOTICE = { depth: 451, anchorX: 320, top: 420, width: 600 } as const;
+export const ROOM_NAME_BUTTON = { name: 'mcRoomName', depth: 90, matrix: [0.45, 0, 0, 0.5, 410, 446], labelWidth: 920 } as const;
+export const ROOM_NAME_HINT = { depth: 452, anchorX: 410, top: 463, width: 420 } as const;

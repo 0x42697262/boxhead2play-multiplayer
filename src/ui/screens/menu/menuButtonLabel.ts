@@ -18,6 +18,7 @@ export interface MenuButtonLook {
   readonly highlighted: boolean;
   readonly filters: readonly Filter[] | undefined;
   readonly leftAligned?: { readonly width: number };
+  readonly labelWidth?: number;
 }
 
 export function menuButtonLabelFrame(library: SymbolLibrary, items: readonly DisplayItem[], name: string): StaticTextFrame | undefined {
@@ -36,7 +37,7 @@ export function sceneMenuButton(tree: OverrideTree, library: SymbolLibrary, look
         style: TextStyles.MenuLabel,
         anchorX: look.leftAligned ? frame.left : frame.centerX,
         top: frame.top + MENU_LABEL_TOP_OFFSET_PX,
-        ...(look.leftAligned ? { align: LEFT, width: look.leftAligned.width } : {}),
+        ...(look.leftAligned ? { align: LEFT, width: look.leftAligned.width } : look.labelWidth === undefined ? {} : { width: look.labelWidth }),
       })
     : undefined;
   const contents = [name, MainMenuChild.Contents];

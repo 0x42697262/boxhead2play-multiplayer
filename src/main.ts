@@ -144,13 +144,15 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
     ),
   );
 
+  userSettings.subscribe(() => online.syncName());
+
   const link = new BrowserLobbyLink(window);
   const invite = new LobbyInvite(online, link);
   invite.syncAddress();
 
   const screens: ScreenFactory = {
     mainMenu: (controls) => new MainMenuScreen({ kit: menuKit, rng: menuRng, controls, settings: userSettings }),
-    selectWorld: (controls, mode) => new SelectWorldScreen({ kit: menuKit, settings: userSettings, rooms: catalogs.roomIndex, controls, logger, mode }),
+    selectWorld: (controls, mode) => new SelectWorldScreen({ kit: menuKit, settings: userSettings, rooms: catalogs.roomIndex, controls, logger, rng: menuRng, mode }),
     game: (controls, selection) =>
       new GameScreen({
         shell,
@@ -176,6 +178,7 @@ async function boot(shell: Shell, logger: Logger): Promise<void> {
         rooms: catalogs.roomIndex,
         controls,
         logger,
+        rng: menuRng,
         mode: entry.mode,
         room: new LobbyRoom({ client: online, rooms: catalogs.roomIndex, controls, mode: entry.mode, result: entry.result, invite }),
       }),

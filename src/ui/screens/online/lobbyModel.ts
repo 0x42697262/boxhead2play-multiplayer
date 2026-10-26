@@ -31,6 +31,7 @@ export interface RoomPanel {
   readonly prompt: string;
   readonly canPlay: boolean;
   readonly members: readonly string[];
+  readonly ownName: string | undefined;
   readonly options: string;
   readonly notice: string | undefined;
   readonly invite: string;
@@ -182,6 +183,7 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
     lobbyOptions: lobby.options,
     ...roomPrompt(lobby, clientId),
     members: memberLines(lobby, clientId),
+    ownName: lobby.members.find((member) => member.id === clientId)?.name,
     options: optionsSummary(lobby.mode, lobby.options),
     notice: noticeText(state, result),
     invite: t(linkCopied ? 'invite.roomCopied' : 'invite.roomCopy', { code: lobby.code }),

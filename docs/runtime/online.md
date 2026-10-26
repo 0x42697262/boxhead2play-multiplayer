@@ -56,9 +56,20 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   `mcName`, a half-size clone of the SETTINGS button with a left-aligned label wide enough
   for 16 characters), mirroring JOIN BY CODE in the bottom-right corner. Clicking it edits
   the name in place: typed characters, Backspace, Enter saves to the settings, Escape
-  cancels, a blinking `_` caret. Clicking anything else saves too. The main menu is
-  offline, so the name reaches the server with the next `hello`; the lobby and game
-  screens keep no rename button.
+  cancels, a blinking `_` caret. Clicking anything else saves too.
+* **Name in the lobby room.** A player who opened an invite link went straight from the
+  main menu into the room and kept "Player #n". So the room has its own NAME button
+  (`ROOM_NAME_BUTTON` `mcRoomName`, the same half-size clone, centered under the options
+  and CONTROLS at stage (410, 446), wide enough for 16 W's from x 236 to 597). It never
+  touches the member list, which is at most 202 px wide and ends at `+n MORE` above it, so
+  a full 16-player room still fits. It shows the name the server gave you (with its
+  `#2` if taken) and edits it in place like the main menu, also with the phone keyboard
+  (`textEntry`). A one-line hint under it says "Click your name to change it" while you
+  have no name of your own, and "Type your name. Enter saves, Esc cancels." while
+  editing. Saving stores the name in the settings; `main.ts` subscribes
+  `OnlineClient.syncName`, which sends `setName` whenever the stored name differs from
+  the last one sent (also on the main menu while connected), and the server renames the
+  member for everyone (`Lobby.memberChanged`). No protocol change.
 * **Host.** HOST creates a game at once with the level last chosen for the mode and the
   OPTIONS values, then opens the lobby room.
 * **One request at a time.** From HOST, JOIN on a row or a join code until the `lobby`

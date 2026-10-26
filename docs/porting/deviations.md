@@ -82,6 +82,7 @@
 | Camera while dead | The camera stayed where the player died (single and coop) or on the corpse (deathmatch) | W A S D pan the camera freely until the respawn (`docs/domain/world-lifecycle.md`) | Owner request: look around while waiting to respawn. |
 | Flashes switch | Every explosion lit the whole screen white | SETTINGS "Flashes" OFF skips the white flash; default ON (`docs/runtime/rendering.md`) | Owner request, for players bothered by flashing lights. Row spacing in SETTINGS drops from 36 to 31 px so 8 rows fit the original window. |
 | Controls in a match | Keys could only be changed on the select-world screen | The in-game Esc menu has CONTROLS (same key window); new keys apply at once (`docs/runtime/screens.md`) | Owner request. |
+| Name in the lobby room | none (no online play) | NAME: ... button in the lobby room; renaming there updates every member's list at once (`docs/runtime/online.md`) | Owner request: invite-link players were stuck with "Player #n". |
 | Menu hit areas | Shape-accurate `hitTest` of clips and button hit states | Bounds of the button `hitTest` records or of the clip, tested in local space | All menu hit shapes are rectangles or covered by `_ClickArea` rectangles. |
 | Transition shadow | `DropShadowFilter()` on the incoming 640 x 480 bitmap | Not drawn | It falls outside the stage. |
 | SVG drawing | n/a | SVGs are loaded with `preserveAspectRatio="none"` | Firefox letterboxes SVG images under non-uniform scales. |

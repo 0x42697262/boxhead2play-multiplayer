@@ -1,6 +1,7 @@
-import type { DisplayItem, RoomIndex } from '../../../adapters/assets/schemas.ts';
+import type { DisplayItem, Filter, RoomIndex } from '../../../adapters/assets/schemas.ts';
 import type { StageScene } from '../../../adapters/render/menu/LayeredStage.ts';
 import { depthKey, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
+import type { Rng } from '../../../domain/math/Rng.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import type { GameMode } from '../../../domain/world/GameMode.ts';
 import { PlayerCharacter } from '../../../domain/world/SimulationSettings.ts';
@@ -9,10 +10,16 @@ import {
   optionValue,
   resetOptions,
   withCharacter,
+  withPlayerName,
   withOption,
   type OptionField,
 } from '../../../services/menuSettings.ts';
-import type { Cursor, FlowControls, PointerInput, Screen } from '../../../services/ScreenFlow.ts';
+import { TextEntryKind, type Cursor, type FlowControls, type PointerInput, type Screen, type TextEntry } from '../../../services/ScreenFlow.ts';
+import { PLAYER_NAME_MAX_LENGTH } from '../../../net/tuning.ts';
+import { t } from '../../../text/i18n.ts';
+import { editName, NameEntryOutcome } from '../online/nameEntry.ts';
+import { menuButtonLabelFrame, sceneMenuButton } from './menuButtonLabel.ts';
+import { rollOverFilters } from './rollOver.ts';
 import { levelIndexFor, toLobbyOptions, withLevelIndex, type SettingsService, type UserSettings } from '../../../services/SettingsService.ts';
 import { roomIdForLevel, type RoomPanel } from '../online/lobbyModel.ts';
 import type { SelectWorldRoom } from '../online/LobbyRoom.ts';
@@ -20,8 +27,11 @@ import { clipBefore, placedText, staticTextFrame, textOverride, type PlacedText,
 import type { Rect } from '../../../adapters/render/geometry/Rect.ts';
 import {
   MENU_TEXT_COLOR,
+  CARET_BLINK_TICKS,
   ROOM_INVITE,
   ROOM_MEMBERS,
+  ROOM_NAME_BUTTON,
+  ROOM_NAME_HINT,
   ROOM_NOTICE,
   ROOM_OPTIONS,
   ROOM_PROMPT_ATTACHED_DEPTH,
@@ -49,6 +59,7 @@ import {
   SELECT_WORLD_EXPANDED,
   SELECT_WORLD_REMOVED_NAMES,
   SelectWorldChild as Child,
+  MainMenuChild,
   SUB_SCREEN_SYMBOLS,
 } from './tuning.ts';
 
@@ -59,6 +70,7 @@ export const SelectAction = {
   ResetOptions: 'resetOptions',
   OpenControls: 'openControls',
   Controls: 'controls',
+  EditName: 'editName',
   Option: 'option',
   Character: 'character',
   Level: 'level',
@@ -72,6 +84,7 @@ export type SelectAction =
   | { readonly kind: typeof SelectAction.CloseOptions }
   | { readonly kind: typeof SelectAction.ResetOptions }
   | { readonly kind: typeof SelectAction.OpenControls }
+  | { readonly kind: typeof SelectAction.EditName }
   | { readonly kind: typeof SelectAction.Controls; readonly action: ControlsAction }
   | { readonly kind: typeof SelectAction.Option; readonly field: OptionField; readonly value: number }
   | { readonly kind: typeof SelectAction.Character; readonly delta: number }
@@ -85,6 +98,7 @@ export interface SelectWorldDependencies {
   readonly rooms: RoomIndex;
   readonly controls: FlowControls;
   readonly logger: Logger;
+  readonly rng: Rng;
   readonly mode: GameMode;
   readonly room?: SelectWorldRoom;
 }
@@ -98,6 +112,8 @@ export interface SelectWorldLayout {
   readonly prompt: StaticTextFrame | undefined;
   readonly levelCenterX: number;
   readonly controls: ControlsWindowLayout;
+  readonly nameButton: DisplayItem | undefined;
+  readonly nameLabel: StaticTextFrame | undefined;
   readonly optionInfoClips: readonly { readonly key: string; readonly clip: Rect }[];
 }
 
@@ -143,6 +159,9 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
         };
   const card = subScreenId === undefined ? undefined : library.findChild(subScreenId, PLAYER_CHARACTER_CARD);
   const character = card ? library.findChild(card.characterId, Child.Character) : undefined;
+  const mainId = library.characterId(MenuSymbol.Main);
+  const menuButton = (mainId === undefined ? [] : library.frameItems(mainId, 0)).find((item) => item.name === MainMenuChild.Options);
+  const nameButton: DisplayItem[] = menuButton ? [{ ...menuButton, name: ROOM_NAME_BUTTON.name, depth: ROOM_NAME_BUTTON.depth, matrix: itemMatrix(ROOM_NAME_BUTTON.matrix) }] : [];
   const optionsItem = items.find((item) => item.name === Child.WindowOptions);
   const optionsChildren = optionsItem ? library.frameItems(optionsItem.characterId, 0) : [];
   return {
@@ -154,6 +173,8 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
     prompt: staticTextFrame(library, selectionItems.find((item) => item.depth === ROOM_PROMPT_DEPTH)),
     levelCenterX: selection?.matrix[4] ?? 0,
     controls: controlsWindowLayout(library, items),
+    nameButton: nameButton[0],
+    nameLabel: menuButtonLabelFrame(library, nameButton, ROOM_NAME_BUTTON.name),
     optionInfoClips: optionsChildren.flatMap((item) => {
       const text = library.staticText(item.characterId);
       const clip = text ? clipBefore(text, HISCORE_NOTE, OPTION_INFO_CLIP_MARGIN_PX) : undefined;
@@ -173,6 +194,9 @@ export class SelectWorldScreen implements Screen {
   private readonly core: MenuCore<SelectAction>;
   private readonly layout: SelectWorldLayout;
   private readonly controlsWindow: ControlsWindow;
+  private nameDraft: string | undefined = undefined;
+  private nameRolledOver: readonly Filter[] | undefined = undefined;
+  private ticks = 0;
   private optionsOpen = false;
   private controlsOpen = false;
 
@@ -216,10 +240,13 @@ export class SelectWorldScreen implements Screen {
 
   tick(): void {
     this.controlsWindow.tick();
+    this.ticks++;
     this.core.tick(
       () => this.scene(),
       () => this.targets(),
     );
+    const hovered = this.core.pointer.hoveredTarget?.path[0] === ROOM_NAME_BUTTON.name;
+    this.nameRolledOver = hovered ? rollOverFilters(this.deps.rng) : undefined;
   }
 
   present(): void {
@@ -235,7 +262,12 @@ export class SelectWorldScreen implements Screen {
     this.core.refresh(this.scene(), this.targets());
   }
 
-  key(code: string): boolean {
+  get textEntry(): TextEntry | undefined {
+    return this.nameDraft === undefined ? undefined : { kind: TextEntryKind.Name, draft: this.nameDraft, maxLength: PLAYER_NAME_MAX_LENGTH };
+  }
+
+  key(code: string, typed?: string): boolean {
+    if (this.nameDraft !== undefined) return this.nameKey(code, typed);
     if (!this.controlsWindow.key(code)) return false;
     if (!this.controlsWindow.capturing) this.core.refresh(this.scene(), this.targets());
     return true;
@@ -250,7 +282,13 @@ export class SelectWorldScreen implements Screen {
   perform(action: SelectAction): void {
     const { audio } = this.deps.kit;
     const settings = this.deps.settings;
+    if (this.nameDraft !== undefined && action.kind !== SelectAction.EditName) this.saveName(this.nameDraft);
     switch (action.kind) {
+      case SelectAction.EditName:
+        audio.play(SoundId.Click);
+        if (this.nameDraft === undefined) this.nameDraft = settings.settings.playerName;
+        else this.saveName(this.nameDraft);
+        return;
       case SelectAction.Back:
         audio.play(SoundId.Click);
         if (this.deps.room) this.deps.room.back();
@@ -328,6 +366,7 @@ export class SelectWorldScreen implements Screen {
         : []),
       ...(playable ? [release([...LEVEL_ICONS, Child.Button], { kind: SelectAction.Play })] : []),
       ...(panel ? [release([...SUB, RoomChild.Invite], { kind: SelectAction.CopyLink })] : []),
+      ...(this.deps.room ? [release([ROOM_NAME_BUTTON.name], { kind: SelectAction.EditName })] : []),
       ...cards,
     ];
   }
@@ -343,7 +382,57 @@ export class SelectWorldScreen implements Screen {
     this.controlsWindow.scene(tree, this.controlsOpen, (path) => this.core.pointer.buttonState(path));
     const roomItems = this.sceneRoom(tree);
     if (roomItems.length > 0) tree.set(SUB, { attach: [...(tree.at(SUB).attach ?? []), ...roomItems] });
-    return { items: this.layout.items, overrides: tree.overrides, expand: SELECT_WORLD_EXPANDED };
+    this.sceneName(tree);
+    return { items: this.sceneItems(), overrides: tree.overrides, expand: SELECT_WORLD_EXPANDED };
+  }
+
+  private sceneItems(): readonly DisplayItem[] {
+    const { items, nameButton } = this.layout;
+    if (!this.deps.room || !nameButton) return items;
+    return [...items, nameButton].sort((first, second) => first.depth - second.depth);
+  }
+
+  private sceneName(tree: OverrideTree): void {
+    if (!this.deps.room) return;
+    const library = this.deps.kit.renderer.library;
+    const editing = this.nameDraft !== undefined;
+    sceneMenuButton(tree, library, {
+      name: ROOM_NAME_BUTTON.name,
+      frame: this.layout.nameLabel,
+      text: this.nameText(),
+      highlighted: editing || this.nameRolledOver !== undefined,
+      filters: this.nameRolledOver,
+      labelWidth: ROOM_NAME_BUTTON.labelWidth,
+    });
+    const hint = editing ? t('room.name.editing') : this.deps.settings.settings.playerName === '' ? t('room.name.hint') : undefined;
+    if (hint === undefined) return;
+    const placed = placedText(library, { name: RoomChild.NameHint, ...ROOM_NAME_HINT, style: TextStyles.Small });
+    if (!placed) return;
+    tree.set(SUB, { attach: [...(tree.at(SUB).attach ?? []), placed.item] });
+    tree.set([...SUB, RoomChild.NameHint], textOverride(placed, hint, MENU_TEXT_COLOR));
+  }
+
+  private nameText(): string {
+    if (this.nameDraft !== undefined) return t('online.menu.name', { name: `${this.nameDraft.toUpperCase()}${this.caret()}` });
+    const shown = this.roomPanel?.ownName ?? (this.deps.settings.settings.playerName || t('online.menu.noName'));
+    return t('online.menu.name', { name: shown.toUpperCase() });
+  }
+
+  private caret(): string {
+    return Math.floor(this.ticks / CARET_BLINK_TICKS) % 2 === 0 ? t('online.menu.caret') : '';
+  }
+
+  private nameKey(code: string, typed: string | undefined): true {
+    const step = editName(this.nameDraft ?? '', code, typed, PLAYER_NAME_MAX_LENGTH);
+    if (step.outcome === NameEntryOutcome.Editing) this.nameDraft = step.draft;
+    else if (step.outcome === NameEntryOutcome.Confirmed) this.saveName(step.draft);
+    else this.nameDraft = undefined;
+    return true;
+  }
+
+  private saveName(name: string): void {
+    this.nameDraft = undefined;
+    this.deps.settings.update((settings) => withPlayerName(settings, name));
   }
 
   private play(): void {

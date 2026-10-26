@@ -152,6 +152,9 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/ui/touch` -> a stick key released by a window blur is pressed again by
   the next thumb move in the same sector. Phone, push the stick far from its base, let go and
   touch the base again at once -> the base snaps back to its resting place, not shifted.
+* Host a coop lobby, open its link in a second tab -> the room shows "NAME: PLAYER #2" with
+  "Click your name to change it" under it; click, type Sam, Enter -> both tabs list "SAM".
+  With 16 players the list on the left ends at "+n MORE" and never touches NAME.
 * Coop or death match, die -> W A S D (or the touch stick) pan the camera over the map at about
   10 cells per second and it stops at the room edges; after the respawn it returns to the
   player (coop pans back, death match snaps).

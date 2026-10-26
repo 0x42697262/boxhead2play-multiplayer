@@ -88,6 +88,7 @@ export class OnlineClient {
   private sink: GameSink | undefined = undefined;
   private matchUpgrades: readonly MultiplierListEntry[] = [];
   private playerLatencies: ReadonlyMap<number, number> = new Map();
+  private sentName: string | undefined = undefined;
   private enterMatchOf: string | undefined = undefined;
   private leaving = false;
   private readonly listeners = new Set<StateListener>();
@@ -175,7 +176,10 @@ export class OnlineClient {
     this.send({ type: ClientMessageType.SetCharacter, character });
   }
 
-  rename(name: string): void {
+  syncName(): void {
+    const name = this.deps.name();
+    if (name === this.sentName) return;
+    this.sentName = name;
     this.send({ type: ClientMessageType.SetName, name });
   }
 
@@ -208,7 +212,8 @@ export class OnlineClient {
   }
 
   opened(): void {
-    this.transport?.send({ type: ClientMessageType.Hello, version: PROTOCOL_VERSION, sessionId: this.deps.session.read() ?? null, name: this.deps.name() });
+    this.sentName = this.deps.name();
+    this.transport?.send({ type: ClientMessageType.Hello, version: PROTOCOL_VERSION, sessionId: this.deps.session.read() ?? null, name: this.sentName });
   }
 
   closed(): void {
