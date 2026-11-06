@@ -103,18 +103,34 @@ Then `logKills(1)`: multiple kill +1, multiplier +1.
 ## More enemies for more players (`playerScaling.ts`)
 
 Not in the original (owner request). From the second player on, every extra player in the
-match (`totalPlayerCount`, dead players waiting to respawn included) adds half of the level's
-base counts on top: `zombieCount`, `zombieTotalCount`, `devilCount` and `devilTotalCount`
-each grow by `floor(base * 0.5 * extraPlayers)`. Example: level 1 has 10 zombies; 2 players
-get 15, 3 get 20, 4 get 25.
+match (`totalPlayerCount`, dead players waiting to respawn included) adds enemies on top of
+the level's base counts:
+
+* zombies: `zombieCount` and `zombieTotalCount` grow by `floor(base * 0.5 * extraPlayers)`.
+  Example: level 1 has 10 zombies; 2 players get 15, 3 get 20, 4 get 25.
+* devils: `devilCount` and `devilTotalCount` grow by `ceil(base * 1 * extraPlayers)`, the whole
+  base again per extra player, rounded up so 2 players already get a second devil on level 2.
+  Level 1 has no devils, so it stays without them.
+
+Devils are the main difficulty lever for big groups (owner decision). Zombies are drawn and
+sent to every player and their live cap (120) is reached from 3 players on, so more zombies
+only make levels longer; a few devils cost little and hit hard.
 
 `Upgrades.scaleToPlayers` runs at the start of every tick. It keeps the extra counts it has
 granted for the current level and adds or removes the difference, so players who join or
 leave mid-level change the remaining quota at once. A new level starts again from its base.
 
-The live caps grow the same way: zombies `min(60 * (1 + 0.5 * extraPlayers), 120)` (40
-instead of 60 with low detail), devils at most 20 alive with two or more players. One player
-keeps the original numbers exactly.
+The zombie live cap grows the same way: `min(60 * (1 + 0.5 * extraPlayers), 120)` (40
+instead of 60 with low detail). Devils have no live cap (`MAX_LIVE_DEVILS_SCALED` is
+infinite; set a number there to cap them again).
+
+The devil spawn timer also scales: after each devil, and at the start of a level, the
+countdown restarts at `devilSpawnRate(levelRate, players) = max(floor(levelRate / players), 1)`
+ticks instead of the level's rate (`250 - (n - 1)`, at least 25). With 8 players a devil
+comes every 1.2 s instead of every 10 s, so the extra devils arrive together instead of one
+by one. The countdown still runs only while fewer devils are alive than the level allows.
+
+One player keeps the original numbers exactly.
 
 ## Multiplier
 

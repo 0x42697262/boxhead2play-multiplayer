@@ -1,6 +1,7 @@
 import {
   DEVILS_PER_EXTRA_PLAYER,
   MAX_LIVE_DEVILS_SCALED,
+  MIN_SPAWN_RATE_TICKS,
   MAX_LIVE_ZOMBIES_SCALED,
   SCALING_FIRST_EXTRA_PLAYER,
   ZOMBIES_PER_EXTRA_PLAYER,
@@ -33,8 +34,8 @@ export function extraEnemies(base: LevelBase, players: number): ExtraEnemies {
   return {
     zombieCount: Math.floor(base.zombieCount * zombies),
     zombieTotalCount: Math.floor(base.zombieTotalCount * zombies),
-    devilCount: Math.floor(base.devilCount * devils),
-    devilTotalCount: Math.floor(base.devilTotalCount * devils),
+    devilCount: Math.ceil(base.devilCount * devils),
+    devilTotalCount: Math.ceil(base.devilTotalCount * devils),
   };
 }
 
@@ -44,4 +45,8 @@ export function liveZombieCap(baseCap: number, players: number): number {
 
 export function liveDevilCap(players: number): number {
   return extraPlayers(players) === 0 ? Number.POSITIVE_INFINITY : MAX_LIVE_DEVILS_SCALED;
+}
+
+export function devilSpawnRate(levelRate: number, players: number): number {
+  return Math.max(Math.floor(levelRate / Math.max(players, 1)), MIN_SPAWN_RATE_TICKS);
 }

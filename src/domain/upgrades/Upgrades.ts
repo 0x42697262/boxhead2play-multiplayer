@@ -39,7 +39,7 @@ import {
   WIDE_SHOT_LEVEL,
   WIDER_SHOT_LEVEL,
 } from './tuning.ts';
-import { extraEnemies, liveDevilCap, liveZombieCap, NO_EXTRA_ENEMIES, type ExtraEnemies, type LevelBase } from './playerScaling.ts';
+import { devilSpawnRate, extraEnemies, liveDevilCap, liveZombieCap, NO_EXTRA_ENEMIES, type ExtraEnemies, type LevelBase } from './playerScaling.ts';
 import { UpgradeProp } from './UpgradeProp.ts';
 
 export interface UpgradesHost {
@@ -321,7 +321,7 @@ export class Upgrades {
     if (level.liveDevils < Math.min(level.devilCount, liveDevilCap(players))) {
       const step = level.zombieCount !== 0 ? DEVIL_COUNTDOWN_STEP_WITH_ZOMBIES : DEVIL_COUNTDOWN_STEP_ONLY_DEVILS;
       level.devilSpawnCountdown -= step;
-      if (level.devilSpawnCountdown <= 0 && this.host.spawnDevil()) level.devilSpawnCountdown = level.devilSpawnRate;
+      if (level.devilSpawnCountdown <= 0 && this.host.spawnDevil()) level.devilSpawnCountdown = this.scaledDevilSpawnRate();
     }
   }
 
@@ -347,12 +347,16 @@ export class Upgrades {
     this.level.liveZombies = 0;
     this.level.liveDevils = 0;
     this.level.zombieSpawnCountdown = this.level.zombieSpawnRate;
-    this.level.devilSpawnCountdown = this.level.devilSpawnRate;
+    this.level.devilSpawnCountdown = this.scaledDevilSpawnRate();
     if (!announce) return;
     this.host.hud.addMessage(MessageTone.Level, {
       key: index <= LEVEL_COUNT ? 'hud.level' : 'hud.levelForever',
       params: { level: index },
     });
+  }
+
+  private scaledDevilSpawnRate(): number {
+    return devilSpawnRate(this.level.devilSpawnRate, this.totalPlayerCount);
   }
 
   private scaleToPlayers(): void {
