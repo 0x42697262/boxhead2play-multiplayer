@@ -10,7 +10,7 @@ import { IDLE_CONTROL, IDLE_PLAYER_INPUT, IDLE_TICK_INPUT } from '../../../src/d
 import { InitKind, type RoomInitObject } from '../../../src/domain/world/RoomDefinition.ts';
 import { GameAmount, GameSpeed, LOCAL_SIMULATION_HOST, SERVER_SIMULATION_HOST, type SimulationHost } from '../../../src/domain/world/SimulationSettings.ts';
 import { cellDistance } from '../../../src/domain/world/spawning.ts';
-import { MAX_PLAYERS, PLAYER_SPAWN_DOOR_CLEARANCE_CELLS } from '../../../src/domain/world/tuning.ts';
+import { MAX_PLAYERS, PLAYER_SPAWN_DOOR_CLEARANCE_CELLS, PLAYER_SPAWN_ENEMY_CLEARANCES_CELLS, PLAYER_SPAWN_RECENT_CELLS } from '../../../src/domain/world/tuning.ts';
 import type { World } from '../../../src/domain/world/World.ts';
 import type { FakePlayer } from '../support/fakes.ts';
 import { FakeThing, at, cellObject, makeWorld, place, room, solid, cellOf } from '../support/fakes.ts';
@@ -293,7 +293,10 @@ describe('World random player spawns', () => {
   const openRoom = (doors: RoomInitObject[] = []) => room(40, 10, [cellObject(InitKind.Player1, 20, 5), ...doors]);
   const cells = (world: World): string[] => world.things.players().map((player) => `${Math.trunc(player.position.x)},${Math.trunc(player.position.y)}`);
   const SEEDS = Array.from({ length: 10 }, (_unused, index) => index + 1);
-  const FAR_END_CELLS = 10;
+  const ENEMY_CLEARANCE_CELLS = PLAYER_SPAWN_ENEMY_CLEARANCES_CELLS[0];
+  const SCATTER_SPAWNS = 200;
+  const SCATTER_MIDDLE_FROM = 10;
+  const SCATTER_MIDDLE_TO = 30;
 
   it.each([GameMode.Single, GameMode.Coop, GameMode.DeathMatch])('puts all %s players on different free cells of the floor reachable from the markers', (gameMode) => {
     const count = gameMode === GameMode.Single ? 1 : MAX_PLAYERS;
@@ -316,17 +319,35 @@ describe('World random player spawns', () => {
     expect(run(3)).not.toEqual(run(4));
   });
 
-  it.each(SEEDS)('respawns at the far end of an open room when a zombie stands at the other end (seed %i)', (seed) => {
+  it.each(SEEDS)('respawns at least the enemy clearance away from a living zombie (seed %i)', (seed) => {
     const { world } = makeWorld(openRoom(), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(seed) });
-    place(world, new FakeThing(world, at(38.5, 5.5), ThingClass.Zombie));
-    expect(world.playerRespawnPoint()?.cell.x).toBeLessThan(FAR_END_CELLS);
+    place(world, new FakeThing(world, at(20.5, 5.5), ThingClass.Zombie));
+    const point = world.playerRespawnPoint();
+    expect(point && cellDistance(point.cell, { x: 20, y: 5 })).toBeGreaterThanOrEqual(ENEMY_CLEARANCE_CELLS);
   });
 
   it.each(SEEDS)('ignores dead zombies and keeps away from devils too (seed %i)', (seed) => {
     const { world } = makeWorld(openRoom(), { options: { gameMode: GameMode.Coop }, spawnRng: new SeededRng(seed) });
     place(world, new FakeThing(world, at(1.5, 5.5), ThingClass.Zombie), undefined, ThingFlag.Dead);
     place(world, new FakeThing(world, at(38.5, 5.5), ThingClass.Devil));
-    expect(world.playerRespawnPoint()?.cell.x).toBeLessThan(FAR_END_CELLS);
+    const point = world.playerRespawnPoint();
+    expect(point && cellDistance(point.cell, { x: 38, y: 5 })).toBeGreaterThanOrEqual(ENEMY_CLEARANCE_CELLS);
+  });
+
+  it.each([GameMode.Coop, GameMode.DeathMatch])('scatters %s respawns over the whole room, not the corners', (gameMode) => {
+    const { world } = makeWorld(openRoom(), { options: { gameMode }, spawnRng: new SeededRng(7) });
+    place(world, new FakeThing(world, at(38.5, 5.5), ThingClass.Zombie));
+    const spawned = Array.from({ length: SCATTER_SPAWNS }, () => world.playerRespawnPoint()?.cell);
+    const middle = spawned.filter((cell) => cell && cell.x >= SCATTER_MIDDLE_FROM && cell.x < SCATTER_MIDDLE_TO);
+    expect(middle.length).toBeGreaterThan(SCATTER_SPAWNS / 4);
+    expect(new Set(spawned.slice(0, PLAYER_SPAWN_RECENT_CELLS + 1)).size).toBe(PLAYER_SPAWN_RECENT_CELLS + 1);
+  });
+
+  it('lets a death match player respawn next to a door', () => {
+    const doors = [cellObject(InitKind.Zombie, 3, 5)];
+    const { world } = makeWorld(openRoom(doors), { options: { gameMode: GameMode.DeathMatch }, spawnRng: new SeededRng(1) });
+    const columns = Array.from({ length: SCATTER_SPAWNS }, () => world.playerRespawnPoint()?.cell.x ?? -1);
+    expect(columns.some((x) => x < PLAYER_SPAWN_DOOR_CLEARANCE_CELLS + 3)).toBe(true);
   });
 
   it.each(SEEDS)('spawns away from zombie and devil doors when no enemy is alive (seed %i)', (seed) => {

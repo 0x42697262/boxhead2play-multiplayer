@@ -107,13 +107,16 @@ Add one line per behavior change: what to do, and the result you expect.
 * `npx vitest run test/domain/world/playerSpawns.test.ts` -> 16 players in every room, coop and
   deathmatch, get their own free cell (8 at the start, 8 late joins) and never stand inside a wall;
   ROOM_Single_0011 has no spawn point at (16, 9).
-* Start any mode a few times -> player 1 starts in a different open spot each time, at least 5
-  cells from a zombie or devil door; online players may start right next to each other.
-* Coop with zombies on one side of the room, die -> the respawn is on the far side, away from
-  the zombies and their doors. `npx vitest run test/domain/world/World.test.ts
-  test/domain/world/spawning.test.ts` -> with a zombie (or devil) at one end of an open room the
-  respawn is at the other end, dead zombies do not count, with no enemy alive the cell is 5+ cells
-  from every door, a room whose floor is all near a door still spawns, never in a wall.
+* Start any mode a few times -> player 1 starts in a different open spot each time; in single and
+  coop at least 5 cells from a zombie or devil door; online players may start right next to each other.
+* Coop with zombies on one side of the room, die a few times -> the respawns land all over the
+  room, never right next to a zombie, and not in the same corner each time. Death match, die
+  repeatedly -> a different spot anywhere on the map each time, also next to doors.
+  `npx vitest run test/domain/world/World.test.ts test/domain/world/spawning.test.ts` -> every
+  respawn is 6+ cells from a living zombie or devil, dead zombies do not count, with no enemy
+  alive the cell is 5+ cells from every door, 200 respawns in coop and death match spread over
+  the middle of the room, the last 4 spawn cells are skipped, a room whose floor is all near a
+  door still spawns, never in a wall.
 * DEATH MATCH with 3 players, one dies from his own grenade or a barrel -> `` ` `` shows one more
   death for him and no kill for anybody.
 * A NixOS host with `services.boxhead2play.environmentFile` holding `BOXHEAD_MONITOR_TOKEN` ->
