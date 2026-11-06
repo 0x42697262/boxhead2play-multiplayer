@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SeededRng } from '../../src/domain/math/Rng.ts';
 import { CharacterStyle, ClipMode, VisualKind, VisualLayer } from '../../src/domain/visuals.ts';
 import { GameMode } from '../../src/domain/world/GameMode.ts';
-import { Difficulty, GameAmount, GameSpeed, type PlayerCharacter } from '../../src/domain/world/SimulationSettings.ts';
+import { Difficulty, GameAmount, GameSpeed, RespawnTime, type PlayerCharacter } from '../../src/domain/world/SimulationSettings.ts';
 import { PlayerControl } from '../../src/domain/world/input.ts';
 import { CONTROL_ORDER, controlBit } from '../../src/net/controlMask.ts';
 import { DrawListDecoder, DrawListEncoder } from '../../src/net/drawListWire.ts';
@@ -140,7 +140,7 @@ describe('server wire codec', () => {
 
   it.skipIf(assetsMissing)('decodes every frame of a busy 4-player match exactly like the JSON encoding', async () => {
     const content = await loadGameContent('public/assets');
-    const options = { difficulty: Difficulty.Nightmare, gameSpeed: GameSpeed.Normal, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: GameAmount.Kills10, detail: true };
+    const options = { difficulty: Difficulty.Nightmare, gameSpeed: GameSpeed.Normal, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: GameAmount.Kills10, coopRespawnSeconds: RespawnTime.Seconds10, deathMatchRespawnSeconds: RespawnTime.Seconds5, detail: true };
     const match = Match.start({ id: 'm', mode: GameMode.Coop, roomId: 'ROOM_Single_0001', options, characters: [0, 1, 2, 3] as PlayerCharacter[], seed: 7 }, content);
     if (!match) throw new Error('room missing');
     const rng = new SeededRng(7);

@@ -2,7 +2,7 @@ import { NO_ADDRESS_LIMITS } from '../../src/config/serverEnv.ts';
 import { silentLogger } from '../../src/observability/logger.ts';
 import { createThingFactory } from '../../src/domain/things/factory.ts';
 import { InitKind } from '../../src/domain/world/RoomDefinition.ts';
-import { Difficulty, GameAmount, GameSpeed } from '../../src/domain/world/SimulationSettings.ts';
+import { Difficulty, GameAmount, GameSpeed, RespawnTime } from '../../src/domain/world/SimulationSettings.ts';
 import { encodeClientMessage, parseServerMessage, PROTOCOL_VERSION, type ClientMessage, type LobbyOptions, type ServerMessage } from '../../src/net/protocol.ts';
 import { ServerWireDecoder, ServerWireEncoder } from '../../src/net/serverWire.ts';
 import { Hub, type Link } from '../../src/server/Hub.ts';
@@ -22,6 +22,8 @@ export const OPTIONS: LobbyOptions = {
   collisionsActive: true,
   damageActive: true,
   gameAmount: GameAmount.Kills5,
+  coopRespawnSeconds: RespawnTime.Seconds10,
+  deathMatchRespawnSeconds: RespawnTime.Seconds5,
   detail: true,
 };
 

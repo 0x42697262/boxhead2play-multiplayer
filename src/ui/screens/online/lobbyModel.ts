@@ -61,13 +61,16 @@ function onOff(value: boolean): string {
 export function optionsSummary(mode: OnlineMode, options: LobbyOptions): string {
   const speed = t(`online.speed.${options.gameSpeed}`);
   const collisions = onOff(options.collisionsActive);
-  if (mode === GameMode.DeathMatch) return t('online.options.deathMatch', { kills: KILLS_TO_WIN[options.gameAmount], speed, collisions });
+  if (mode === GameMode.DeathMatch) {
+    return t('online.options.deathMatch', { kills: KILLS_TO_WIN[options.gameAmount], speed, collisions, respawn: options.deathMatchRespawnSeconds });
+  }
   return t('online.options.coop', {
     difficulty: t(`online.difficulty.${options.difficulty}`),
     speed,
     devils: onOff(options.devilsActive),
     collisions,
     damage: onOff(options.damageActive),
+    respawn: options.coopRespawnSeconds,
   });
 }
 

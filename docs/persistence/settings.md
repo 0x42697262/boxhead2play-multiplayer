@@ -29,6 +29,8 @@ the game continues with the values in memory.
 | `gameSpeed` | 0..2 | 1 | `mGameSpeed` |
 | `devilsActive`, `collisionsActive`, `damageActive` | boolean | true | `mDevilsActive` etc. (stored as 1/0) |
 | `gameAmount` | 0..3 | 1 | `mGameAmount` (5/10/20/50 kills) |
+| `coopRespawnSeconds` | 3, 5, 10, 15 | 10 | none (seconds from death to respawn in coop) |
+| `deathMatchRespawnSeconds` | 3, 5, 10, 15 | 5 | none (the same in deathmatch) |
 | `levelIndex.single/coop/deathMatch` | integer >= 0 | 8 / 0 / 0 | `mLevelIndex_*` |
 | `character` | 0..3 | 3 | `mPlayer1_CharacterIndex` (0 SWAT, 1 Bond, 2 GI Joe, 3 Bambo) |
 | `keys` | Flash key codes 0..255 for up, down, left, right, fire, nextWeapon, prevWeapon | W, S, A, D, J, L, K | `mPlayer1_Key*` |
@@ -66,11 +68,13 @@ current version, then validates.
 * Version 9 had W, S, A, D, Space, E, Q as defaults (`SPACE_FIRE_KEYS`).
   `migrateSpaceFireKeys` replaces keys that still equal them with W, S, A, D, J, L, K;
   rebound keys stay.
+* Version 10 had no respawn times. `migrateRespawnTimes` adds `coopRespawnSeconds: 10` and
+  `deathMatchRespawnSeconds: 5`.
 
 A migrated blob is written
 back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown version or a
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 11: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[10]`
-that turns a version 10 object into a version 11 object.
+To add version 12: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[11]`
+that turns a version 11 object into a version 12 object.

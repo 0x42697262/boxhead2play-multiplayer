@@ -99,7 +99,7 @@ describe('lobby room on the select-world screen', () => {
     expect(host.members).toEqual(['PLAYERS: 2/4', '1. ANN · BAMBO (you, host)', '2. BOB · SWAT']);
     const guest = roomPanel(lobby(), ONLINE, ROOMS, undefined);
     expect(guest).toMatchObject({ host: false, prompt: 'WAITING FOR ANN TO START', canPlay: false });
-    expect(guest.options).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on');
+    expect(guest.options).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on · Respawn 10 s');
   });
 
   it('offers joining a running match to a member outside it', () => {
@@ -122,7 +122,7 @@ describe('lobby room on the select-world screen', () => {
   });
 
   it('summarizes options per mode', () => {
-    expect(optionsSummary(GameMode.Coop, OPTIONS)).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on');
-    expect(optionsSummary(GameMode.DeathMatch, OPTIONS)).toBe('First to 10 kills · Normal speed · Collisions on');
+    expect(optionsSummary(GameMode.Coop, OPTIONS)).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on · Respawn 10 s');
+    expect(optionsSummary(GameMode.DeathMatch, OPTIONS)).toBe('First to 10 kills · Normal speed · Collisions on · Respawn 5 s');
   });
 });

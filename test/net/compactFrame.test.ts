@@ -5,7 +5,7 @@ import { DecalSymbol } from '../../src/domain/map/MapDecals.ts';
 import { DECAL_DIRECTIONS, DECAL_SCALE_X, DECAL_SCALE_Y } from '../../src/domain/map/tuning.ts';
 import { CHARACTER_STYLE_SCALES, CharacterStyle, ClipMode, OPAQUE_ALPHA, VisualKind, VisualLayer, type DrawEntry } from '../../src/domain/visuals.ts';
 import { GameMode } from '../../src/domain/world/GameMode.ts';
-import { Difficulty, GameAmount, GameSpeed } from '../../src/domain/world/SimulationSettings.ts';
+import { Difficulty, GameAmount, GameSpeed, RespawnTime } from '../../src/domain/world/SimulationSettings.ts';
 import { compactDecal, compactEntry, expandDecal, expandEntry, expandFrame } from '../../src/net/compactFrame.ts';
 import { Match } from '../../src/server/Match.ts';
 import { loadGameContent } from '../../src/server/node/content.ts';
@@ -91,7 +91,7 @@ describe('compact frames', () => {
 
   it.skipIf(assetsMissing)('restores every frame of a real coop match to the full draw list and events', async () => {
     const content = await loadGameContent('public/assets');
-    const options = { difficulty: Difficulty.Nightmare, gameSpeed: GameSpeed.Normal, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: GameAmount.Kills10, detail: true };
+    const options = { difficulty: Difficulty.Nightmare, gameSpeed: GameSpeed.Normal, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: GameAmount.Kills10, coopRespawnSeconds: RespawnTime.Seconds10, deathMatchRespawnSeconds: RespawnTime.Seconds5, detail: true };
     const match = Match.start({ id: 'm', mode: GameMode.Coop, roomId: 'ROOM_Single_0001', options, characters: [0, 1], seed: 3 }, content);
     if (!match) throw new Error('room missing');
     const world = (match as unknown as { world: { drawList(camera: unknown): DrawEntry[]; cameraFor(index: number): unknown } }).world;

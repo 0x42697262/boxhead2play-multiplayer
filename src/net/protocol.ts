@@ -7,7 +7,7 @@ import type { MultiplierListEntry } from '../domain/upgrades/Upgrades.ts';
 import type { CharacterVisual, ClipVisual, DrawEntry, Visual } from '../domain/visuals.ts';
 import { CompletionState } from '../domain/world/CompletionState.ts';
 import { GameMode } from '../domain/world/GameMode.ts';
-import { Difficulty, GameAmount, GameSpeed, PlayerCharacter, type GameOptions } from '../domain/world/SimulationSettings.ts';
+import { Difficulty, GameAmount, GameSpeed, PlayerCharacter, RespawnTime, type GameOptions } from '../domain/world/SimulationSettings.ts';
 import type { CameraView } from '../domain/world/World.ts';
 import { isTextKey } from '../text/i18n.ts';
 import { CONTROL_MASK_LIMIT } from './controlMask.ts';
@@ -53,13 +53,17 @@ export const LobbyOptionsSchema = z.object({
   collisionsActive: z.boolean(),
   damageActive: z.boolean(),
   gameAmount: numericEnum(GameAmount),
+  coopRespawnSeconds: numericEnum(RespawnTime),
+  deathMatchRespawnSeconds: numericEnum(RespawnTime),
   detail: z.boolean(),
 });
 
 export type LobbyOptions = z.infer<typeof LobbyOptionsSchema>;
 
 export function gameOptionsFor(mode: OnlineMode, options: LobbyOptions, playerCharacters: readonly PlayerCharacter[]): GameOptions {
-  return { ...options, gameMode: mode, playerCharacters };
+  const { coopRespawnSeconds, deathMatchRespawnSeconds, ...shared } = options;
+  const respawnSeconds = mode === GameMode.DeathMatch ? deathMatchRespawnSeconds : coopRespawnSeconds;
+  return { ...shared, gameMode: mode, respawnSeconds, playerCharacters };
 }
 
 export const LobbyState = {

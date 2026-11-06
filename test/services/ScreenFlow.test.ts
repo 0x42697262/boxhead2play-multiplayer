@@ -84,7 +84,7 @@ const START: GameStarted = {
   lobbyId: 'l1',
   mode: GameMode.Coop,
   roomId: 'ROOM_Single_0001',
-  options: { difficulty: 0, gameSpeed: 1, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: 1, detail: true },
+  options: { difficulty: 0, gameSpeed: 1, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: 1, coopRespawnSeconds: 10, deathMatchRespawnSeconds: 5, detail: true },
   playerIndex: 1,
   ticksPerSecond: 25,
   projectionFactor: -0.5,

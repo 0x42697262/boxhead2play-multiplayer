@@ -2,7 +2,7 @@ import { Deflate as FlateStream } from 'fflate';
 import { SeededRng } from '../../src/domain/math/Rng.ts';
 import { GameMode } from '../../src/domain/world/GameMode.ts';
 import type { PlayerCharacter } from '../../src/domain/world/SimulationSettings.ts';
-import { Difficulty, GameAmount, GameSpeed } from '../../src/domain/world/SimulationSettings.ts';
+import { Difficulty, GameAmount, GameSpeed, RespawnTime } from '../../src/domain/world/SimulationSettings.ts';
 import { CONTROL_ORDER, controlBit } from '../../src/net/controlMask.ts';
 import { encodeServerMessage, type LobbyOptions, type OnlineMode } from '../../src/net/protocol.ts';
 import { ServerWireDecoder, ServerWireEncoder } from '../../src/net/serverWire.ts';
@@ -25,6 +25,8 @@ const OPTIONS: LobbyOptions = {
   collisionsActive: true,
   damageActive: true,
   gameAmount: GameAmount.Kills10,
+  coopRespawnSeconds: RespawnTime.Seconds10,
+  deathMatchRespawnSeconds: RespawnTime.Seconds5,
   detail: true,
 };
 

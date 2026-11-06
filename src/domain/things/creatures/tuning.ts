@@ -58,7 +58,7 @@ export const PLAYER = {
   spawnInvincibleTicks: 200,
   regenSeconds: 30,
   walkAnimationFactor: 2,
-  respawnDelayTicks: 148,
+  deathStateChangeTicks: 2,
   respawnInvincibleTicks: 25,
   respawnInvincibleFactor: 5,
   deathMatchRespawnInvincibleFactor: 1,

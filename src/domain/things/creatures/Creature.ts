@@ -31,7 +31,6 @@ import {
   HIT_RECOVERY_SLEEP_TICKS,
   KNOCKBACK_DECAY,
   KNOCKBACK_MIN_LENGTH,
-  PLAYER_CORPSE_SECONDS,
   STRAIGHT_STEP_CELLS,
   TURN_LOOP_SLEEP_SECONDS_DIVISOR,
   TURN_SPEED_FACTOR,
@@ -406,12 +405,15 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
   }
 
   protected enterDead(): void {
-    const seconds = this.isPlayer ? PLAYER_CORPSE_SECONDS : CORPSE_SECONDS;
-    this.stateCount = this.world.ticksPerSecond * seconds;
+    this.stateCount = this.corpseTicks();
     this.flags |= ThingFlag.SortFloor;
     this.clearCollideCell();
     this.animator.setAnimation(CreatureAnimation.Dead, 0);
     this.world.map.decals.bloodSplat(this.position);
+  }
+
+  protected corpseTicks(): number {
+    return this.world.ticksPerSecond * CORPSE_SECONDS;
   }
 
   private tickDead(): void {

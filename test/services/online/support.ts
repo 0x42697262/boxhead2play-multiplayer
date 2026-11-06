@@ -27,7 +27,7 @@ export class FakeTransport implements Transport {
   }
 }
 
-export const OPTIONS = { difficulty: 0, gameSpeed: 1, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: 1, detail: true } as const;
+export const OPTIONS = { difficulty: 0, gameSpeed: 1, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: 1, coopRespawnSeconds: 10, deathMatchRespawnSeconds: 5, detail: true } as const;
 
 export const START: GameStarted = {
   type: 'gameStarted',

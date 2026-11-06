@@ -149,16 +149,24 @@ groups that change its game (`OptionGroupSpec.modes`, `optionRows.ts`):
 | Friendly fire | `_Damage_Off/On` | `damageActive` | single, coop |
 | Game speed | `_Speed_Slow/Normal/Fast` | `gameSpeed` 0..2 | every mode |
 | Number of games | `_Game1..4` | `gameAmount` 0..3 | deathmatch |
+| Respawn time | clones of `_Game1` (3, 5, 10, 15 SEC) | `coopRespawnSeconds` / `deathMatchRespawnSeconds` | coop / deathmatch |
 
 Deathmatch has no zombies or devils and always has friendly damage, so its window drops the
 zombie rows; single and coop never use the kill target. The remaining rows keep their
 original order and move up into the top row slots (buttons, title and info text shift by the
 same amount), so the window has no gaps. Hidden rows have no click targets.
 
+Respawn time is not in the SWF (`ADDED_OPTION_ROWS`). It goes into the next free row slot
+(the sixth in coop, the fourth in deathmatch) and is drawn like a SETTINGS row
+(`setupRowLayout`, `drawSetupRowButtons`, `placeSetupText` from `SetupWindow.ts`): four
+clones of `_Game1` with attached labels and an attached title and info line. Coop and
+deathmatch each have their own row and setting, so changing one leaves the other. Reset sets
+10 s in coop and 5 s in deathmatch.
+
 `RegisterButton_SetGroup` shows a button's `_Selected` clip (the pink highlight) when the
 stored value equals the button's value; there is no frame change. On/off options store
 the legacy `0`/`1` as booleans. Reset applies `ResetOptions` (Beginner, Normal, devils,
-collisions and damage on, first to 10). Every click plays `Click2`. The window's `mcLock`
+collisions and damage on, first to 10, respawn 10 s coop / 5 s deathmatch). Every click plays `Click2`. The window's `mcLock`
 covers the stage and swallows clicks, so the window is modal.
 
 ### Controls window (`WindowControls_Setup`)
