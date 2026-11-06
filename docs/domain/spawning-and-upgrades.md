@@ -25,30 +25,35 @@ players do not use the original `..._Close` / `..._Far` marker picks. `World.pla
 is every cell reachable from the markers through straight neighbors without static
 impassable or edge-of-map flags (`reachableFloor`), starting with the `Player1` marker.
 `World.playerRespawnPoint()` (start, late join and respawn, every mode) calls
-`pickPlayerSpawnCell`, a best-of-N random pick:
+`pickPlayerSpawnCell`, an even random pick from the cells that pass a few filters:
 
 1. At load, `playerSpawnFloor` splits the floor once: `awayFromDoors` keeps the cells at
    least `PLAYER_SPAWN_DOOR_CLEARANCE_CELLS` = 5 from every zombie and devil spawn point
-   (doors); `all` is the whole floor.
+   (doors); `all` is the whole floor. Deathmatch has no zombies, so it uses `all` for both.
 2. Per spawn, drop cells with `NonMovablePlayer` flags (walls, objects, creatures, players)
    from `awayFromDoors`, or from `all` when no free cell is left away from the doors.
-3. Draw `PLAYER_SPAWN_CANDIDATES` = 32 cells from that pool with `spawnRng` (with
-   replacement).
-4. Score each by the Chebyshev distance in cells to the nearest enemy: every living zombie
-   and devil (not dead, still processing) and every door. Pick the highest score; on a tie
-   the first drawn. With no enemies and no doors, that is the first draw.
+3. Single and coop: keep the cells at least `PLAYER_SPAWN_ENEMY_CLEARANCES_CELLS[0]` = 6
+   (Chebyshev) from every living zombie and devil (not dead, still processing). When none is
+   left, try 3, then take any free cell. Deathmatch has no threats: other players do not
+   count, so the pick is purely random.
+4. At each step, cells used by the last `PLAYER_SPAWN_RECENT_CELLS` = 4 spawns are skipped
+   while another cell passes, so two deaths in a row do not land on the same cell.
+5. Pick one of the remaining cells with `spawnRng.int(count)`.
 
-Other players do not count: two players may start next to each other (owner decision; 16
-players must fit even in small rooms). A room full of zombies still gives a spawn, only
-a worse one. The cost per spawn is one pass over the floor for the free check plus
-32 x (living enemies + doors) distance checks; nothing is searched exhaustively. 32
-candidates find a cell in the best tenth of the pool with a chance of about 97 %
-(1 - 0.9^32), which is good enough at that cost.
+Earlier versions drew 32 cells and kept the one furthest from the nearest enemy or door.
+Taking the extreme of a sample put almost every spawn on the room edge: in coop the corner
+away from the zombies, in deathmatch the few cells furthest from the doors, every time, so a
+player could wait there for respawns (owner report). A threshold plus an even pick spreads
+the spawns over every safe cell, the same way in small and large rooms. The cost per spawn is
+one pass over the floor times (living enemies + recent cells), which only runs on a spawn.
+
+Two players may start next to each other (owner decision; 16 players must fit even in
+small rooms). A room full of zombies still gives a spawn, only a closer one.
 
 The point faces the `Player1` marker's rotation. `openSpawnNear` still moves a spawn off a
 taken cell. `spawnRng` (`WorldDependencies.spawnRng`) defaults to the world rng; tests pass
-`SequenceRng([0])`, which picks the first free floor cell away from the doors, the
-`Player1` marker when it is far enough from them.
+`SequenceRng([0])`, which picks the first free floor cell away from the doors and the
+enemies, the `Player1` marker when it is far enough from them.
 
 Online, players can join and leave a running world:
 

@@ -76,8 +76,9 @@ export interface PlayerSpawnFloor {
 export interface PlayerSpawnSearch {
   readonly floor: PlayerSpawnFloor;
   readonly rng: Rng;
-  readonly enemies: readonly CellPoint[];
-  readonly candidates: number;
+  readonly threats: readonly CellPoint[];
+  readonly clearances: readonly number[];
+  readonly recent: ReadonlySet<MapCell>;
 }
 
 export function cellDistance(first: CellPoint, second: CellPoint): number {
@@ -93,28 +94,24 @@ function freeCells(cells: readonly MapCell[]): MapCell[] {
   return cells.filter((cell) => !(cell.collide & CollideMask.NonMovablePlayer));
 }
 
-function nearestEnemyDistance(cell: CellPoint, enemies: readonly CellPoint[]): number {
-  let nearest = Number.POSITIVE_INFINITY;
-  for (const enemy of enemies) nearest = Math.min(nearest, cellDistance(enemy, cell));
-  return nearest;
+function clearOf(threats: readonly CellPoint[], clearance: number): (cell: MapCell) => boolean {
+  return (cell) => threats.every((threat) => cellDistance(threat, cell) >= clearance);
+}
+
+function pickAny(cells: readonly MapCell[], rng: Rng): MapCell | undefined {
+  return cells.length > 0 ? cells[rng.int(cells.length)] : undefined;
 }
 
 export function pickPlayerSpawnCell(search: PlayerSpawnSearch): MapCell | undefined {
   const awayFromDoors = freeCells(search.floor.awayFromDoors);
   const pool = awayFromDoors.length > 0 ? awayFromDoors : freeCells(search.floor.all);
-  if (pool.length === 0) return undefined;
-  let best: MapCell | undefined;
-  let bestDistance = Number.NEGATIVE_INFINITY;
-  for (let draw = 0; draw < search.candidates; draw++) {
-    const cell = pool[search.rng.int(pool.length)];
-    if (!cell) continue;
-    const distance = nearestEnemyDistance(cell, search.enemies);
-    if (distance > bestDistance) {
-      best = cell;
-      bestDistance = distance;
-    }
+  const fresh = pool.filter((cell) => !search.recent.has(cell));
+  for (const clearance of search.clearances) {
+    const safe = clearOf(search.threats, clearance);
+    const cell = pickAny(fresh.filter(safe), search.rng) ?? pickAny(pool.filter(safe), search.rng);
+    if (cell) return cell;
   }
-  return best;
+  return pickAny(fresh, search.rng) ?? pickAny(pool, search.rng);
 }
 
 export function openSpawnNear(origin: SpawnPoint, occupied: ReadonlySet<MapCell>, searchCells: number): SpawnPoint | undefined {

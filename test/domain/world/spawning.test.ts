@@ -75,26 +75,42 @@ describe('spawn point selection', () => {
     expect(spawnFloor.all).toBe(floor);
   });
 
-  it('picks the drawn candidate furthest from the nearest enemy, the first drawn on a tie', () => {
+  it('picks evenly among the free cells clear of every threat, lowering the clearance step by step', () => {
     const { world } = makeWorld(room(30, 20));
     const floor = [cellOf(world, 3, 3), cellOf(world, 6, 3), cellOf(world, 9, 3), cellOf(world, 12, 3)];
-    const search = (draws: number[], enemies: { x: number; y: number }[]) =>
-      pickPlayerSpawnCell({ floor: { awayFromDoors: floor, all: floor }, rng: new SequenceRng(draws), enemies, candidates: draws.length });
-    expect(search([0, 0.3, 0.6], [{ x: 2, y: 3 }])).toBe(floor[2]);
-    expect(search([0, 0.3, 0.6], [{ x: 2, y: 3 }, { x: 10, y: 3 }])).toBe(floor[1]);
-    expect(search([0.6, 0.3], [])).toBe(floor[2]);
-    expect(search([0.3, 0.6], [{ x: 7, y: 9 }])).toBe(floor[1]);
+    const search = (draw: number, threats: { x: number; y: number }[], clearances: number[]) =>
+      pickPlayerSpawnCell({ floor: { awayFromDoors: floor, all: floor }, rng: new SequenceRng([draw]), threats, clearances, recent: new Set() });
+    expect(search(0, [{ x: 2, y: 3 }], [6])).toBe(floor[2]);
+    expect(search(0.9, [{ x: 2, y: 3 }], [6])).toBe(floor[3]);
+    expect(search(0, [{ x: 2, y: 3 }, { x: 13, y: 3 }], [6, 3])).toBe(floor[1]);
+    expect(search(0.9, [{ x: 2, y: 3 }, { x: 13, y: 3 }], [6, 3])).toBe(floor[2]);
+    expect(search(0.9, [{ x: 7, y: 3 }], [20])).toBe(floor[3]);
+    expect(search(0.3, [], [])).toBe(floor[1]);
+  });
+
+  it('skips the recent spawn cells while another cell is left', () => {
+    const { world } = makeWorld(room(30, 20));
+    const first = cellOf(world, 3, 3);
+    const second = cellOf(world, 6, 3);
+    const third = cellOf(world, 9, 3);
+    const floor = [first, second, third];
+    const search = (recent: typeof floor) =>
+      pickPlayerSpawnCell({ floor: { awayFromDoors: floor, all: floor }, rng: new SequenceRng([0]), threats: [], clearances: [], recent: new Set(recent) });
+    expect(search([first])).toBe(second);
+    expect(search([first, second])).toBe(third);
+    expect(search(floor)).toBe(first);
   });
 
   it('never picks a player or creature cell and falls back to all free cells near doors', () => {
     const { world } = makeWorld(room(30, 20));
     const all = [cellOf(world, 3, 3), cellOf(world, 6, 3), cellOf(world, 9, 3)];
     const awayFromDoors = [cellOf(world, 6, 3), cellOf(world, 9, 3)];
+    const search = () => pickPlayerSpawnCell({ floor: { awayFromDoors, all }, rng: new SequenceRng([0.9]), threats: [], clearances: [], recent: new Set() });
     cellOf(world, 6, 3).collide |= CollideFlag.Player;
     cellOf(world, 9, 3).collide |= CollideFlag.Creature;
-    expect(pickPlayerSpawnCell({ floor: { awayFromDoors, all }, rng: new SequenceRng([0.9]), enemies: [], candidates: 4 })).toBe(all[0]);
+    expect(search()).toBe(all[0]);
     cellOf(world, 3, 3).collide |= CollideFlag.Object;
-    expect(pickPlayerSpawnCell({ floor: { awayFromDoors, all }, rng: new SequenceRng([0.9]), enemies: [], candidates: 4 })).toBeUndefined();
+    expect(search()).toBeUndefined();
   });
 });
 
