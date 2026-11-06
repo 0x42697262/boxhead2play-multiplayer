@@ -4,7 +4,7 @@ import { CompletionState } from '../../../src/domain/world/CompletionState.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { OnlineStatus, type OnlineState } from '../../../src/services/online/OnlineClient.ts';
 import { OnlineEnd } from '../../../src/services/online/OnlineGameSession.ts';
-import { joinList, menuStatus, optionsSummary, roomIdForLevel, roomPanel } from '../../../src/ui/screens/online/lobbyModel.ts';
+import { joinList, menuStatus, optionsSummary, resultText, roomIdForLevel, roomPanel } from '../../../src/ui/screens/online/lobbyModel.ts';
 import { editName, NameEntryOutcome } from '../../../src/ui/screens/online/nameEntry.ts';
 import { lobby, OPTIONS } from '../../services/online/support.ts';
 
@@ -124,5 +124,12 @@ describe('lobby room on the select-world screen', () => {
   it('summarizes options per mode', () => {
     expect(optionsSummary(GameMode.Coop, OPTIONS)).toBe('Beginner · Normal speed · Devils on · Collisions on · Friendly fire on · Respawn 10 s');
     expect(optionsSummary(GameMode.DeathMatch, OPTIONS)).toBe('First to 10 kills · Normal speed · Collisions on · Respawn 5 s');
+  });
+});
+
+describe('match result notices', () => {
+  it('tells everybody that the host ended the match', () => {
+    const gameOver = { type: 'gameOver', matchId: 'm1', state: CompletionState.Ended, winnerName: null, score: 120 } as const;
+    expect(resultText({ end: OnlineEnd.Finished, state: CompletionState.Ended, gameOver })).toBe('The host ended the match.');
   });
 });

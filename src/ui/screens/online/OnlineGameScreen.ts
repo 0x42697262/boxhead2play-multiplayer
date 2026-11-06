@@ -94,6 +94,7 @@ export class OnlineGameScreen implements Screen {
       ticksPerSecond: () => this.ticksPerSecond,
       quit: () => this.session.requestQuit(),
       invite: deps.invite,
+      endMatch: { allowed: () => client.isHost, run: () => client.endMatch() },
     });
     deps.shell.hideOverlay();
   }

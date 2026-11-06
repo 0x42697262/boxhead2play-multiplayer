@@ -164,6 +164,11 @@ Add one line per behavior change: what to do, and the result you expect.
   player (coop pans back, death match snaps).
 * Online match: hold TAB -> the player list; press `` ` `` -> the upgrade list (scoreboard in
   deathmatch) toggles; CONTROLS says "~ shows the upgrade list, hold TAB for players".
+* Tab 1 hosts coop, tab 2 joins, start the match. Esc in tab 1 -> END MATCH under QUIT; Esc in
+  tab 2 -> no END MATCH. Tab 1 clicks END MATCH -> "END FOR EVERYONE?", clicks again -> both tabs
+  are in the lobby room with "The host ended the match.", both still listed, and tab 1 can start
+  again. `npx vitest run test/server/Hub.test.ts test/ui/gameMenu` -> a guest's `endMatch` gets
+  `notHost`, the host's ends the match once with state `ended`.
 * Two tabs in one coop match, hold TAB in tab 1 -> a dark rounded "PLAYERS
   2 / 16" card at the top center with both names, "Alive", life bars and green "<n> ms";
   release -> it disappears. Close tab 2 -> its row says "Offline" with "—". A dead player shows

@@ -203,6 +203,13 @@ export class Lobby {
     this.changed();
   }
 
+  endMatch(client: LobbyClient): ErrorReason | undefined {
+    if (client.id !== this.hostId) return ErrorReason.NotHost;
+    const match = this.match;
+    if (match) this.finish(match, { state: CompletionState.Ended, winnerIndex: undefined, score: match.world.hud.totalScore });
+    return undefined;
+  }
+
   input(client: LobbyClient, masks: ControlMasks): void {
     const index = this.member(client.id)?.playerIndex;
     if (index !== undefined) this.match?.input(index, masks);

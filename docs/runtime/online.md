@@ -130,6 +130,11 @@ Every online screen is drawn from the SWF's own symbols, like the menus
 * **Failed start.** If the online game screen cannot be built (for example a room the
   client's assets do not have), `ScreenFlow` sends `leaveGame` so no idle player stays in
   the match and opens the lobby room with "The match could not start in this browser."
+* **End.** The host's END MATCH in the Esc menu sends `endMatch`. The server ends the match
+  as if it had finished (`Lobby.endMatch`, state `ended`, no winner): every player gets
+  `gameOver` and lands in the lobby room with "The host ended the match.", the lobby goes back
+  to waiting with every member, and the host can start again. From anyone else it is answered
+  with `notHost`; without a running match it does nothing.
 * **Leave.** QUIT? on the upgrade list (`` ` ``) sends `leaveGame` and returns to the lobby room.
   "Back to menu" leaves the lobby (no notice for a leave the player asked for). The host
   role moves to the next connected member. An empty lobby
@@ -139,7 +144,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 11)
+## Protocol (`src/net/protocol.ts`, version 12)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/serverWire.ts`, ADR 0007): one `ServerWireEncoder` per socket on the server, one
@@ -179,6 +184,7 @@ of what changed followed by only those values.
 | `joinByCode` | Join the lobby with that code (`codeNotFound` otherwise). |
 | `startGame` | Host: start the match. Member outside a running match: join it. |
 | `leaveGame` | Leave the running match, stay in the lobby |
+| `endMatch` | Host only: end the running match for everyone, keep the lobby |
 | `input {down, pressed, released}` | Control bit masks (`src/net/controlMask.ts`) |
 | `ping {id, latencyMs}` | Latency probe, once per second during a match; `latencyMs` is the client's own smoothed round trip (or `null` before the first pong), kept on the session for the player list |
 

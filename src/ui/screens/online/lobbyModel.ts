@@ -87,6 +87,7 @@ export function resultText(result: OnlineSessionResult): string {
   }
   const over = result.gameOver;
   if (result.state === CompletionState.Error) return t('online.result.error');
+  if (result.state === CompletionState.Ended) return t('online.result.ended');
   if (over?.winnerName) return t('online.result.won', { name: over.winnerName });
   return t('online.result.over', { score: String(over?.score ?? 0) });
 }

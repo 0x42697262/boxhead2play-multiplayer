@@ -21,7 +21,7 @@ import { applySetupAction, SETUP_EXPANDED, SetupOutcome, SetupWindow, setupWindo
 import { MainMenuChild, MenuSymbol, SelectWorldChild } from '../menu/tuning.ts';
 import type { Shell } from '../../shell/Shell.ts';
 import { STAGE_HEIGHT_PX, STAGE_WIDTH_PX } from '../../shell/Shell.ts';
-import { GAME_MENU_BACKDROP, GameMenuButton, GameMenuKey } from './tuning.ts';
+import { END_MATCH_BUTTON, GAME_MENU_BACKDROP, GameMenuButton, GameMenuKey } from './tuning.ts';
 
 export const GameMenuView = {
   Closed: 'closed',
@@ -37,6 +37,7 @@ export const GameMenuAction = {
   OpenSettings: 'openSettings',
   OpenControls: 'openControls',
   Quit: 'quit',
+  EndMatch: 'endMatch',
   Settings: 'settings',
   Controls: 'controls',
 } as const;
@@ -46,10 +47,12 @@ export type GameMenuAction =
   | { readonly kind: typeof GameMenuAction.OpenSettings }
   | { readonly kind: typeof GameMenuAction.OpenControls }
   | { readonly kind: typeof GameMenuAction.Quit }
+  | { readonly kind: typeof GameMenuAction.EndMatch }
   | { readonly kind: typeof GameMenuAction.Settings; readonly action: SetupAction }
   | { readonly kind: typeof GameMenuAction.Controls; readonly action: ControlsAction };
 
 const INVITE_TARGET: MenuTarget<GameMenuAction> = { path: [GameMenuButton.Invite], trigger: Trigger.Release, action: { kind: GameMenuAction.CopyLink } };
+const END_MATCH_TARGET: MenuTarget<GameMenuAction> = { path: [GameMenuButton.EndMatch], trigger: Trigger.Release, action: { kind: GameMenuAction.EndMatch } };
 const CHOICE_TARGETS: readonly MenuTarget<GameMenuAction>[] = [
   { path: [GameMenuButton.Settings], trigger: Trigger.Release, action: { kind: GameMenuAction.OpenSettings } },
   { path: [GameMenuButton.Controls], trigger: Trigger.Release, action: { kind: GameMenuAction.OpenControls } },
@@ -58,8 +61,15 @@ const CHOICE_TARGETS: readonly MenuTarget<GameMenuAction>[] = [
 
 const GAME_MENU_EXPANDED: ReadonlySet<string> = new Set([...SETUP_EXPANDED, SelectWorldChild.WindowControls, SelectWorldChild.PressKey]);
 
-const BUTTONS: readonly GameMenuButton[] = [GameMenuButton.Invite, GameMenuButton.Settings, GameMenuButton.Controls, GameMenuButton.Quit];
+const BUTTONS: readonly GameMenuButton[] = [GameMenuButton.Invite, GameMenuButton.Settings, GameMenuButton.Controls, GameMenuButton.Quit, GameMenuButton.EndMatch];
 const BUTTON_NAMES: ReadonlySet<string> = new Set(BUTTONS);
+
+function endMatchButton(main: readonly DisplayItem[]): DisplayItem[] {
+  const template = main.find((item) => item.name === END_MATCH_BUTTON.template);
+  if (!template) return [];
+  const [a, b, c, d, tx, ty] = template.matrix;
+  return [{ ...template, name: END_MATCH_BUTTON.name, depth: END_MATCH_BUTTON.depth, matrix: [a, b, c, d, tx, ty + END_MATCH_BUTTON.offsetY] }];
+}
 
 export interface GameMenuLayout {
   readonly items: readonly DisplayItem[];
@@ -76,7 +86,8 @@ export function gameMenuLayout(library: SymbolLibrary): GameMenuLayout {
   const window = selectItems.find((item) => item.name === MainMenuChild.OptionsWindow);
   const controlsWindow = selectItems.find((item) => item.name === SelectWorldChild.WindowControls);
   const windows = [window, controlsWindow].filter((item) => item !== undefined);
-  const buttons = main.filter((item) => item.name !== undefined && BUTTON_NAMES.has(item.name));
+  const endMatch = endMatchButton(main);
+  const buttons = [...main.filter((item) => item.name !== undefined && BUTTON_NAMES.has(item.name)), ...endMatch];
   return {
     items: [...buttons, ...windows].sort((first, second) => first.depth - second.depth),
     labels: {
@@ -84,6 +95,7 @@ export function gameMenuLayout(library: SymbolLibrary): GameMenuLayout {
       [GameMenuButton.Settings]: menuButtonLabelFrame(library, main, GameMenuButton.Settings),
       [GameMenuButton.Controls]: menuButtonLabelFrame(library, main, GameMenuButton.Controls),
       [GameMenuButton.Quit]: menuButtonLabelFrame(library, main, GameMenuButton.Quit),
+      [GameMenuButton.EndMatch]: menuButtonLabelFrame(library, endMatch, GameMenuButton.EndMatch),
     },
     setup: setupWindowLayout(library, window),
     controls: controlsWindowLayout(library, windows),
@@ -112,6 +124,12 @@ export interface GameMenuDependencies {
   readonly ticksPerSecond: () => number;
   readonly quit: () => void;
   readonly invite?: InviteView;
+  readonly endMatch?: GameMenuEndMatch;
+}
+
+export interface GameMenuEndMatch {
+  readonly allowed: () => boolean;
+  readonly run: () => void;
 }
 
 export class GameMenu {
@@ -121,6 +139,7 @@ export class GameMenu {
   private readonly setup: SetupWindow;
   private readonly controls: ControlsWindow;
   private current: GameMenuView = GameMenuView.Closed;
+  private endMatchArmed = false;
   private rolledOver: { readonly name: string; readonly filters: readonly Filter[] } | undefined = undefined;
 
   constructor(private readonly deps: GameMenuDependencies) {
@@ -207,6 +226,16 @@ export class GameMenu {
         this.show(GameMenuView.Closed);
         this.deps.quit();
         return;
+      case GameMenuAction.EndMatch:
+        audio.play(SoundId.Click);
+        if (!this.endMatchShown) return;
+        if (!this.endMatchArmed) {
+          this.endMatchArmed = true;
+          return;
+        }
+        this.show(GameMenuView.Closed);
+        this.deps.endMatch?.run();
+        return;
       case GameMenuAction.Settings:
         audio.play(SoundId.Click2);
         if (applySetupAction(this.deps.settings, action.action) === SetupOutcome.Closed) this.show(GameMenuView.Choices);
@@ -219,7 +248,7 @@ export class GameMenu {
       case GameMenuView.Closed:
         return [];
       case GameMenuView.Choices:
-        return this.inviteShown ? [INVITE_TARGET, ...CHOICE_TARGETS] : CHOICE_TARGETS;
+        return [...(this.inviteShown ? [INVITE_TARGET] : []), ...CHOICE_TARGETS, ...(this.endMatchShown ? [END_MATCH_TARGET] : [])];
       case GameMenuView.Settings:
         return mapTargets(this.setup.targets(), (action) => ({ kind: GameMenuAction.Settings, action }));
       case GameMenuView.Controls:
@@ -232,7 +261,7 @@ export class GameMenu {
     const library = this.deps.renderer.library;
     const choices = this.current === GameMenuView.Choices;
     for (const name of BUTTONS) {
-      if (!choices || (name === GameMenuButton.Invite && !this.inviteShown)) {
+      if (!choices || (name === GameMenuButton.Invite && !this.inviteShown) || (name === GameMenuButton.EndMatch && !this.endMatchShown)) {
         tree.set([name], { visible: false });
         continue;
       }
@@ -248,6 +277,10 @@ export class GameMenu {
     return this.deps.invite?.code !== undefined;
   }
 
+  private get endMatchShown(): boolean {
+    return this.deps.endMatch?.allowed() === true;
+  }
+
   private buttonText(name: GameMenuButton): string {
     switch (name) {
       case GameMenuButton.Invite: {
@@ -260,12 +293,15 @@ export class GameMenu {
         return t('gameMenu.controls');
       case GameMenuButton.Quit:
         return t('gameMenu.quit');
+      case GameMenuButton.EndMatch:
+        return t(this.endMatchArmed ? 'gameMenu.endMatchConfirm' : 'gameMenu.endMatch');
     }
   }
 
   private show(view: GameMenuView): void {
     if (this.current === GameMenuView.Closed) this.deps.invite?.forget();
     this.current = view;
+    this.endMatchArmed = false;
     this.rolledOver = undefined;
     this.pointerState.refresh(this.hitTest());
   }

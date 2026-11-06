@@ -191,6 +191,10 @@ export class OnlineClient {
     this.send({ type: ClientMessageType.LeaveGame });
   }
 
+  endMatch(): void {
+    this.send({ type: ClientMessageType.EndMatch });
+  }
+
   ping(): void {
     if (!this.welcomed) return;
     const latencyMs = this.latencyMs();

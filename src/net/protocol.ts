@@ -122,6 +122,7 @@ export const ClientMessageType = {
   SetCharacter: 'setCharacter',
   StartGame: 'startGame',
   LeaveGame: 'leaveGame',
+  EndMatch: 'endMatch',
   Input: 'input',
   Ping: 'ping',
 } as const;
@@ -138,6 +139,7 @@ const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(ClientMessageType.SetCharacter), character: CharacterSchema }),
   z.object({ type: z.literal(ClientMessageType.StartGame) }),
   z.object({ type: z.literal(ClientMessageType.LeaveGame) }),
+  z.object({ type: z.literal(ClientMessageType.EndMatch) }),
   z.object({ type: z.literal(ClientMessageType.Input), down: MaskSchema, pressed: MaskSchema, released: MaskSchema }),
   z.object({ type: z.literal(ClientMessageType.Ping), id: z.number().int().nonnegative(), latencyMs: LatencySchema.nullable() }),
 ]);
