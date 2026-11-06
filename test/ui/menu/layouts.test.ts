@@ -75,6 +75,27 @@ describe('menu layouts from the real library', () => {
     for (const { clip } of layout.optionInfoClips) expect(clip.xMax).toBeGreaterThan(200);
   });
 
+  it.skipIf(assetsMissing)('OPTIONS shows only the rows of the mode, moved up into the top slots', () => {
+    const library = new SymbolLibrary(assetSymbols());
+    const rows = (mode: GameMode) => selectWorldLayout(library, mode).optionRows;
+    const fields = (mode: GameMode) => rows(mode).groups.map((group) => group.field);
+    expect(fields(GameMode.Single)).toEqual(['difficulty', 'collisionsActive', 'devilsActive', 'damageActive', 'gameSpeed']);
+    expect(fields(GameMode.Coop)).toEqual(fields(GameMode.Single));
+    expect(fields(GameMode.DeathMatch)).toEqual(['collisionsActive', 'gameSpeed', 'gameAmount']);
+    expect(rows(GameMode.Coop).hidden).toEqual(['_Game1', '_Game2', '_Game3', '_Game4', '#76', '#98']);
+    expect(rows(GameMode.Coop).moves).toEqual([]);
+    const deathMatch = rows(GameMode.DeathMatch);
+    expect(deathMatch.hidden).toContain('_Level_Beginner');
+    expect(deathMatch.hidden).toContain('#36');
+    expect(deathMatch.hidden).toContain('_Damage_On');
+    const movedY = (key: string) => deathMatch.moves.find((move) => move.key === key)?.matrix[5];
+    expect(movedY('_Collide_On')).toBeCloseTo(-130.4, 1);
+    expect(movedY('#12')).toBeCloseTo(-139, 0);
+    expect(movedY('_Speed_Fast')).toBeCloseTo(-85.2, 1);
+    expect(movedY('_Game4')).toBeCloseTo(-40, 1);
+    expect(movedY('#98')).toBeCloseTo(-31.1, 0);
+  });
+
   it.skipIf(assetsMissing)('online menu reuses the main menu slots for HOST and JOIN (no NAME) plus the back tab and the controls window with 14 join rows', () => {
     const library = new SymbolLibrary(assetSymbols());
     const layout = onlineMenuLayout(library);

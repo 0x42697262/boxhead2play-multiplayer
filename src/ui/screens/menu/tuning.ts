@@ -277,12 +277,22 @@ export interface OptionButtonSpec {
 
 export interface OptionGroupSpec {
   readonly field: OptionField;
+  readonly titleDepth: number;
+  readonly infoDepth: number;
+  readonly modes: readonly GameMode[];
   readonly buttons: readonly OptionButtonSpec[];
 }
+
+const ZOMBIE_MODES = [GameMode.Single, GameMode.Coop] as const;
+const EVERY_MODE = [GameMode.Single, GameMode.Coop, GameMode.DeathMatch] as const;
+const DEATH_MATCH_ONLY = [GameMode.DeathMatch] as const;
 
 export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
   {
     field: OptionField.Difficulty,
+    titleDepth: 134,
+    infoDepth: 135,
+    modes: ZOMBIE_MODES,
     buttons: [
       { instance: '_Level_Beginner', value: Difficulty.Beginner },
       { instance: '_Level_Intermediate', value: Difficulty.Intermediate },
@@ -292,6 +302,9 @@ export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
   },
   {
     field: OptionField.GameSpeed,
+    titleDepth: 53,
+    infoDepth: 75,
+    modes: EVERY_MODE,
     buttons: [
       { instance: '_Speed_Slow', value: GameSpeed.Slow },
       { instance: '_Speed_Normal', value: GameSpeed.Normal },
@@ -300,6 +313,9 @@ export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
   },
   {
     field: OptionField.Devils,
+    titleDepth: 28,
+    infoDepth: 36,
+    modes: ZOMBIE_MODES,
     buttons: [
       { instance: '_Devils_Off', value: OPTION_OFF },
       { instance: '_Devils_On', value: OPTION_ON },
@@ -307,6 +323,9 @@ export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
   },
   {
     field: OptionField.Collisions,
+    titleDepth: 12,
+    infoDepth: 20,
+    modes: EVERY_MODE,
     buttons: [
       { instance: '_Collide_Off', value: OPTION_OFF },
       { instance: '_Collide_On', value: OPTION_ON },
@@ -314,6 +333,9 @@ export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
   },
   {
     field: OptionField.Damage,
+    titleDepth: 44,
+    infoDepth: 52,
+    modes: ZOMBIE_MODES,
     buttons: [
       { instance: '_Damage_Off', value: OPTION_OFF },
       { instance: '_Damage_On', value: OPTION_ON },
@@ -321,6 +343,9 @@ export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
   },
   {
     field: OptionField.GameAmount,
+    titleDepth: 76,
+    infoDepth: 98,
+    modes: DEATH_MATCH_ONLY,
     buttons: [
       { instance: '_Game1', value: GameAmount.Kills5 },
       { instance: '_Game2', value: GameAmount.Kills10 },

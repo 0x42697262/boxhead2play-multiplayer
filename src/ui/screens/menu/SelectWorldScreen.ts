@@ -46,12 +46,12 @@ import { MenuCore, type MenuKit } from './MenuCore.ts';
 import { mapTargets, Trigger, type MenuTarget } from './MenuPointer.ts';
 import { ControlsOutcome, ControlsWindow, controlsWindowLayout, type ControlsAction, type ControlsWindowLayout } from './ControlsWindow.ts';
 import { OverrideTree } from './overrideTree.ts';
+import { optionRowsLayout, type OptionRowsLayout } from './optionRows.ts';
 import {
   HISCORE_NOTE,
   OPTION_INFO_CLIP_MARGIN_PX,
   MENU_TICKS_PER_SECOND,
   MenuSymbol,
-  OPTION_GROUPS,
   PLAYER_CHARACTER_CARD,
   SECOND_CHARACTER_CARD,
   SECOND_CHARACTER_LABEL_DEPTH,
@@ -115,6 +115,7 @@ export interface SelectWorldLayout {
   readonly nameButton: DisplayItem | undefined;
   readonly nameLabel: StaticTextFrame | undefined;
   readonly optionInfoClips: readonly { readonly key: string; readonly clip: Rect }[];
+  readonly optionRows: OptionRowsLayout;
 }
 
 const NEXT = 1;
@@ -180,6 +181,7 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
       const clip = text ? clipBefore(text, HISCORE_NOTE, OPTION_INFO_CLIP_MARGIN_PX) : undefined;
       return clip ? [{ key: depthKey(item.depth), clip }] : [];
     }),
+    optionRows: optionRowsLayout(optionsChildren, mode),
   };
 }
 
@@ -487,7 +489,7 @@ export class SelectWorldScreen implements Screen {
   }
 
   private optionsTargets(): MenuTarget<SelectAction>[] {
-    const options = OPTION_GROUPS.flatMap((group) =>
+    const options = this.layout.optionRows.groups.flatMap((group) =>
       group.buttons.map((button) => ({
         path: buttonPath(...OPTIONS, button.instance),
         trigger: Trigger.Release,
@@ -526,7 +528,10 @@ export class SelectWorldScreen implements Screen {
     tree.set(OPTIONS, { visible: this.optionsOpen });
     if (!this.optionsOpen) return;
     const settings = this.shownOptions;
-    for (const group of OPTION_GROUPS) {
+    const rows = this.layout.optionRows;
+    for (const key of rows.hidden) tree.set([...OPTIONS, key], { visible: false });
+    for (const { key, matrix } of rows.moves) tree.set([...OPTIONS, key], { matrix });
+    for (const group of rows.groups) {
       const current = optionValue(settings, group.field);
       for (const button of group.buttons) {
         tree.set([...OPTIONS, button.instance, Child.Selected], { visible: current === button.value });
