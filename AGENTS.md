@@ -234,7 +234,10 @@ Add one line per behavior change: what to do, and the result you expect.
   players at 16 different indices. The lobby room lists at most 11 players, your own line and
   "+N MORE", under "PLAYERS: n/16".
 * `npx vitest run test/domain/upgrades` -> level 1 has 10 zombies for 1 player, 20 for 3, and
-  10 again after two leave.
+  10 again after two leave; an expert coop level keeps at least 8 times as many devils alive
+  with 8 players as with 1, devils have no live cap and spawn players-times faster.
+* Coop with 8 tabs on level 2 or higher with devils on -> several devils come out within a few
+  seconds of each other, not one every 10 s; single play still gets one devil about every 10 s.
 * Zombie next to a player -> the player loses 50 life per attack (also with damage off).
   Devil within 5 cells, facing the player with a clear line -> a fireball for 50.
 * `npx vitest run test/domain/map/GameMap.test.ts test/domain/things/creatures/devil.test.ts` ->
