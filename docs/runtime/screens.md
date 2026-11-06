@@ -254,3 +254,17 @@ space, so rotated and scaled clips are handled.
   read correctly but lack the light top-left edge.
 * Text uses the extracted static-text SVGs and the embedded fonts, so labels match; edit
   texts (key names) use the WOFF font with the renderer's approximate layout.
+
+## Team Battle screens
+
+The separate TEAM BATTLE entry sits below SETTINGS using a clone of the existing menu
+button, at the same scale and spacing. It opens its own online HOST/JOIN flow. Its room
+reuses the deathmatch art with a Team Battle objective, grouped team roster, counts and
+pre-entry selection controls. The host's OPTIONS shows independent Zombies and Devils
+switches and no friendly-fire override. Difficulty affects creatures, not equipment.
+
+The in-game top-center display shows Team A and Team B totals around the server's remaining
+time. Character labels put the team below the name. The held player list reserves visible
+space for each team label even when a long name is shortened. The scoreboard groups
+individual rows under Team A and Team B. The room's result line names the winning team,
+draw or team abandonment and both final totals. Other modes keep their presentation.

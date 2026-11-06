@@ -1,3 +1,4 @@
+import { protectsTeammate, type Thing } from '../things/Thing.ts';
 import { sign } from '../math/scalar.ts';
 
 export const LineTest = {
@@ -23,6 +24,7 @@ export class LineProbe {
     readonly ownerId: number,
     readonly affectFlags: number,
     readonly test: LineTest,
+    readonly source?: Thing,
   ) {
     this.dx = x2 - x1;
     this.dy = y2 - y1;
@@ -30,6 +32,10 @@ export class LineProbe {
     this.yGradient = this.dx / this.dy;
     this.xDirection = sign(this.dx);
     this.yDirection = sign(this.dy);
+  }
+
+  accepts(thing: Thing): boolean {
+    return !protectsTeammate(this.source, thing);
   }
 
   distanceToLineSquared(px: number, py: number): number {

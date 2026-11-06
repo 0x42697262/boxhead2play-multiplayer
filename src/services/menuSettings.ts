@@ -8,6 +8,8 @@ export const OptionField = {
   Difficulty: 'difficulty',
   GameSpeed: 'gameSpeed',
   Devils: 'devilsActive',
+  TeamZombies: 'teamZombiesActive',
+  TeamDevils: 'teamDevilsActive',
   Collisions: 'collisionsActive',
   Damage: 'damageActive',
   GameAmount: 'gameAmount',
@@ -20,12 +22,14 @@ export type OptionField = (typeof OptionField)[keyof typeof OptionField];
 export const OPTION_OFF = 0;
 export const OPTION_ON = 1;
 
-const BOOLEAN_FIELDS: ReadonlySet<OptionField> = new Set([OptionField.Devils, OptionField.Collisions, OptionField.Damage]);
+const BOOLEAN_FIELDS: ReadonlySet<OptionField> = new Set([OptionField.Devils, OptionField.TeamZombies, OptionField.TeamDevils, OptionField.Collisions, OptionField.Damage]);
 
 export const RESET_OPTIONS: Readonly<Record<OptionField, number>> = {
   [OptionField.Difficulty]: Difficulty.Beginner,
   [OptionField.GameSpeed]: GameSpeed.Normal,
   [OptionField.Devils]: OPTION_ON,
+  [OptionField.TeamZombies]: OPTION_OFF,
+  [OptionField.TeamDevils]: OPTION_OFF,
   [OptionField.Collisions]: OPTION_ON,
   [OptionField.Damage]: OPTION_ON,
   [OptionField.GameAmount]: GameAmount.Kills10,

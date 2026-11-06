@@ -160,3 +160,20 @@
     background: rgb(18 18 22 / 94%);
   }
 }
+
+.player-name-line {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 4);
+}
+
+.player-name-line .player-name-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-team {
+  flex: none;
+  font-size: calc(var(--u) * 9);
+  white-space: nowrap;
+}

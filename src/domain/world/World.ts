@@ -23,7 +23,8 @@ import { cellToScreen, panFreeCamera, trackCamera, type CameraArea, type CameraR
 import { CameraEffects, NO_CAMERA_EFFECTS, type CameraEffectsView } from './CameraEffects.ts';
 import type { ScreenEffects } from './ScreenEffects.ts';
 import { CompletionState } from './CompletionState.ts';
-import { GameMode } from './GameMode.ts';
+import { GameMode, usesDeathMatchEquipment } from './GameMode.ts';
+import { TeamBattle, type Combatant } from './TeamBattle.ts';
 import { IDLE_PLAYER_INPUT, IDLE_TICK_INPUT, type PlayerInput, type TickInput } from './input.ts';
 import { initObjectsInOrder, InitKind, screenToCell, type RoomDefinition, type RoomInitObject } from './RoomDefinition.ts';
 import type { PlayerCharacter, SimulationSettings } from './SimulationSettings.ts';
@@ -92,6 +93,8 @@ export class World implements WorldContext, UpgradesHost {
   readonly map: GameMap;
   readonly hud: HudState;
   readonly upgrades: Upgrades;
+  readonly teamBattle: TeamBattle | undefined;
+  private readonly recordedTeamDeaths = new WeakSet<Thing>();
   readonly things: ThingCollection;
   tick = 0;
   private currentTicksPerSecond: number;
@@ -118,6 +121,7 @@ export class World implements WorldContext, UpgradesHost {
     readonly settings: SimulationSettings,
     dependencies: WorldDependencies,
   ) {
+    this.teamBattle = settings.gameMode === GameMode.TeamBattle ? new TeamBattle() : undefined;
     this.rng = dependencies.rng;
     this.spawnRng = dependencies.spawnRng ?? dependencies.rng;
     this.factory = dependencies.factory;
@@ -170,7 +174,7 @@ export class World implements WorldContext, UpgradesHost {
   start(): void {
     this.step();
     this.upgrades.setDifficulty(this.settings.difficulty);
-    if (this.settings.gameMode === GameMode.DeathMatch) {
+    if (usesDeathMatchEquipment(this.settings.gameMode)) {
       for (const player of this.things.players()) player.resetWeapons();
     }
     this.currentTicksPerSecond = this.settings.ticksPerSecond;
@@ -197,9 +201,21 @@ export class World implements WorldContext, UpgradesHost {
     return Array.from({ length: MAX_PLAYERS }, (_unused, index) => index).find((index) => !taken.has(index));
   }
 
-  joinPlayer(playerIndex: number, character: PlayerCharacter): boolean {
+  assignCombatant(playerIndex: number, combatant: Combatant): void {
+    const player = this.things.playerByIndex(playerIndex);
+    if (this.teamBattle && player && !player.attackSource) player.attackSource = Object.freeze({ ...combatant, playerIndex });
+  }
+
+  finishTeamBattle(abandoned = false): void {
+    if (!this.teamBattle || this.completionState) return;
+    this.teamBattle.finish(abandoned);
+    this.complete(CompletionState.TeamFinished);
+  }
+
+  joinPlayer(playerIndex: number, character: PlayerCharacter, combatant?: Combatant): boolean {
     if (this.things.playerByIndex(playerIndex) || playerIndex >= MAX_PLAYERS) return false;
     if (!this.spawnPlayer(playerIndex, character, this.unoccupied(this.playerRespawnPoint()), 0)) return false;
+    if (combatant) this.assignCombatant(playerIndex, combatant);
     this.hud.resetPlayer(playerIndex);
     this.hud.addMessage(MessageTone.Joined, { key: 'hud.joined' }, undefined, { player: playerIndex });
     return true;
@@ -281,9 +297,13 @@ export class World implements WorldContext, UpgradesHost {
         this.createPickup(thing.position);
         break;
       case ThingClass.Player:
+        if (this.teamBattle) {
+          if (this.recordedTeamDeaths.has(thing)) return;
+          this.recordedTeamDeaths.add(thing);
+        }
         this.upgrades.playerCount--;
         this.recordPlayerDeath(thing);
-        if (this.settings.gameMode === GameMode.DeathMatch) this.createPickup(thing.position);
+        if (usesDeathMatchEquipment(this.settings.gameMode)) this.createPickup(thing.position);
         return;
       default:
         break;
@@ -293,6 +313,7 @@ export class World implements WorldContext, UpgradesHost {
   }
 
   playerDead(): void {
+    if (this.teamBattle) return;
     if (this.settings.gameMode === GameMode.DeathMatch) {
       const killsToWin = KILLS_TO_WIN[this.settings.gameAmount];
       const leader = this.things.players().find((player) => this.hud.fragsOf(player.playerIndex) >= killsToWin);
@@ -306,6 +327,7 @@ export class World implements WorldContext, UpgradesHost {
   }
 
   trackPlayer(player: PlayerThing): void {
+    if (!player.deathLogged) this.recordedTeamDeaths.delete(player);
     const { x, y, z } = player.position;
     this.trackTargets.set(player.playerIndex, { x, y, z });
   }
@@ -378,7 +400,7 @@ export class World implements WorldContext, UpgradesHost {
   }
 
   private playerCameras(indexes: readonly number[]): CameraView[] {
-    const smooth = this.settings.gameMode !== GameMode.DeathMatch;
+    const smooth = !usesDeathMatchEquipment(this.settings.gameMode);
     const area = this.cameraArea();
     return indexes.map((index) => {
       const free = this.freeCamera(index, area);
@@ -438,8 +460,16 @@ export class World implements WorldContext, UpgradesHost {
 
   private recordPlayerDeath(thing: Thing): void {
     if (!isPlayer(thing)) return;
-    this.hud.recordDeath({ victim: thing.playerIndex, killer: thing.lastAttackerIndex });
-    const message = killMessage({ victim: thing.playerIndex, killer: thing.lastAttackerIndex, killerClass: thing.lastAttackerClass });
+    let killer = thing.lastAttackerIndex;
+    if (this.teamBattle && thing.attackSource) {
+      const source = thing.lastAttackSource;
+      this.teamBattle.recordDeath(thing.attackSource, source);
+      const opposing = source && source.team !== thing.attackSource.team;
+      killer = opposing ? this.players().find((player) => player.attackSource?.actorId === source.actorId)?.playerIndex : undefined;
+      if (source?.actorId === thing.attackSource.actorId) killer = thing.playerIndex;
+    }
+    this.hud.recordDeath({ victim: thing.playerIndex, killer });
+    const message = killMessage({ victim: thing.playerIndex, killer, killerClass: thing.lastAttackerClass });
     this.hud.addMessage(MessageTone.Critical, message.text, undefined, message.names);
   }
 

@@ -7,7 +7,7 @@ import { ServerMessageType, type NetEvent, type NetFrame, type NetHud } from './
 export function playerHudEntries(world: World): NetHud['players'] {
   return world.players().map((player) => {
     const { x, y, z } = player.position;
-    return { playerIndex: player.playerIndex, position: { x, y, z }, status: player.hudStatus() };
+    return { playerIndex: player.playerIndex, ...(player.attackSource ? { team: player.attackSource.team } : {}), position: { x, y, z }, status: player.hudStatus() };
   });
 }
 

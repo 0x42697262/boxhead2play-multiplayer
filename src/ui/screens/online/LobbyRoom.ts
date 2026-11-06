@@ -1,3 +1,4 @@
+import type { Team } from '../../../domain/world/TeamBattle.ts';
 import type { RoomIndex } from '../../../adapters/assets/schemas.ts';
 import type { PlayerCharacter } from '../../../domain/world/SimulationSettings.ts';
 import type { LobbyOptions, OnlineMode } from '../../../net/protocol.ts';
@@ -13,6 +14,7 @@ export interface SelectWorldRoom {
   back(): void;
   configure(roomId: string, options: LobbyOptions): void;
   copyLink(): void;
+  chooseTeam?(team: Team): void;
   characterChanged(character: PlayerCharacter): void;
   dispose(): void;
 }
@@ -59,6 +61,10 @@ export class LobbyRoom implements SelectWorldRoom {
   configure(roomId: string, options: LobbyOptions): void {
     if (!this.panel()?.configurable) return;
     this.deps.client.configure(roomId, options);
+  }
+
+  chooseTeam(team: Team): void {
+    this.deps.client.setTeam(team);
   }
 
   copyLink(): void {

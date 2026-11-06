@@ -3,6 +3,7 @@ import type { HudMessageEntry } from '../../../domain/hud/HudState.ts';
 import type { PlayerHudStatus } from '../../../domain/things/PlayerThing.ts';
 import type { MultiplierListEntry } from '../../../domain/upgrades/Upgrades.ts';
 import type { DrawEntry } from '../../../domain/visuals.ts';
+import type { Team, TeamMatchView } from '../../../domain/world/TeamBattle.ts';
 import type { GameMode } from '../../../domain/world/GameMode.ts';
 import type { CameraView } from '../../../domain/world/World.ts';
 
@@ -12,12 +13,14 @@ export interface CameraFrame {
 }
 
 export interface PlayerHudFrame {
+  readonly team?: Team;
   readonly playerIndex: number;
   readonly position: Point3;
   readonly status: PlayerHudStatus;
 }
 
 export interface HudFrame {
+  readonly teamBattle?: TeamMatchView;
   readonly localPlayerIndex: number;
   readonly playerNames: Readonly<Record<number, string>>;
   readonly totalScore: number;

@@ -1,4 +1,7 @@
 import { SeededRng } from '../domain/math/Rng.ts';
+import { GameMode } from '../domain/world/GameMode.ts';
+import { TEAM_BATTLE_RULES, type Combatant, type TeamResult } from '../domain/world/TeamBattle.ts';
+import { MS_PER_SECOND } from './tuning.ts';
 import type { CompletionState } from '../domain/world/CompletionState.ts';
 import { IDLE_TICK_INPUT, type PlayerInput } from '../domain/world/input.ts';
 import type { PlayerCharacter } from '../domain/world/SimulationSettings.ts';
@@ -17,9 +20,11 @@ export interface MatchSetup {
   readonly options: LobbyOptions;
   readonly characters: readonly PlayerCharacter[];
   readonly seed: number;
+  readonly combatants?: readonly Combatant[];
 }
 
 export interface MatchResult {
+  readonly teamResult?: TeamResult;
   readonly state: CompletionState;
   readonly winnerIndex: number | undefined;
   readonly score: number;
@@ -34,23 +39,27 @@ export interface MatchStep {
 export class Match {
   readonly world: World;
   private readonly controls = new Map<number, RemoteControls>();
+  private readonly deadlineMs: number | undefined;
   private upgradesKey = '';
 
   private constructor(
     readonly setup: MatchSetup,
     world: World,
+    startedMs: number,
   ) {
     this.world = world;
+    this.deadlineMs = setup.mode === GameMode.TeamBattle ? startedMs + TEAM_BATTLE_RULES.regulationSeconds * MS_PER_SECOND : undefined;
+    setup.combatants?.forEach((combatant, index) => world.assignCombatant(index, combatant));
     setup.characters.forEach((_character, index) => this.controls.set(index, new RemoteControls()));
     world.events.drain();
   }
 
-  static start(setup: MatchSetup, content: GameContent): Match | undefined {
+  static start(setup: MatchSetup, content: GameContent, startedMs = 0): Match | undefined {
     const room = content.rooms.get(setup.roomId);
     if (!room) return undefined;
     const settings = createSimulationSettings(gameOptionsFor(setup.mode, setup.options, setup.characters), SERVER_SIMULATION_HOST);
     const world = World.create(room, settings, { rng: new SeededRng(setup.seed), factory: content.factory, animations: content.animations });
-    return new Match(setup, world);
+    return new Match(setup, world, startedMs);
   }
 
   get ticksPerSecond(): number {
@@ -65,9 +74,9 @@ export class Match {
     return this.world.upgrades.multiplierList();
   }
 
-  join(character: PlayerCharacter): number | undefined {
+  join(character: PlayerCharacter, combatant?: Combatant): number | undefined {
     const index = this.world.freePlayerIndex();
-    if (index === undefined || !this.world.joinPlayer(index, character)) return undefined;
+    if (index === undefined || !this.world.joinPlayer(index, character, combatant)) return undefined;
     this.controls.set(index, new RemoteControls());
     return index;
   }
@@ -85,7 +94,8 @@ export class Match {
     this.controls.get(playerIndex)?.releaseAll();
   }
 
-  step(): MatchStep {
+  step(nowMs = 0): MatchStep {
+    if (this.deadlineMs !== undefined && nowMs >= this.deadlineMs) this.world.finishTeamBattle();
     const players: PlayerInput[] = [];
     for (const [index, controls] of this.controls) players[index] = controls.sample();
     this.world.update({ ...IDLE_TICK_INPUT, players });
@@ -93,9 +103,18 @@ export class Match {
     const frames = new Map<number, NetFrame>();
     for (const index of this.controls.keys()) {
       const frame = netFrameFor(this.world, index, events);
-      if (frame) frames.set(index, frame);
+      if (frame) {
+        const teamBattle = this.world.teamBattle;
+        const remainingSeconds = this.deadlineMs === undefined ? 0 : Math.max(0, Math.ceil((this.deadlineMs - nowMs) / MS_PER_SECOND));
+        frames.set(index, teamBattle ? { ...frame, hud: { ...frame.hud, teamBattle: { scores: teamBattle.scores, remainingSeconds } } } : frame);
+      }
     }
     return { frames, upgrades: this.changedUpgrades(), result: this.result() };
+  }
+
+  abandonTeams(): MatchResult | undefined {
+    this.world.finishTeamBattle(true);
+    return this.result();
   }
 
   private changedUpgrades(): readonly MultiplierListEntry[] | undefined {
@@ -109,6 +128,6 @@ export class Match {
   private result(): MatchResult | undefined {
     const state = this.world.completion;
     if (!state) return undefined;
-    return { state, winnerIndex: this.world.winnerIndex, score: this.world.hud.totalScore };
+    return { state, winnerIndex: this.world.winnerIndex, score: this.world.hud.totalScore, ...(this.world.teamBattle?.result ? { teamResult: this.world.teamBattle.result } : {}) };
   }
 }
