@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { Angle } from '../../../src/domain/math/Angle.ts';
 import { Position } from '../../../src/domain/math/Position.ts';
 import { SeededRng } from '../../../src/domain/math/Rng.ts';
+import { Zombie } from '../../../src/domain/things/creatures/Zombie.ts';
+import { PLAYER, CORPSE_SECONDS } from '../../../src/domain/things/creatures/tuning.ts';
 import type { Player } from '../../../src/domain/things/creatures/Player.ts';
 import { createThingFactory } from '../../../src/domain/things/factory.ts';
 import { Explosion } from '../../../src/domain/things/effects/Explosion.ts';
@@ -234,8 +236,8 @@ describe.skipIf(!definition || !animations)('approved Team Battle plan: actual r
       for (const player of world.players()) if (player.playerIndex !== victimIndex) player.move(new Position(16.5, 12.5 + player.playerIndex));
       world.upgrades.zombieSpawned();
       world.things.add(world.factory.zombie(world, victim.position.add(new Position(1, 0))));
-      runUntil(world, () => victim.deathLogged, world.ticksPerSecond * 12);
-      expect(victim.deathLogged).toBe(true);
+      const elapsed = runUntil(world, () => victim.deathLogged, world.ticksPerSecond * PLAYER.regenSeconds * 2);
+      expect(victim.deathLogged, JSON.stringify({ elapsed, life: victim.life, attacker: victim.lastAttackerClass })).toBe(true);
       expect(victim.lastAttackerClass).toBe(ThingClass.Zombie);
       expect(world.teamBattle?.scores).toEqual({ a: 0, b: 0 });
       expect(world.completion).toBeUndefined();
@@ -267,6 +269,20 @@ describe.skipIf(!definition || !animations)('approved Team Battle plan: actual r
     const weapons = [...world.upgrades.unlockedWeapons];
     run(world, world.ticksPerSecond * 8);
     expect(world.things.count(ThingClass.Zombie) > 0).toBe(zombies);
+    if (zombies) {
+      const firstLevel = world.upgrades.levelNumber;
+      const level = world.upgrades.level;
+      const progressionBudget = level.zombieTotalCount * (level.zombieSpawnRate + world.ticksPerSecond * CORPSE_SECONDS) + level.devilSpawnRate;
+      runUntil(world, () => {
+        if (world.upgrades.levelNumber > firstLevel) return true;
+        for (const zombie of world.things.filter((thing) => thing instanceof Zombie && thing.life > 0)) {
+          if (zombie instanceof Zombie) world.things.add(new Explosion(world, zombie.position.clone(), new Angle(0), undefined, zombie.maxLife));
+        }
+        return false;
+      }, progressionBudget);
+      expect(world.upgrades.levelNumber).toBeGreaterThan(firstLevel);
+    }
+    if (devils) runUntil(world, () => world.things.count(ThingClass.Devil) > 0, world.upgrades.level.devilSpawnRate + world.ticksPerSecond);
     expect(world.things.count(ThingClass.Devil) > 0).toBe(devils);
     if (!zombies) expect(world.upgrades.level.zombieTotalCount).toBe(0);
     if (!devils) expect(world.upgrades.level.devilTotalCount).toBe(0);
