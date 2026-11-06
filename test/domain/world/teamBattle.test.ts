@@ -19,7 +19,7 @@ import { MINE } from '../../../src/domain/things/objects/tuning.ts';
 import { GRENADE } from '../../../src/domain/things/shots/tuning.ts';
 import { PISTOL } from '../../../src/domain/things/weapons/tuning.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
-import { createSimulationSettings, DEFAULT_GAME_OPTIONS, Difficulty, GameAmount, PlayerCharacter } from '../../../src/domain/world/SimulationSettings.ts';
+import { createSimulationSettings, DEFAULT_GAME_OPTIONS, GameAmount, PlayerCharacter } from '../../../src/domain/world/SimulationSettings.ts';
 import { CELL_SIZE_PX } from '../../../src/domain/map/tuning.ts';
 import { KILLS_TO_WIN } from '../../../src/domain/world/tuning.ts';
 import { Team } from '../../../src/domain/world/TeamBattle.ts';
@@ -42,7 +42,6 @@ function battle(zombiesActive = false, devilsActive = false): World {
     gameAmount: GameAmount.Kills5,
     zombiesActive,
     devilsActive,
-    difficulty: Difficulty.Intermediate,
     playerCharacters: ACTORS.map(() => PlayerCharacter.Bambo),
   }), { rng: new SeededRng(7), animations, factory: createThingFactory() });
   ACTORS.forEach((actorId, index) => {
@@ -237,7 +236,7 @@ describe.skipIf(!definition || !animations)('approved Team Battle plan: actual r
     expect(world.winnerIndex).toBeUndefined();
   });
 
-  it.each([[false, false], [true, false], [false, true], [true, true]])('enemy switches zombies=%s devils=%s omit disabled quotas without changing deathmatch equipment', (zombies, devils) => {
+  it.each([[false, false], [true, false], [false, true], [true, true]])('default-wave enemy switches zombies=%s devils=%s omit disabled quotas without changing deathmatch equipment', (zombies, devils) => {
     const world = battle(zombies, devils);
     const weapons = [...world.upgrades.unlockedWeapons];
     run(world, world.ticksPerSecond * 8);
