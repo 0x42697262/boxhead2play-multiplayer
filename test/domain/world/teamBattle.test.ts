@@ -19,7 +19,9 @@ import { MINE } from '../../../src/domain/things/objects/tuning.ts';
 import { GRENADE } from '../../../src/domain/things/shots/tuning.ts';
 import { PISTOL } from '../../../src/domain/things/weapons/tuning.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
-import { createSimulationSettings, DEFAULT_GAME_OPTIONS, Difficulty, PlayerCharacter } from '../../../src/domain/world/SimulationSettings.ts';
+import { createSimulationSettings, DEFAULT_GAME_OPTIONS, Difficulty, GameAmount, PlayerCharacter } from '../../../src/domain/world/SimulationSettings.ts';
+import { CELL_SIZE_PX } from '../../../src/domain/map/tuning.ts';
+import { KILLS_TO_WIN } from '../../../src/domain/world/tuning.ts';
 import { Team } from '../../../src/domain/world/TeamBattle.ts';
 import { World } from '../../../src/domain/world/World.ts';
 import { assetAnimationCatalog } from '../support/animationCatalog.ts';
@@ -37,6 +39,7 @@ function battle(zombiesActive = false, devilsActive = false): World {
   const world = World.create(definition, createSimulationSettings({
     ...DEFAULT_GAME_OPTIONS,
     gameMode: GameMode.TeamBattle,
+    gameAmount: GameAmount.Kills5,
     zombiesActive,
     devilsActive,
     difficulty: Difficulty.Intermediate,
@@ -197,6 +200,41 @@ describe.skipIf(!definition || !animations)('approved Team Battle plan: actual r
     expect(world.teamBattle?.scores).toEqual({ a: 0, b: 0 });
     world.playerDead();
     expect(world.completion).toBeUndefined();
+  });
+
+  it('a real zombie can kill either team without awarding points or ending the match', () => {
+    for (const victimIndex of [0, 2]) {
+      const world = battle();
+      const victim = playerOf(world, victimIndex);
+      for (const player of world.players()) if (player.playerIndex !== victimIndex) player.move(new Position(16.5, 12.5 + player.playerIndex));
+      world.upgrades.zombieSpawned();
+      world.things.add(world.factory.zombie(world, victim.position.add(new Position(1, 0))));
+      runUntil(world, () => victim.deathLogged, world.ticksPerSecond * 12);
+      expect(victim.deathLogged).toBe(true);
+      expect(victim.lastAttackerClass).toBe(ThingClass.Zombie);
+      expect(world.teamBattle?.scores).toEqual({ a: 0, b: 0 });
+      expect(world.completion).toBeUndefined();
+    }
+  });
+
+  it('actual respawns permit subsequent points and passing the lowest deathmatch kill target does not end Team Battle', () => {
+    const world = battle();
+    const owner = playerOf(world);
+    const enemy = playerOf(world, 2);
+    const beyondTarget = KILLS_TO_WIN[world.settings.gameAmount] + 1;
+    for (let death = 0; death < beyondTarget; death++) {
+      owner.move(new Position(enemy.position.x < world.room.widthPx / CELL_SIZE_PX / 2 ? 16.5 : 4.5, 8.5));
+      enemy.invincible = 0;
+      world.things.add(new Explosion(world, enemy.position.clone(), new Angle(0), owner, enemy.maxLife));
+      runUntil(world, () => enemy.deathLogged, world.ticksPerSecond * 2);
+      expect(world.teamBattle?.scores.a).toBe(death + 1);
+      runUntil(world, () => !enemy.deathLogged, world.ticksPerSecond * (world.settings.respawnSeconds + 2));
+      expect(enemy.deathLogged).toBe(false);
+      expect(enemy.life).toBe(enemy.maxLife);
+      expect(world.completion).toBeUndefined();
+    }
+    expect(world.hud.fragsOf(owner.playerIndex)).toBe(beyondTarget);
+    expect(world.winnerIndex).toBeUndefined();
   });
 
   it.each([[false, false], [true, false], [false, true], [true, true]])('enemy switches zombies=%s devils=%s omit disabled quotas without changing deathmatch equipment', (zombies, devils) => {
