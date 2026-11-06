@@ -25,7 +25,8 @@ players remaining in the match after a leave or expiry, the server ends without 
 A Team Battle player receives an immutable attack source containing session identity,
 team and the current player index. Every weapon-created thing captures its parent's
 source. Allies neither accept affects nor appear as projectile line intersections, so
-bullets, piercing shots and rockets pass through teammates. Allied mines ignore allied
+bullets, piercing shots and rockets pass through teammates. Arcing grenades and fragments
+also skip teammates in their height-aware body-bounce collision path. Allied mines ignore allied
 occupants. Self-triggering and self-inflicted explosion damage retain deathmatch rules.
 
 Barrels in this mode use the triggering affect's source for their explosion, including
