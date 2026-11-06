@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { PlayerKeyCodes } from '../adapters/input/TickInputSampler.ts';
 import type { KeyValueStore } from '../adapters/storage/KeyValueStore.ts';
-import { GameMode } from '../domain/world/GameMode.ts';
+import { GameMode, usesDeathMatchEquipment } from '../domain/world/GameMode.ts';
 import {
   Difficulty,
   GameAmount,
@@ -20,7 +20,7 @@ import { DEFAULT_ROOM_DETAIL, RoomDetail } from './roomDetail.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 11;
+export const SETTINGS_VERSION = 12;
 export const FRAME_RATES = [0, 30, 60, 120] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 export const UNCAPPED_FRAME_RATE: FrameRate = 0;
@@ -35,6 +35,7 @@ const ROOM_DETAIL_VERSION = 7;
 const FLASHES_VERSION = 8;
 const SPACE_FIRE_KEYS_VERSION = 9;
 const JKL_KEYS_VERSION = 10;
+const RESPAWN_TIMES_VERSION = 11;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -75,12 +76,14 @@ export const UserSettingsSchema = z.object({
   difficulty: enumValue(Difficulty),
   gameSpeed: enumValue(GameSpeed),
   devilsActive: z.boolean(),
+  teamZombiesActive: z.boolean(),
+  teamDevilsActive: z.boolean(),
   collisionsActive: z.boolean(),
   damageActive: z.boolean(),
   gameAmount: enumValue(GameAmount),
   coopRespawnSeconds: enumValue(RespawnTime),
   deathMatchRespawnSeconds: enumValue(RespawnTime),
-  levelIndex: z.object({ single: levelIndex, coop: levelIndex, deathMatch: levelIndex }),
+  levelIndex: z.object({ single: levelIndex, coop: levelIndex, deathMatch: levelIndex, teamBattle: levelIndex }),
   character: enumValue(PlayerCharacter),
   keys: PlayerKeysSchema,
   playerName: z.string().max(PLAYER_NAME_MAX_LENGTH),
@@ -151,12 +154,14 @@ export const DEFAULT_SETTINGS: UserSettings = {
   difficulty: Difficulty.Beginner,
   gameSpeed: GameSpeed.Normal,
   devilsActive: true,
+  teamZombiesActive: false,
+  teamDevilsActive: false,
   collisionsActive: true,
   damageActive: true,
   gameAmount: GameAmount.Kills10,
   coopRespawnSeconds: DEFAULT_COOP_RESPAWN,
   deathMatchRespawnSeconds: DEFAULT_DEATH_MATCH_RESPAWN,
-  levelIndex: { single: DEFAULT_SINGLE_LEVEL, coop: 0, deathMatch: 0 },
+  levelIndex: { single: DEFAULT_SINGLE_LEVEL, coop: 0, deathMatch: 0, teamBattle: 0 },
   character: PlayerCharacter.Bambo,
   keys: DEFAULT_KEYS,
   playerName: '',
@@ -273,7 +278,7 @@ export function migrateSpaceFireKeys(raw: Raw): Raw {
 export function migrateRespawnTimes(raw: Raw): Raw {
   return {
     ...raw,
-    version: SETTINGS_VERSION,
+    version: RESPAWN_TIMES_VERSION,
     coopRespawnSeconds: DEFAULT_SETTINGS.coopRespawnSeconds,
     deathMatchRespawnSeconds: DEFAULT_SETTINGS.deathMatchRespawnSeconds,
   };
@@ -291,6 +296,13 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [FLASHES_VERSION]: migrateFlashes,
   [SPACE_FIRE_KEYS_VERSION]: migrateSpaceFireKeys,
   [JKL_KEYS_VERSION]: migrateRespawnTimes,
+  [RESPAWN_TIMES_VERSION]: (raw) => ({
+    ...raw,
+    version: SETTINGS_VERSION,
+    teamZombiesActive: false,
+    teamDevilsActive: false,
+    levelIndex: { ...(raw.levelIndex as UserSettings['levelIndex']), teamBattle: 0 },
+  }),
 };
 
 function versionOf(raw: Raw): number {
@@ -332,34 +344,38 @@ export function levelIndexFor(settings: UserSettings, mode: GameMode): number {
       return settings.levelIndex.coop;
     case GameMode.DeathMatch:
       return settings.levelIndex.deathMatch;
+    case GameMode.TeamBattle:
+      return settings.levelIndex.teamBattle;
   }
 }
 
 export function withLevelIndex(settings: UserSettings, mode: GameMode, index: number): UserSettings {
-  const key = mode === GameMode.Single ? 'single' : mode === GameMode.Coop ? 'coop' : 'deathMatch';
+  const key = mode;
   return { ...settings, levelIndex: { ...settings.levelIndex, [key]: index } };
 }
 
 export function toGameOptions(settings: UserSettings, gameMode: GameMode): GameOptions {
   return {
     gameMode,
+    ...(gameMode === GameMode.TeamBattle ? { zombiesActive: settings.teamZombiesActive } : {}),
     difficulty: settings.difficulty,
     gameSpeed: settings.gameSpeed,
-    devilsActive: settings.devilsActive,
+    devilsActive: gameMode === GameMode.TeamBattle ? settings.teamDevilsActive : settings.devilsActive,
     collisionsActive: settings.collisionsActive,
     damageActive: settings.damageActive,
     gameAmount: settings.gameAmount,
-    respawnSeconds: gameMode === GameMode.DeathMatch ? settings.deathMatchRespawnSeconds : settings.coopRespawnSeconds,
+    respawnSeconds: usesDeathMatchEquipment(gameMode) ? settings.deathMatchRespawnSeconds : settings.coopRespawnSeconds,
     playerCharacters: [settings.character],
     detail: settings.detail,
   };
 }
 
-export function toLobbyOptions(settings: UserSettings): LobbyOptions {
+export function toLobbyOptions(settings: UserSettings, mode?: GameMode): LobbyOptions {
   return {
     difficulty: settings.difficulty,
     gameSpeed: settings.gameSpeed,
     devilsActive: settings.devilsActive,
+    ...(mode === GameMode.TeamBattle ? { teamZombiesActive: settings.teamZombiesActive, teamDevilsActive: settings.teamDevilsActive } : {}),
     collisionsActive: settings.collisionsActive,
     damageActive: settings.damageActive,
     gameAmount: settings.gameAmount,

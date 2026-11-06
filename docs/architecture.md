@@ -27,11 +27,13 @@ in development, attached to Vite by `tools/dev/onlineServerPlugin.ts`).
 
 ## Multiplayer
 
-Single play runs locally in the browser. Coop and deathmatch are online only: a Node server
+Single play runs locally in the browser. Coop, deathmatch and Team Battle are online only: a Node server
 runs the `World` for each match at the game's tick rate and streams every player the
 draw list of that player's own camera. Clients send key state and render what they get.
 There is no local two-player mode. See `docs/runtime/online.md` and
 [ADR 0005](adr/0005-authoritative-online-server.md).
+
+Team Battle rules and damage ownership are described in `docs/domain/team-battle.md`.
 
 ## Simulation model
 

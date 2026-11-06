@@ -4,6 +4,7 @@ import { CollideFlag } from '../../map/CollideFlag.ts';
 import type { MapCell } from '../../map/MapCell.ts';
 import type { UpgradableObject } from '../../upgrades/contracts.ts';
 import type { Visual } from '../../visuals.ts';
+import { GameMode } from '../../world/GameMode.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { AffectType } from '../affects/AffectType.ts';
 import { affectorsInProcessingOrder } from '../affects/hitReaction.ts';
@@ -89,7 +90,8 @@ export class Barrel extends Thing implements UpgradableObject {
       if (!(affect.type & BARREL_AFFECTS)) continue;
       this.world.upgrades.applyObjectUpgrade(this);
       this.delete();
-      const explosion = this.world.things.add(new Explosion(this.world, this.position, this.angle, this.parent, this.damage));
+      const parent = this.world.settings.gameMode === GameMode.TeamBattle ? affect.affector : this.parent;
+      const explosion = this.world.things.add(new Explosion(this.world, this.position, this.angle, parent, this.damage));
       explosion.clusterExplode = this.clusterExplode;
       explosion.biggerBang = this.biggerBang;
       return;

@@ -1,3 +1,4 @@
+import type { Team } from '../../domain/world/TeamBattle.ts';
 import type { MemberDto, NetHud } from '../../net/protocol.ts';
 
 export const PlayerPresence = {
@@ -9,6 +10,7 @@ export const PlayerPresence = {
 export type PlayerPresence = (typeof PlayerPresence)[keyof typeof PlayerPresence];
 
 export interface PlayerListRow {
+  readonly team?: Team;
   readonly playerIndex: number;
   readonly name: string;
   readonly local: boolean;
@@ -46,6 +48,7 @@ export function playerListView(source: PlayerListSource): PlayerListView {
       return {
         playerIndex,
         name: member.name,
+        ...(member.team ? { team: member.team } : {}),
         local: playerIndex === source.localPlayerIndex,
         presence,
         respawnSeconds: respawnTicks === undefined ? undefined : Math.ceil(respawnTicks / source.ticksPerSecond),

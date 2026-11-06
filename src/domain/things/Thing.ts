@@ -4,9 +4,10 @@ import type { Position } from '../math/Position.ts';
 import type { CellId } from '../map/CellRect.ts';
 import type { SoundId } from '../sounds.ts';
 import type { Visual } from '../visuals.ts';
+import type { AttackSource } from '../world/TeamBattle.ts';
 import type { WorldContext } from '../world/WorldContext.ts';
 import type { Affect } from './affects/Affect.ts';
-import { baseClassOf, type ThingBaseClass, type ThingClass } from './ThingClass.ts';
+import { baseClassOf, ThingClass, type ThingBaseClass } from './ThingClass.ts';
 import { GROW_RADIUS_STEP } from './tuning.ts';
 
 export interface ThingOptions {
@@ -24,6 +25,7 @@ export abstract class Thing {
   angle: Angle;
   flags = 0;
   affectFlags = 0;
+  attackSource: AttackSource | undefined;
   affectors: Affect[] = [];
   radius = 0;
   radiusSquared = 0;
@@ -41,6 +43,7 @@ export abstract class Thing {
     this.position = position;
     this.angle = options.angle ?? new Angle(0);
     this.parent = options.parent;
+    this.attackSource = options.parent?.attackSource;
     this.uniqueId = world.ids.allocate();
     this.key = `t${this.uniqueId}`;
     this.id = this.parent ? this.parent.id : this.uniqueId;
@@ -103,7 +106,7 @@ export abstract class Thing {
   }
 
   affect(affect: Affect): void {
-    this.affectors.push(affect);
+    if (!protectsTeammate(affect.affector, this)) this.affectors.push(affect);
   }
 
   clearAffects(): void {
@@ -124,4 +127,10 @@ export function rootOwner(thing: Thing | undefined): Thing | undefined {
   let current = thing;
   while (current?.parent) current = current.parent;
   return current;
+}
+
+export function protectsTeammate(source: Thing | undefined, target: Thing): boolean {
+  const attacker = source?.attackSource;
+  const victim = target.classId === ThingClass.Player ? target.attackSource : undefined;
+  return attacker !== undefined && victim !== undefined && attacker.team === victim.team && attacker.actorId !== victim.actorId;
 }

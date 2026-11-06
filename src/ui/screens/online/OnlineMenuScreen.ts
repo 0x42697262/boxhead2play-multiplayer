@@ -316,7 +316,7 @@ export class OnlineMenuScreen implements Screen {
     const roomId = roomIdForLevel(rooms, levelIndexFor(current, this.mode)) ?? rooms.rooms[0]?.id;
     if (roomId === undefined || this.awaitingLobby) return;
     this.awaitLobby();
-    client.createLobby(this.mode, roomId, toLobbyOptions(current), current.character);
+    client.createLobby(this.mode, roomId, toLobbyOptions(current, this.mode), current.character);
   }
 
   private joinByCode(code: string): void {

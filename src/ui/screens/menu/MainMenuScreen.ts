@@ -25,6 +25,7 @@ import {
   JOIN_CODE_BUTTON,
   MAIN_MENU_TITLE_DEPTH,
   NAME_BUTTON,
+  TEAM_BATTLE_BUTTON,
   MainMenuChild,
   MENU_TICKS_PER_SECOND,
   MenuSymbol,
@@ -48,7 +49,7 @@ const NO_FILTERS: readonly Filter[] = [];
 const MODE_BUTTONS = [MainMenuChild.SinglePlay, MainMenuChild.CoopPlay, MainMenuChild.DeathPlay] as const;
 const MENU_BUTTONS = [...MODE_BUTTONS, MainMenuChild.Options] as const;
 const MENU_BUTTON_NAMES: ReadonlySet<string> = new Set(MENU_BUTTONS);
-const LABELED_BUTTONS = [MainMenuChild.Options, JOIN_CODE_BUTTON.name, NAME_BUTTON.name] as const;
+const LABELED_BUTTONS = [MainMenuChild.Options, JOIN_CODE_BUTTON.name, NAME_BUTTON.name, TEAM_BATTLE_BUTTON.name] as const;
 type LabeledButton = (typeof LABELED_BUTTONS)[number];
 
 export const MainMenuAction = {
@@ -70,6 +71,7 @@ const MAIN_MENU_TARGETS: readonly MenuTarget<MainMenuAction>[] = [
   { path: [MainMenuChild.SinglePlay], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.Single } },
   { path: [MainMenuChild.CoopPlay], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.Coop } },
   { path: [MainMenuChild.DeathPlay], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.DeathMatch } },
+  { path: [TEAM_BATTLE_BUTTON.name], trigger: Trigger.Release, action: { kind: MainMenuAction.Play, mode: GameMode.TeamBattle } },
   { path: [MainMenuChild.Options], trigger: Trigger.Release, action: { kind: MainMenuAction.OpenSettings } },
   { path: [JOIN_CODE_BUTTON.name], trigger: Trigger.Release, action: { kind: MainMenuAction.EditCode } },
   { path: [NAME_BUTTON.name], trigger: Trigger.Release, action: { kind: MainMenuAction.EditName } },
@@ -79,6 +81,7 @@ export interface MainMenuLayout {
   readonly items: readonly DisplayItem[];
   readonly settingsLabel: StaticTextFrame | undefined;
   readonly joinCodeLabel: StaticTextFrame | undefined;
+  readonly teamLabel: StaticTextFrame | undefined;
   readonly nameLabel: StaticTextFrame | undefined;
   readonly setup: SetupWindowLayout;
 }
@@ -98,9 +101,10 @@ export function mainMenuLayout(library: SymbolLibrary): MainMenuLayout {
   const joinCode = clone(JOIN_CODE_BUTTON);
   const name = clone(NAME_BUTTON);
   return {
-    items: [...kept, ...joinCode, ...name, ...(window ? [window] : [])].sort((first, second) => first.depth - second.depth),
+    items: [...kept, ...joinCode, ...name, ...clone(TEAM_BATTLE_BUTTON), ...(window ? [window] : [])].sort((first, second) => first.depth - second.depth),
     settingsLabel: menuButtonLabelFrame(library, items, MainMenuChild.Options),
     joinCodeLabel: menuButtonLabelFrame(library, joinCode, JOIN_CODE_BUTTON.name),
+    teamLabel: menuButtonLabelFrame(library, clone(TEAM_BATTLE_BUTTON), TEAM_BATTLE_BUTTON.name),
     nameLabel: menuButtonLabelFrame(library, name, NAME_BUTTON.name),
     setup: setupWindowLayout(library, window),
   };
@@ -251,6 +255,8 @@ export class MainMenuScreen implements Screen {
 
   private labelFrame(name: LabeledButton): StaticTextFrame | undefined {
     switch (name) {
+      case TEAM_BATTLE_BUTTON.name:
+        return this.layout.teamLabel;
       case MainMenuChild.Options:
         return this.layout.settingsLabel;
       case JOIN_CODE_BUTTON.name:
@@ -262,6 +268,8 @@ export class MainMenuScreen implements Screen {
 
   private labelText(name: LabeledButton): string {
     switch (name) {
+      case TEAM_BATTLE_BUTTON.name:
+        return t('menu.teamBattle');
       case MainMenuChild.Options:
         return t('setup.menuButton');
       case JOIN_CODE_BUTTON.name:

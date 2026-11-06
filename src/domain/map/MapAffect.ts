@@ -29,7 +29,7 @@ export class MapAffect {
     const area = CellRect.around(from.x, from.y, radius);
     const stepX = span.x / remaining;
     const stepY = span.y / remaining;
-    const line = new LineProbe(from.x, from.y, to.x, to.y, owner.id, affect.type, LineTest.ThingsAndWalls);
+    const line = new LineProbe(from.x, from.y, to.x, to.y, owner.id, affect.type, LineTest.ThingsAndWalls, owner);
     const session = this.map.nextSessionId();
     const hits: Thing[] = [];
     while (remaining > 0) {

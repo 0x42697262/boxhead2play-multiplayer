@@ -6,8 +6,9 @@ import type { PlayerHudStatus } from '../domain/things/PlayerThing.ts';
 import type { MultiplierListEntry } from '../domain/upgrades/Upgrades.ts';
 import type { CharacterVisual, ClipVisual, DrawEntry, Visual } from '../domain/visuals.ts';
 import { CompletionState } from '../domain/world/CompletionState.ts';
-import { GameMode } from '../domain/world/GameMode.ts';
+import { GameMode, usesDeathMatchEquipment } from '../domain/world/GameMode.ts';
 import { Difficulty, GameAmount, GameSpeed, PlayerCharacter, RespawnTime, type GameOptions } from '../domain/world/SimulationSettings.ts';
+import { Team, type TeamMatchView } from '../domain/world/TeamBattle.ts';
 import type { CameraView } from '../domain/world/World.ts';
 import { isTextKey } from '../text/i18n.ts';
 import { CONTROL_MASK_LIMIT } from './controlMask.ts';
@@ -29,7 +30,7 @@ const numericEnum = <T extends Record<string, number>>(values: T) =>
 
 const stringEnum = <T extends Record<string, string>>(values: T) => z.enum(Object.values(values) as [T[keyof T], ...T[keyof T][]]);
 
-const OnlineModeSchema = z.enum([GameMode.Coop, GameMode.DeathMatch]);
+const OnlineModeSchema = z.enum([GameMode.Coop, GameMode.DeathMatch, GameMode.TeamBattle]);
 export type OnlineMode = z.infer<typeof OnlineModeSchema>;
 
 export const ONLINE_MODES: readonly OnlineMode[] = OnlineModeSchema.options;
@@ -37,6 +38,11 @@ export const ONLINE_MODES: readonly OnlineMode[] = OnlineModeSchema.options;
 export function isOnlineMode(mode: GameMode): mode is OnlineMode {
   return (ONLINE_MODES as readonly GameMode[]).includes(mode);
 }
+
+const TeamSchema = stringEnum(Team);
+const TeamScoresSchema = z.object({ a: z.number().int().nonnegative(), b: z.number().int().nonnegative() });
+const TeamResultSchema = z.object({ scores: TeamScoresSchema, winner: TeamSchema.nullable(), abandoned: z.boolean() });
+const TeamMatchSchema = z.object({ scores: TeamScoresSchema, remainingSeconds: z.number().int().nonnegative() });
 
 const CharacterSchema = numericEnum(PlayerCharacter);
 const NameSchema = z.string().max(PLAYER_NAME_MAX_LENGTH);
@@ -50,6 +56,8 @@ export const LobbyOptionsSchema = z.object({
   difficulty: numericEnum(Difficulty),
   gameSpeed: numericEnum(GameSpeed),
   devilsActive: z.boolean(),
+  teamZombiesActive: z.boolean().optional(),
+  teamDevilsActive: z.boolean().optional(),
   collisionsActive: z.boolean(),
   damageActive: z.boolean(),
   gameAmount: numericEnum(GameAmount),
@@ -61,9 +69,10 @@ export const LobbyOptionsSchema = z.object({
 export type LobbyOptions = z.infer<typeof LobbyOptionsSchema>;
 
 export function gameOptionsFor(mode: OnlineMode, options: LobbyOptions, playerCharacters: readonly PlayerCharacter[]): GameOptions {
-  const { coopRespawnSeconds, deathMatchRespawnSeconds, ...shared } = options;
-  const respawnSeconds = mode === GameMode.DeathMatch ? deathMatchRespawnSeconds : coopRespawnSeconds;
-  return { ...shared, gameMode: mode, respawnSeconds, playerCharacters };
+  const { coopRespawnSeconds, deathMatchRespawnSeconds, teamZombiesActive, teamDevilsActive, ...shared } = options;
+  const respawnSeconds = usesDeathMatchEquipment(mode) ? deathMatchRespawnSeconds : coopRespawnSeconds;
+  const enemies = mode === GameMode.TeamBattle ? { zombiesActive: teamZombiesActive ?? false, devilsActive: teamDevilsActive ?? false } : {};
+  return { ...shared, ...enemies, gameMode: mode, respawnSeconds, playerCharacters };
 }
 
 export const LobbyState = {
@@ -79,6 +88,8 @@ const MemberSchema = z.object({
   character: CharacterSchema,
   host: z.boolean(),
   connected: z.boolean(),
+  team: TeamSchema.optional(),
+  teamLocked: z.boolean().optional(),
   playerIndex: z.number().int().min(0).lt(MAX_LOBBY_PLAYERS).nullable(),
 });
 
@@ -120,6 +131,7 @@ export const ClientMessageType = {
   LeaveLobby: 'leaveLobby',
   ConfigureLobby: 'configureLobby',
   SetCharacter: 'setCharacter',
+  SetTeam: 'setTeam',
   StartGame: 'startGame',
   LeaveGame: 'leaveGame',
   EndMatch: 'endMatch',
@@ -137,6 +149,7 @@ const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(ClientMessageType.LeaveLobby) }),
   z.object({ type: z.literal(ClientMessageType.ConfigureLobby), roomId: RoomIdSchema, options: LobbyOptionsSchema }),
   z.object({ type: z.literal(ClientMessageType.SetCharacter), character: CharacterSchema }),
+  z.object({ type: z.literal(ClientMessageType.SetTeam), team: TeamSchema }),
   z.object({ type: z.literal(ClientMessageType.StartGame) }),
   z.object({ type: z.literal(ClientMessageType.LeaveGame) }),
   z.object({ type: z.literal(ClientMessageType.EndMatch) }),
@@ -153,6 +166,9 @@ export const ErrorReason = {
   LobbyNotFound: 'lobbyNotFound',
   CodeNotFound: 'codeNotFound',
   LobbyFull: 'lobbyFull',
+  TeamFull: 'teamFull',
+  TeamLocked: 'teamLocked',
+  TeamsRequired: 'teamsRequired',
   LobbyLimit: 'lobbyLimit',
   NotHost: 'notHost',
   RoomUnknown: 'roomUnknown',
@@ -213,13 +229,14 @@ const PlayerStatusSchema = z.object({
 });
 
 const HudSchema = z.object({
+  teamBattle: TeamMatchSchema.optional(),
   totalScore: z.number(),
   multiplier: z.number(),
   multiplierTickRatio: z.number(),
   frags: z.array(z.number()),
   deaths: z.array(z.number()),
   messages: z.array(HudMessageSchema),
-  players: z.array(z.object({ playerIndex: z.number().int(), position: Point3Schema, status: PlayerStatusSchema })),
+  players: z.array(z.object({ playerIndex: z.number().int(), team: TeamSchema.optional(), position: Point3Schema, status: PlayerStatusSchema })),
 });
 
 const CameraSchema = z.object({
@@ -280,6 +297,7 @@ const ServerMessageSchema = z.discriminatedUnion('type', [
     matchId: z.string(),
     state: stringEnum(CompletionState),
     winnerName: NameSchema.nullable(),
+    teamResult: TeamResultSchema.optional(),
     score: z.number(),
   }),
   z.object({ type: z.literal(ServerMessageType.Error), reason: stringEnum(ErrorReason) }),
@@ -311,13 +329,14 @@ export type NetDecal = Omit<DecalRequested, DecalDefaults> & Partial<Pick<DecalR
 export type NetEvent = SoundRequested | NetDecal | ScoreAwarded;
 
 export interface NetHud {
+  readonly teamBattle?: TeamMatchView;
   readonly totalScore: number;
   readonly multiplier: number;
   readonly multiplierTickRatio: number;
   readonly frags: readonly number[];
   readonly deaths: readonly number[];
   readonly messages: readonly HudMessageEntry[];
-  readonly players: readonly { readonly playerIndex: number; readonly position: { x: number; y: number; z: number }; readonly status: PlayerHudStatus }[];
+  readonly players: readonly { readonly playerIndex: number; readonly team?: Team; readonly position: { x: number; y: number; z: number }; readonly status: PlayerHudStatus }[];
 }
 
 export interface NetFrame {

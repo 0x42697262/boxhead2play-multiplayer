@@ -120,6 +120,8 @@ export const RoomChild = {
   Notice: 'roomNotice',
   Invite: 'roomInvite',
   NameHint: 'roomNameHint',
+  TeamA: 'roomTeamA',
+  TeamB: 'roomTeamB',
 } as const;
 
 export const ROOM_PROMPT_DEPTH = 1;
@@ -131,3 +133,12 @@ export const ROOM_OPTIONS = { depth: 450, top: 342, width: 420 } as const;
 export const ROOM_NOTICE = { depth: 451, anchorX: 320, top: 420, width: 600 } as const;
 export const ROOM_NAME_BUTTON = { name: 'mcRoomName', depth: 90, matrix: [0.45, 0, 0, 0.5, 410, 446], labelWidth: 920 } as const;
 export const ROOM_NAME_HINT = { depth: 452, anchorX: 410, top: 463, width: 420 } as const;
+
+export const ROOM_TEAM_CHOICES = [
+  { name: RoomChild.TeamA, team: 'a', depth: 453, anchorX: 6, top: 224, width: 92, align: 'left' },
+  { name: RoomChild.TeamB, team: 'b', depth: 454, anchorX: 108, top: 224, width: 92, align: 'left' },
+] as const;
+export const TEAM_OBJECTIVE = { name: 'teamObjective', depth: 455, anchorX: 320, top: 60, width: 620 } as const;
+export const TEAM_OBJECTIVE_INFO = { name: 'teamObjectiveInfo', depth: 456, anchorX: 320, top: 98, width: 620 } as const;
+export const TEAM_OBJECTIVE_COLOR = 0xff0000;
+export const TEAM_OBJECTIVE_TEXT = ['OBJECTIVE', 'Access'] as const;

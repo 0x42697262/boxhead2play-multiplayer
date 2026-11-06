@@ -1,7 +1,7 @@
+import { t } from '../../../text/i18n.ts';
 import { DecalKind, type DecalRequested, type Point2, type ScoreAwarded } from '../../../domain/events.ts';
 import type { MultiplierListEntry } from '../../../domain/upgrades/Upgrades.ts';
 import { SCREEN_HEIGHT_PX, SCREEN_WIDTH_PX } from '../../../domain/world/tuning.ts';
-import { t } from '../../../text/i18n.ts';
 import type { Room } from '../../assets/schemas.ts';
 import type { ClipBuffers } from '../clips/ClipBuffers.ts';
 import type { HudRenderer, PlayerLabel } from '../hud/HudRenderer.ts';
@@ -195,6 +195,7 @@ export class WorldRenderer {
       text: playerLabelText(player),
       visible: player.status.visible,
       name: frame.hud.playerNames[player.playerIndex] ?? '',
+      ...(player.team ? { team: player.team } : {}),
       local: player.playerIndex === frame.hud.localPlayerIndex,
     };
   }

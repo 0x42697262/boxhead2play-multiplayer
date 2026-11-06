@@ -126,7 +126,7 @@ export class MapCollide {
     const area = CellRect.around(from.x, from.y, radius);
     const stepX = span.x / remaining;
     const stepY = span.y / remaining;
-    const line = new LineProbe(from.x, from.y, to.x, to.y, owner.id, affectFlags, mapOnly ? LineTest.WallsOnly : LineTest.ThingsAndWalls);
+    const line = new LineProbe(from.x, from.y, to.x, to.y, owner.id, affectFlags, mapOnly ? LineTest.WallsOnly : LineTest.ThingsAndWalls, owner);
     const session = this.map.nextSessionId();
     let hit: LineHit | undefined;
     while (remaining > 0) {

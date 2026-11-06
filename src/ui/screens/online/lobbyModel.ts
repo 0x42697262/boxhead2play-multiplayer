@@ -2,6 +2,7 @@ import { ROOM_MEMBER_LINES } from './tuning.ts';
 import type { RoomIndex } from '../../../adapters/assets/schemas.ts';
 import { CompletionState } from '../../../domain/world/CompletionState.ts';
 import { GameMode } from '../../../domain/world/GameMode.ts';
+import { type Team, TEAMS, TEAM_BATTLE_RULES } from '../../../domain/world/TeamBattle.ts';
 import { KILLS_TO_WIN } from '../../../domain/world/tuning.ts';
 import { LobbyState, type LobbyDto, type LobbyOptions, type LobbySummaryDto as LobbySummary, type OnlineMode } from '../../../net/protocol.ts';
 import { OnlineStatus, type OnlineState } from '../../../services/online/OnlineClient.ts';
@@ -31,6 +32,7 @@ export interface RoomPanel {
   readonly prompt: string;
   readonly canPlay: boolean;
   readonly members: readonly string[];
+  readonly teamChoice?: { readonly team: Team; readonly locked: boolean };
   readonly ownName: string | undefined;
   readonly options: string;
   readonly notice: string | undefined;
@@ -40,6 +42,7 @@ export interface RoomPanel {
 const TITLES: Readonly<Record<OnlineMode, TextKey>> = {
   [GameMode.Coop]: 'online.title.coop',
   [GameMode.DeathMatch]: 'online.title.deathMatch',
+  [GameMode.TeamBattle]: 'online.title.teamBattle',
 };
 
 export function roomName(rooms: RoomIndex, roomId: string): string {
@@ -59,6 +62,7 @@ function onOff(value: boolean): string {
 }
 
 export function optionsSummary(mode: OnlineMode, options: LobbyOptions): string {
+  if (mode === GameMode.TeamBattle) return t('team.options', { zombies: onOff(options.teamZombiesActive ?? false), devils: onOff(options.teamDevilsActive ?? false) });
   const speed = t(`online.speed.${options.gameSpeed}`);
   const collisions = onOff(options.collisionsActive);
   if (mode === GameMode.DeathMatch) {
@@ -86,6 +90,10 @@ export function resultText(result: OnlineSessionResult): string {
       break;
   }
   const over = result.gameOver;
+  if (over?.teamResult) {
+    const { scores, winner, abandoned } = over.teamResult;
+    return t(abandoned ? 'team.result.abandoned' : winner ? 'team.result.won' : 'team.result.draw', { ...scores, team: winner ? t(`team.${winner}`) : '' });
+  }
   if (result.state === CompletionState.Error) return t('online.result.error');
   if (result.state === CompletionState.Ended) return t('online.result.ended');
   if (over?.winnerName) return t('online.result.won', { name: over.winnerName });
@@ -162,6 +170,17 @@ export function visibleMemberIndices(count: number, selfIndex: number | undefine
 }
 
 function memberLines(lobby: LobbyDto, clientId: string | undefined): string[] {
+  if (lobby.mode === GameMode.TeamBattle) {
+    return TEAMS.flatMap((team) => {
+      const members = lobby.members.filter((member) => member.team === team);
+      const self = members.findIndex((member) => member.id === clientId);
+      const { shown, hidden } = visibleMemberIndices(members.length, self < 0 ? undefined : self, TEAM_BATTLE_RULES.maximumPerTeam / TEAMS.length + 1);
+      return [t('team.heading', { team: t(`team.${team}`), count: members.length }), ...shown.map((index) => {
+        const member = members[index];
+        return member ? t('team.member', { name: member.name.toUpperCase(), tags: `${member.id === clientId ? t('team.you') : ''}${member.host ? t('team.host') : ''}` }) : '';
+      }), ...(hidden ? [t('team.more', { count: hidden })] : [])];
+    });
+  }
   const selfIndex = lobby.members.findIndex((member) => member.id === clientId);
   const { shown, hidden } = visibleMemberIndices(lobby.members.length, selfIndex < 0 ? undefined : selfIndex, ROOM_MEMBER_LINES);
   const lines = shown.map((index) => memberLine(lobby, index, clientId));
@@ -172,6 +191,7 @@ function roomPrompt(lobby: LobbyDto, clientId: string | undefined): { readonly p
   const self = lobby.members.find((member) => member.id === clientId);
   if (lobby.state === LobbyState.Playing && self?.playerIndex === null) return { prompt: t('online.room.joinMatch'), canPlay: true };
   if (lobby.state === LobbyState.Playing) return { prompt: t('online.room.running'), canPlay: false };
+  if (lobby.mode === GameMode.TeamBattle && TEAMS.some((team) => !lobby.members.some((member) => member.team === team && member.connected))) return { prompt: t('team.needBoth'), canPlay: false };
   if (self?.host) return { prompt: t('online.room.start'), canPlay: true };
   const host = lobby.members.find((member) => member.host);
   return { prompt: t('online.room.waiting', { name: (host?.name ?? '').toUpperCase() }), canPlay: false };
@@ -180,7 +200,9 @@ function roomPrompt(lobby: LobbyDto, clientId: string | undefined): { readonly p
 export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex, result: OnlineSessionResult | undefined, linkCopied = false): RoomPanel {
   const { clientId } = state;
   const host = lobby.members.some((member) => member.host && member.id === clientId);
+  const self = lobby.members.find((member) => member.id === clientId);
   return {
+    ...(self?.team ? { teamChoice: { team: self.team, locked: self.teamLocked ?? false } } : {}),
     host,
     configurable: host && lobby.state === LobbyState.Waiting,
     levelIndex: levelIndexOf(rooms, lobby.roomId),
@@ -189,7 +211,7 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
     members: memberLines(lobby, clientId),
     ownName: lobby.members.find((member) => member.id === clientId)?.name,
     options: optionsSummary(lobby.mode, lobby.options),
-    notice: noticeText(state, result),
+    notice: noticeText(state, result) ?? (state.result?.teamResult ? resultText({ end: OnlineEnd.Finished, state: state.result.state, gameOver: state.result }) : undefined),
     invite: t(linkCopied ? 'invite.roomCopied' : 'invite.roomCopy', { code: lobby.code }),
   };
 }

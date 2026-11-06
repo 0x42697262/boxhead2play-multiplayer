@@ -111,7 +111,7 @@ describe('settings reading', () => {
 
   it('keeps a stored room detail', () => {
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, roomDetail: RoomDetail.Low })).settings.roomDetail).toBe(RoomDetail.Low);
-    expect(SETTINGS_VERSION).toBe(11);
+    expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, roomDetail: RoomDetail.Low })).settings.version).toBe(SETTINGS_VERSION);
   });
 
   it('migrates version 8 to flashes on and keeps a stored choice', () => {
@@ -195,4 +195,29 @@ describe('SettingsService', () => {
       detail: true,
     });
   });
+
+  it('approved Team Battle plan: migrating the preceding settings format preserves existing mode choices and initializes separate team options', () => {
+    const previous = withLevelIndex(DEFAULT_SETTINGS, GameMode.Coop, DEFAULT_SETTINGS.levelIndex.coop + 1);
+    const stored = JSON.stringify({
+      ...previous,
+      version: SETTINGS_VERSION - 1,
+      teamZombiesActive: undefined,
+      teamDevilsActive: undefined,
+      levelIndex: { single: previous.levelIndex.single, coop: previous.levelIndex.coop, deathMatch: previous.levelIndex.deathMatch },
+    });
+    const result = readSettings(stored);
+    expect(result.rejected).toBeUndefined();
+    expect(result.settings).toEqual(previous);
+  });
+
+  it('approved Team Battle plan: team options and saved level do not change existing mode options', () => {
+    const settings = withLevelIndex({ ...DEFAULT_SETTINGS, teamZombiesActive: true, teamDevilsActive: false }, GameMode.TeamBattle, DEFAULT_SETTINGS.levelIndex.teamBattle + 1);
+    expect(toLobbyOptions(settings)).toEqual(toLobbyOptions(DEFAULT_SETTINGS));
+    expect(toLobbyOptions(settings, GameMode.TeamBattle)).toMatchObject({ teamZombiesActive: true, teamDevilsActive: false });
+    expect(toGameOptions(settings, GameMode.Coop)).toEqual(toGameOptions(DEFAULT_SETTINGS, GameMode.Coop));
+    expect(toGameOptions(settings, GameMode.DeathMatch)).toEqual(toGameOptions(DEFAULT_SETTINGS, GameMode.DeathMatch));
+    expect(levelIndexFor(settings, GameMode.TeamBattle)).toBe(DEFAULT_SETTINGS.levelIndex.teamBattle + 1);
+    expect(levelIndexFor(settings, GameMode.DeathMatch)).toBe(DEFAULT_SETTINGS.levelIndex.deathMatch);
+  });
+
 });

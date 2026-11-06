@@ -145,3 +145,18 @@ These look like bugs but are kept because they shape gameplay:
   exists).
 * A pickup is used up even when `RandomPickup` finds nothing to give.
 * `CThing_Shot_Laser` never deletes itself (`mLife` is never set). No weapon fires it.
+
+## Separate online Team Battle
+
+Team Battle is a new mode, not an AS2 behavior change to single, coop or deathmatch.
+Two teams of eight have permanent teammate protection, including no allied knockback,
+projectile blocking or mine triggering. Team Battle barrel chains retain the triggering
+attack's identity and team rather than the barrel's original parent. Delayed attacks
+never credit a replacement player slot. Other modes keep their existing attribution.
+
+Dedicated team totals survive departures. The authoritative server ends regulation after
+five real minutes, independent of simulation speed: higher opponent kills win, ties draw.
+An empty team ends without a winner. Optional neutral Zombies and Devils have separate
+pre-match switches and cannot end the match early or change deathmatch equipment rules.
+The existing randomized spawns and respawn state machine remain the only implementation.
+Full rules and screen changes are in `../domain/team-battle.md`.

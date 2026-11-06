@@ -144,7 +144,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 12)
+## Protocol (`src/net/protocol.ts`, version 13)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/serverWire.ts`, ADR 0007): one `ServerWireEncoder` per socket on the server, one
@@ -438,3 +438,21 @@ them to `0` for such a server.
 The production server (`src/server/main.ts`) closes WebSocket upgrade requests for any path
 other than `/ws` at once (`rejectForeignUpgrades`). The dev server leaves them alone, because
 Vite's HMR socket upgrades on the same HTTP server.
+
+## Team Battle
+
+Team Battle uses this same online flow and a separate lobby listing. Lobby members carry
+an optional team and entry-lock flag; `setTeam` selects a team before first match entry.
+A team at eight members rejects another member, and an empty opposing team prevents start.
+Known-session locks survive leaving and rejoining a running match. Invite and list joins
+stop in the Team Battle room so a late joiner can choose before entering.
+
+The lobby options carry independent Team Battle Zombies and Devils switches, both off for
+every new lobby. Only the waiting lobby's host can change them. Frames carry team identity,
+team totals and the server-clock countdown. A team result carries both totals, a winning
+team or draw, and whether the match ended because a team left. Every lobby member receives
+the final team result, including members who had left the running game.
+
+See `../domain/team-battle.md` for scoring, damage provenance, deadline boundary rules and
+reuse of the existing respawn implementation. These message-schema additions use protocol
+version 13; older clients must reload.

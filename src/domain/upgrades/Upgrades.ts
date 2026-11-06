@@ -4,7 +4,7 @@ import { SoundId } from '../sounds.ts';
 import type { PlayerThing } from '../things/PlayerThing.ts';
 import { ThingClass } from '../things/ThingClass.ts';
 import { INFINITE_AMMO, type WeaponName } from '../weapons/WeaponName.ts';
-import { GameMode } from '../world/GameMode.ts';
+import { GameMode, usesDeathMatchEquipment } from '../world/GameMode.ts';
 import type { SimulationSettings } from '../world/SimulationSettings.ts';
 import type { TextKey } from '../../text/i18n.ts';
 import type { UpgradableCreature, UpgradableObject, UpgradableWeapon, WeaponStats } from './contracts.ts';
@@ -153,6 +153,7 @@ export class Upgrades {
 
   process(): void {
     if (this.host.settings.gameMode === GameMode.DeathMatch) return;
+    if (this.host.settings.gameMode === GameMode.TeamBattle && !this.host.settings.zombiesActive && !this.host.settings.devilsActive) return;
     this.tick++;
     this.scaleToPlayers();
     const level = this.level;
@@ -162,19 +163,20 @@ export class Upgrades {
     } else {
       this.spawnEnemies();
     }
+    if (this.host.settings.gameMode === GameMode.TeamBattle) return;
     if (this.multipleKillTick-- < 0) this.setMultipleKill(0);
     if (this.multiplierTick-- < 0) this.setMultiplier(this.multiplierIndex - 1);
   }
 
   setDifficulty(difficulty: number): void {
-    const start =
-      this.host.settings.gameMode === GameMode.DeathMatch
-        ? DEATHMATCH_START
-        : (DIFFICULTY_START[difficulty] ?? DIFFICULTY_START[0]);
+    const teamBattle = this.host.settings.gameMode === GameMode.TeamBattle;
+    const levelStart = this.host.settings.gameMode === GameMode.DeathMatch ? DEATHMATCH_START : (DIFFICULTY_START[difficulty] ?? DIFFICULTY_START[0]);
+    const equipmentStart = usesDeathMatchEquipment(this.host.settings.gameMode) ? DEATHMATCH_START : levelStart;
     const hud = this.host.hud;
     hud.silentMessages = true;
-    for (let i = 1; i < start.level; i++) this.applyLevel(this.levelIndex + 1, true);
-    for (let i = 1; i < start.multiplier; i++) this.setMultiplier(this.multiplierIndex + 1);
+    for (let i = 1; i < levelStart.level; i++) this.applyLevel(this.levelIndex + 1, true);
+    for (let i = 1; i < equipmentStart.multiplier; i++) this.setMultiplier(this.multiplierIndex + 1);
+    if (teamBattle) this.omitDisabledSpecies();
     hud.silentMessages = false;
   }
 
@@ -195,6 +197,7 @@ export class Upgrades {
   }
 
   logKills(count: number): void {
+    if (this.host.settings.gameMode === GameMode.TeamBattle) return;
     for (let i = 0; i < count; i++) {
       this.setMultipleKill(this.multipleKillIndex + 1);
       this.setMultiplier(this.multiplierIndex + 1);
@@ -340,6 +343,7 @@ export class Upgrades {
         level.devilTotalCount = definition.devil.totalCount;
         this.addStat(ThingClass.Devil, UpgradeProp.SpeedUp, definition.devil.speedUp);
       }
+      this.omitDisabledSpecies();
       const { zombieCount, zombieTotalCount, devilCount, devilTotalCount } = level;
       this.levelBase = { zombieCount, zombieTotalCount, devilCount, devilTotalCount };
       this.granted = NO_EXTRA_ENEMIES;
@@ -353,6 +357,12 @@ export class Upgrades {
       key: index <= LEVEL_COUNT ? 'hud.level' : 'hud.levelForever',
       params: { level: index },
     });
+  }
+
+  private omitDisabledSpecies(): void {
+    if (this.host.settings.gameMode !== GameMode.TeamBattle) return;
+    if (!this.host.settings.zombiesActive) this.level.zombieCount = this.level.zombieTotalCount = 0;
+    if (!this.host.settings.devilsActive) this.level.devilCount = this.level.devilTotalCount = 0;
   }
 
   private scaledDevilSpawnRate(): number {

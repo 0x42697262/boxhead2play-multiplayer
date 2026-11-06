@@ -6,7 +6,7 @@ import { CollideFlag } from '../../map/CollideFlag.ts';
 import { SoundId } from '../../sounds.ts';
 import { CharacterStyle, OPAQUE_ALPHA, PLAYER_CHARACTER_STYLES, type Visual } from '../../visuals.ts';
 import { INFINITE_AMMO, WeaponName } from '../../weapons/WeaponName.ts';
-import { GameMode } from '../../world/GameMode.ts';
+import { GameMode, usesDeathMatchEquipment } from '../../world/GameMode.ts';
 import type { PlayerCharacter } from '../../world/SimulationSettings.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { AffectType } from '../affects/AffectType.ts';
@@ -129,7 +129,7 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     this.maxLife = this.life = PLAYER.life;
     this.inventory.init();
     for (const weapon of this.world.upgrades.unlockedWeapons) this.inventory.newWeapon(weapon);
-    if (this.world.settings.gameMode === GameMode.DeathMatch) this.inventory.reset();
+    if (usesDeathMatchEquipment(this.world.settings.gameMode)) this.inventory.reset();
     this.inventory.select(WeaponName.Pistol);
     this.sounds.death = SoundId.PlayerScream1;
     this.world.upgrades.registerCreature(this);
@@ -217,6 +217,7 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     if (!point) return;
     this.alpha = OPAQUE_ALPHA;
     this.lastAttackerIndex = undefined;
+    this.lastAttackSource = undefined;
     this.lastAttackerClass = undefined;
     this.deathLogged = false;
     this.animator = Player.createAnimator(this.world, this.character);
@@ -224,7 +225,7 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     this.flags = ThingFlag.Collidable;
     this.move(point.position.clone());
     this.angle.radians = point.angle.radians;
-    const factor = this.world.settings.gameMode === GameMode.DeathMatch ? PLAYER.deathMatchRespawnInvincibleFactor : PLAYER.respawnInvincibleFactor;
+    const factor = usesDeathMatchEquipment(this.world.settings.gameMode) ? PLAYER.deathMatchRespawnInvincibleFactor : PLAYER.respawnInvincibleFactor;
     this.invincible = PLAYER.respawnInvincibleTicks * factor;
     this.setState(CreatureState.PlayerControl);
     this.controls.fire.renew();

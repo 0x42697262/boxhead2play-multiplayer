@@ -36,3 +36,5 @@ export const AMBIENCE_LEVELS = [
   { maxZombies: Number.POSITIVE_INFINITY, channels: 3, frequencyTicks: 1 },
 ] as const;
 export const AMBIENCE_SAMPLE_SLOTS = 4;
+
+export const TEAM_BATTLE_RULES = { maximumPerTeam: 8, regulationSeconds: 300 } as const;
