@@ -215,6 +215,11 @@ The original has no in-game menu. Esc opens one in single and online play (owner
   online play.
 * QUIT does what QUIT? on the upgrade list does: single play ends the game, online play
   leaves to the lobby room.
+* END MATCH (online, host only, `GameMenuDependencies.endMatch`): a clone of
+  `mcInstructions` one slot (33.25 px) below QUIT (`END_MATCH_BUTTON`). The first click turns
+  the label into "END FOR EVERYONE?"; the second sends `endMatch` and closes the menu. Leaving
+  the choices (Esc, SETTINGS, CONTROLS) disarms it. Guests never see it; a player who becomes
+  host mid-match sees it the next time the choices draw (`OnlineClient.isHost`).
 * The game keeps reading the keyboard while the menu is open; the pointer goes to the menu.
 
 ## Transitions (`CScreen_Transition`)

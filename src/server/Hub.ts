@@ -324,6 +324,8 @@ export class Hub {
       case ClientMessageType.LeaveGame:
         session.lobby?.leaveGame(session);
         return undefined;
+      case ClientMessageType.EndMatch:
+        return session.lobby ? session.lobby.endMatch(session) : ErrorReason.NotInLobby;
       case ClientMessageType.Input:
         session.lobby?.input(session, message);
         return undefined;

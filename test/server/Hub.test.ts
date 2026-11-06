@@ -335,6 +335,23 @@ describe('Hub matches', () => {
     expect(setup.ticker.running).toBe(0);
   });
 
+  it('lets only the host end a running match for everyone, keeping every member in the lobby', () => {
+    const setup = testHub();
+    const { host, guest, lobbyId } = hostAndGuest(setup, GameMode.Coop);
+    host.say({ type: 'startGame' });
+    guest.say({ type: 'endMatch' });
+    expect(guest.last('error')?.reason).toBe('notHost');
+    expect(setup.hub.lobby(lobbyId)?.activeMatch).toBeDefined();
+    host.say({ type: 'endMatch' });
+    expect(host.last('gameOver')).toMatchObject({ state: CompletionState.Ended, winnerName: null });
+    expect(guest.last('gameOver')?.state).toBe(CompletionState.Ended);
+    expect(lobbyOf(guest).state).toBe(LobbyState.Waiting);
+    expect(lobbyOf(guest).members).toHaveLength(2);
+    expect(setup.ticker.running).toBe(0);
+    host.say({ type: 'endMatch' });
+    expect(host.all('gameOver')).toHaveLength(1);
+  });
+
   it('ignores ticks that arrive after its match ended', () => {
     const ticks: (() => void)[] = [];
     const ticker: Ticker = {
