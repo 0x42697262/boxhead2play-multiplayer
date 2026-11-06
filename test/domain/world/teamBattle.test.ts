@@ -88,6 +88,32 @@ describe.skipIf(!definition || !animations)('approved Team Battle plan: actual r
     expect(enemy.life).toBeLessThan(enemy.maxLife);
   });
 
+  it('an arcing grenade passes through the allied body collision path before detonating', () => {
+    const world = battle();
+    const owner = playerOf(world);
+    const ally = playerOf(world, 1);
+    const position = ally.position.clone();
+    const grenade = world.things.add(new GrenadeShot(world, owner.position.add(new Position(1, 0)), new Angle(0), owner, DAMAGE, GRENADE.minPower));
+    const crossingTicks = Math.ceil((ally.position.x + ally.radius + GRENADE.radius - grenade.position.x) / GRENADE.minPower) + 1;
+    run(world, crossingTicks);
+    unchanged(ally, position);
+    expect(grenade.position.x).toBeGreaterThan(ally.position.x + ally.radius);
+    expect(grenade.delta.x).toBeGreaterThan(0);
+  });
+
+  it('a low cluster fragment passes an allied body instead of reflecting off it', () => {
+    const world = battle();
+    const owner = playerOf(world);
+    const ally = playerOf(world, 1);
+    const position = ally.position.clone();
+    const fragment = world.things.add(new ClusterShell(world, ally.position.add(new Position(-GRENADE.minPower, 0)), new Angle(0), owner, DAMAGE));
+    const startX = fragment.position.x;
+    run(world, 1);
+    unchanged(ally, position);
+    expect(fragment.position.x).toBeGreaterThan(startX);
+    expect(fragment.delta.x).toBeGreaterThan(0);
+  });
+
   it('a thrown grenade retains its team through flight and the actual fuse', () => {
     const world = battle();
     const owner = playerOf(world);
