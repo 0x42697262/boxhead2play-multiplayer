@@ -77,11 +77,17 @@ gone (`removeObject`).
   it. Deathmatch frags use it.
 * Players spawned after the start (`World.joinPlayer`) get the weapons the world unlocked
   so far (`Upgrades.unlockedWeapons`); in deathmatch the inventory is reset as on respawn.
-* Death: the shared `dying`, then 4 s `dead`. In the last second it calls
+* Death: the shared `dying`, then `dead` for `corpseTicks()`. In the last second it calls
   `World.playerDead()` every tick (which ends single and coop games when nobody is left).
-  Then `respawn` waits 148 ticks (25 in the original, so a death lasts 10 s) and retries every tick until `World.playerRespawnPoint`
+  Then `respawn` waits `respawnDelayTicks()` and retries every tick until `World.playerRespawnPoint`
   finds a point: full life, collidable, 125 ticks of invincibility (25 in deathmatch), fire
   key renewed, weapons emptied except the pistol, `Upgrades.playerRespawned()`.
+* Respawn time (`SimulationSettings.respawnSeconds`, the OPTIONS row of coop and deathmatch,
+  3/5/10/15 s; defaults 10 s coop, 5 s deathmatch): `dead` plus `respawn` take exactly
+  `round(respawnSeconds * ticksPerSecond)` ticks. The corpse keeps its 4 s when the time
+  allows; a 3 s time shortens it to `total - 2` ticks (the 2 are the ticks of the two state
+  changes) and `respawn` waits 0 ticks. At 10 s and 25 ticks/s that is 100 + 148 ticks, the
+  delay used before the option existed. Single play keeps the 4 s corpse and never respawns.
 
 ### Input latching (`PlayerControls.ts`)
 

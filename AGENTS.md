@@ -244,7 +244,7 @@ Add one line per behavior change: what to do, and the result you expect.
   shakes and flashes only A, outside every camera none, and a late joiner starts without effects.
 * Multiplier x5 -> every player gets the UZI (key 2, 100 rounds). Weapon out of ammo ->
   red `hud.outOfAmmo.<id>` message and the pistol.
-* Coop death -> respawn after 10 s (4 s corpse + 6 s) on a random free floor cell with 200 life, empty
+* Coop death -> respawn after 10 s (4 s corpse + 6 s; the default coop OPTIONS respawn time) on a random free floor cell with 200 life, empty
   weapons and 5 s of blinking. Single death -> `worldCompleted` with `playerDead`.
 * `npm run dev`, PLAY, go to level 1/18 BOXY, click the preview -> the room, the score total
   `000000000000` with `x1`, "Pistol selected!" sliding up, and player 1 blinking for 8 s.
@@ -353,6 +353,12 @@ Add one line per behavior change: what to do, and the result you expect.
 * OPTIONS in single play or a coop lobby -> Difficulty, Object collision, Devils, Friendly fire
   and Game speed, no "Number of games"; in a death match lobby -> Object collision, Game speed and
   Number of games at the top of the window, no gaps.
+* Coop lobby OPTIONS -> a sixth row "Respawn time:" with 3 SEC, 5 SEC, 10 SEC (selected), 15 SEC;
+  death match lobby -> the same row fourth, 5 SEC selected. Pick 15 SEC in death match -> the
+  summary under the level ends "Respawn 15 s", the coop lobby still shows 10 s; in the match a
+  death shows "RESPAWN IN 15". Settings `version` 11; a stored version 10 blob loads with 10 / 5.
+  `npx vitest run test/domain/things/creatures/player.test.ts` -> every time in both modes
+  respawns exactly that many seconds after the dead state starts.
 * OPTIONS (single play and lobby room) -> the italic info lines under Object collision, Devils
   and Friendly Fire end without "Forfeits hiscore!".
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET
@@ -449,6 +455,6 @@ Add one line per behavior change: what to do, and the result you expect.
   server's draw list (protocol 9). Online coop -> zombies, players, smoke and blood look as before.
 * `npx vitest run test/net/drawListWire.test.ts` -> every visual kind round-trips the fixed
   draw list layout, an unchanged thing costs 1 byte, and 1500 ticks of a 4-player match decode
-  exactly like the JSON encoding (protocol 10). `npm run bandwidth` -> coop 4 players wire and
+  exactly like the JSON encoding (protocol 10, now 11). `npm run bandwidth` -> coop 4 players wire and
   "as sent" about 4.3 KiB/s, no "decoded frames differ" line. Online coop with lasers, smoke,
   dying zombies and a devil -> everything looks as before.

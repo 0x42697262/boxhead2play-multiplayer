@@ -39,6 +39,7 @@ import {
   ROW_LABEL_COLOR,
   RoomChild,
   TextStyles,
+  WINDOW_TEXT_COLOR,
 } from '../online/tuning.ts';
 import { cycleFrame } from './frameCycle.ts';
 import { itemMatrix } from './MainMenuScreen.ts';
@@ -46,6 +47,7 @@ import { MenuCore, type MenuKit } from './MenuCore.ts';
 import { mapTargets, Trigger, type MenuTarget } from './MenuPointer.ts';
 import { ControlsOutcome, ControlsWindow, controlsWindowLayout, type ControlsAction, type ControlsWindowLayout } from './ControlsWindow.ts';
 import { OverrideTree } from './overrideTree.ts';
+import { drawSetupRowButtons, placeSetupText } from './SetupWindow.ts';
 import { optionRowsLayout, type OptionRowsLayout } from './optionRows.ts';
 import {
   HISCORE_NOTE,
@@ -181,7 +183,7 @@ export function selectWorldLayout(library: SymbolLibrary, mode: GameMode): Selec
       const clip = text ? clipBefore(text, HISCORE_NOTE, OPTION_INFO_CLIP_MARGIN_PX) : undefined;
       return clip ? [{ key: depthKey(item.depth), clip }] : [];
     }),
-    optionRows: optionRowsLayout(optionsChildren, mode),
+    optionRows: optionRowsLayout(library, optionsChildren, mode),
   };
 }
 
@@ -496,10 +498,17 @@ export class SelectWorldScreen implements Screen {
         action: { kind: SelectAction.Option, field: group.field, value: button.value } as const,
       })),
     );
+    const added = this.layout.optionRows.added.flatMap(({ spec, layout }) =>
+      layout.buttons.map((button) => ({
+        path: buttonPath(...OPTIONS, button.spec.instance),
+        trigger: Trigger.Release,
+        action: { kind: SelectAction.Option, field: spec.field, value: button.spec.value } as const,
+      })),
+    );
     const close = { path: buttonPath(...OPTIONS, Child.Close), trigger: Trigger.Release, action: { kind: SelectAction.CloseOptions } } as const;
     const lock = { path: [...OPTIONS, Child.Lock], trigger: Trigger.Block } as const;
     if (!this.configurable) return [close, lock];
-    return [{ path: buttonPath(...OPTIONS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetOptions } }, close, ...options, lock];
+    return [{ path: buttonPath(...OPTIONS, Child.Reset), trigger: Trigger.Release, action: { kind: SelectAction.ResetOptions } }, close, ...options, ...added, lock];
   }
 
   private button(tree: OverrideTree, path: readonly string[]): void {
@@ -538,8 +547,24 @@ export class SelectWorldScreen implements Screen {
         this.button(tree, buttonPath(...OPTIONS, button.instance));
       }
     }
+    this.addedOptionRows(tree, settings);
     this.windowButtons(tree, OPTIONS);
     for (const { key, clip } of this.layout.optionInfoClips) tree.set([...OPTIONS, key], { clip });
+  }
+
+  private addedOptionRows(tree: OverrideTree, settings: UserSettings): void {
+    const library = this.deps.kit.renderer.library;
+    const attached = this.layout.optionRows.added.flatMap(({ spec, layout }) => {
+      drawSetupRowButtons(tree, library, OPTIONS, layout, optionValue(settings, spec.field), (path) => this.core.pointer.buttonState(path));
+      const { title, info } = layout;
+      const texts = [
+        title && placeSetupText(tree, library, OPTIONS, { name: spec.titleName, depth: spec.textDepth, style: TextStyles.OptionTitle, anchorX: title.left, top: title.top }, t(layout.spec.title), WINDOW_TEXT_COLOR),
+        info && placeSetupText(tree, library, OPTIONS, { name: spec.infoName, depth: spec.textDepth + 1, style: TextStyles.OptionInfo, anchorX: info.left, top: info.top }, t(layout.spec.info), MENU_TEXT_COLOR),
+      ];
+      const clones = layout.buttons.map((button) => button.attached);
+      return [...texts, ...clones].filter((item): item is DisplayItem => item !== undefined);
+    });
+    if (attached.length > 0) tree.set(OPTIONS, { attach: attached });
   }
 
   private windowButtons(tree: OverrideTree, window: readonly string[]): void {

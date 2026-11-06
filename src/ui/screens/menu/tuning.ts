@@ -1,5 +1,5 @@
 import { GameMode } from '../../../domain/world/GameMode.ts';
-import { Difficulty, GameAmount, GameSpeed } from '../../../domain/world/SimulationSettings.ts';
+import { Difficulty, GameAmount, GameSpeed, RespawnTime } from '../../../domain/world/SimulationSettings.ts';
 import { BASE_TICKS_PER_SECOND } from '../../../domain/world/tuning.ts';
 import { GraphicsQuality } from '../../../services/graphicsQuality.ts';
 import { RoomDetail } from '../../../services/roomDetail.ts';
@@ -354,6 +354,55 @@ export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
     ],
   },
 ];
+
+export interface AddedOptionRowSpec {
+  readonly field: OptionField;
+  readonly modes: readonly GameMode[];
+  readonly titleName: string;
+  readonly infoName: string;
+  readonly textDepth: number;
+  readonly row: SetupRowSpec<number>;
+}
+
+const RESPAWN_TEMPLATE = '_Game1';
+
+function respawnRow(prefix: string, firstDepth: number): SetupRowSpec<number> {
+  const clone = (index: number) => ({ of: RESPAWN_TEMPLATE, depth: firstDepth + index });
+  return {
+    titleDepth: 76,
+    infoDepth: 98,
+    rowOf: RESPAWN_TEMPLATE,
+    title: 'options.respawn.title',
+    info: 'options.respawn.info',
+    buttons: [
+      { instance: `${prefix}3`, value: RespawnTime.Seconds3, label: 'options.respawn.3', x: SETUP_COLUMN_X[0], clone: clone(0) },
+      { instance: `${prefix}5`, value: RespawnTime.Seconds5, label: 'options.respawn.5', x: SETUP_COLUMN_X[1], clone: clone(1) },
+      { instance: `${prefix}10`, value: RespawnTime.Seconds10, label: 'options.respawn.10', x: SETUP_COLUMN_X[2], clone: clone(2) },
+      { instance: `${prefix}15`, value: RespawnTime.Seconds15, label: 'options.respawn.15', x: SETUP_COLUMN_X[3], clone: clone(3) },
+    ],
+  };
+}
+
+export const ADDED_OPTION_ROWS: readonly AddedOptionRowSpec[] = [
+  {
+    field: OptionField.CoopRespawn,
+    modes: [GameMode.Coop],
+    titleName: 'optionCoopRespawnTitle',
+    infoName: 'optionCoopRespawnInfo',
+    textDepth: 170,
+    row: respawnRow('optionCoopRespawn', 160),
+  },
+  {
+    field: OptionField.DeathMatchRespawn,
+    modes: [GameMode.DeathMatch],
+    titleName: 'optionDeathMatchRespawnTitle',
+    infoName: 'optionDeathMatchRespawnInfo',
+    textDepth: 172,
+    row: respawnRow('optionDeathMatchRespawn', 164),
+  },
+];
+
+export const OPTION_ROW_SPACING_PX = 45.2;
 
 export interface KeyRowSpec {
   readonly variable: string;

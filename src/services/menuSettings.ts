@@ -1,5 +1,5 @@
 import type { PlayerKeyCodes } from '../adapters/input/TickInputSampler.ts';
-import { Difficulty, GameAmount, GameSpeed, type PlayerCharacter } from '../domain/world/SimulationSettings.ts';
+import { DEFAULT_COOP_RESPAWN, DEFAULT_DEATH_MATCH_RESPAWN, Difficulty, GameAmount, GameSpeed, type PlayerCharacter } from '../domain/world/SimulationSettings.ts';
 import type { GraphicsQuality } from './graphicsQuality.ts';
 import type { RoomDetail } from './roomDetail.ts';
 import { DEFAULT_KEYS, DEFAULT_SETTINGS, PLAYER_NAME_MAX_LENGTH, SOUND_VOLUME_MAX, type UserSettings } from './SettingsService.ts';
@@ -11,6 +11,8 @@ export const OptionField = {
   Collisions: 'collisionsActive',
   Damage: 'damageActive',
   GameAmount: 'gameAmount',
+  CoopRespawn: 'coopRespawnSeconds',
+  DeathMatchRespawn: 'deathMatchRespawnSeconds',
 } as const;
 
 export type OptionField = (typeof OptionField)[keyof typeof OptionField];
@@ -27,6 +29,8 @@ export const RESET_OPTIONS: Readonly<Record<OptionField, number>> = {
   [OptionField.Collisions]: OPTION_ON,
   [OptionField.Damage]: OPTION_ON,
   [OptionField.GameAmount]: GameAmount.Kills10,
+  [OptionField.CoopRespawn]: DEFAULT_COOP_RESPAWN,
+  [OptionField.DeathMatchRespawn]: DEFAULT_DEATH_MATCH_RESPAWN,
 };
 
 export function optionValue(settings: UserSettings, field: OptionField): number {

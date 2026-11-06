@@ -27,6 +27,18 @@ export const GameAmount = {
 
 export type GameAmount = (typeof GameAmount)[keyof typeof GameAmount];
 
+export const RespawnTime = {
+  Seconds3: 3,
+  Seconds5: 5,
+  Seconds10: 10,
+  Seconds15: 15,
+} as const;
+
+export type RespawnTime = (typeof RespawnTime)[keyof typeof RespawnTime];
+
+export const DEFAULT_COOP_RESPAWN: RespawnTime = RespawnTime.Seconds10;
+export const DEFAULT_DEATH_MATCH_RESPAWN: RespawnTime = RespawnTime.Seconds5;
+
 export const PlayerCharacter = {
   Swat: 0,
   Bond: 1,
@@ -44,6 +56,7 @@ export interface GameOptions {
   readonly collisionsActive: boolean;
   readonly damageActive: boolean;
   readonly gameAmount: GameAmount;
+  readonly respawnSeconds: RespawnTime;
   readonly playerCharacters: readonly PlayerCharacter[];
   readonly detail: boolean;
 }
@@ -70,6 +83,7 @@ export const DEFAULT_GAME_OPTIONS: GameOptions = {
   collisionsActive: true,
   damageActive: true,
   gameAmount: GameAmount.Kills10,
+  respawnSeconds: DEFAULT_COOP_RESPAWN,
   playerCharacters: [PlayerCharacter.Bambo],
   detail: true,
 };

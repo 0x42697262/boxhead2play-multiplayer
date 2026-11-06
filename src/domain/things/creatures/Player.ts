@@ -21,7 +21,7 @@ import { PLAYER_COLLECTION, WEAPON_ANIMATIONS } from './characterCollections.ts'
 import { Creature, MoveResult } from './Creature.ts';
 import { CreatureState } from './CreatureState.ts';
 import { PlayerControls } from './PlayerControls.ts';
-import { CORPSE_FADE_SECONDS, PLAYER } from './tuning.ts';
+import { CORPSE_FADE_SECONDS, PLAYER, PLAYER_CORPSE_SECONDS } from './tuning.ts';
 import { WeaponInventory, type WeaponSlot } from './WeaponInventory.ts';
 
 const PLAYER_AFFECTS =
@@ -101,8 +101,22 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
   private respawnTicks(): number | undefined {
     if (this.world.settings.gameMode === GameMode.Single) return undefined;
     if (this.states.is(CreatureState.Respawn)) return Math.max(this.stateCount + 1, 0);
-    if (this.states.is(CreatureState.Dead)) return this.stateCount + 1 + PLAYER.respawnDelayTicks + 1;
+    if (this.states.is(CreatureState.Dead)) return this.stateCount + 1 + this.respawnDelayTicks() + 1;
     return undefined;
+  }
+
+  protected override corpseTicks(): number {
+    const fullCorpseTicks = this.world.ticksPerSecond * PLAYER_CORPSE_SECONDS;
+    if (this.world.settings.gameMode === GameMode.Single) return fullCorpseTicks;
+    return Math.min(fullCorpseTicks, this.respawnTotalTicks() - PLAYER.deathStateChangeTicks);
+  }
+
+  private respawnTotalTicks(): number {
+    return Math.round(this.world.ticksPerSecond * this.world.settings.respawnSeconds);
+  }
+
+  private respawnDelayTicks(): number {
+    return Math.max(this.respawnTotalTicks() - this.corpseTicks() - PLAYER.deathStateChangeTicks, 0);
   }
 
   protected override processInit(): void {
@@ -193,7 +207,7 @@ export class Player extends Creature implements PlayerThing, WeaponHolder {
     }
     if (--this.stateCount < 0) {
       this.setState(CreatureState.Respawn);
-      this.stateCount = PLAYER.respawnDelayTicks;
+      this.stateCount = this.respawnDelayTicks();
     }
   }
 

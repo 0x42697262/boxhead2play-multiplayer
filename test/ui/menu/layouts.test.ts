@@ -94,6 +94,11 @@ describe('menu layouts from the real library', () => {
     expect(movedY('_Speed_Fast')).toBeCloseTo(-85.2, 1);
     expect(movedY('_Game4')).toBeCloseTo(-40, 1);
     expect(movedY('#98')).toBeCloseTo(-31.1, 0);
+    const added = (mode: GameMode) => rows(mode).added.map(({ spec, layout }) => ({ field: spec.field, y: layout.buttons[0]?.matrix?.[5], names: layout.buttons.map((button) => button.attached?.name) }));
+    expect(added(GameMode.Single)).toEqual([]);
+    expect(added(GameMode.Coop)).toEqual([{ field: 'coopRespawnSeconds', y: expect.closeTo(95.5, 1), names: ['optionCoopRespawn3', 'optionCoopRespawn5', 'optionCoopRespawn10', 'optionCoopRespawn15'] }]);
+    expect(added(GameMode.DeathMatch)[0]).toMatchObject({ field: 'deathMatchRespawnSeconds', y: expect.closeTo(5.2, 1) });
+    expect(rows(GameMode.Coop).added[0]?.layout.title?.top).toBeCloseTo(88.8, 0);
   });
 
   it.skipIf(assetsMissing)('online menu reuses the main menu slots for HOST and JOIN (no NAME) plus the back tab and the controls window with 14 join rows', () => {

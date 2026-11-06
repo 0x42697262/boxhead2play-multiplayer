@@ -146,10 +146,10 @@ function shifted(frame: StaticTextFrame | undefined, shiftY: number): StaticText
   return frame ? { ...frame, top: frame.top + shiftY } : undefined;
 }
 
-function rowLayout<Value>(library: SymbolLibrary, children: readonly DisplayItem[], spec: SetupRowSpec<Value>, index: number): SetupRowLayout<Value> {
+export function setupRowLayout<Value>(library: SymbolLibrary, children: readonly DisplayItem[], spec: SetupRowSpec<Value>, targetY: number): SetupRowLayout<Value> {
   const byDepth = (depth: number): DisplayItem | undefined => children.find((item) => item.depth === depth);
   const rowY = children.find((item) => item.name === spec.rowOf)?.matrix[5];
-  const shiftY = rowY === undefined ? 0 : SETUP_FIRST_ROW_Y + index * SETUP_ROW_SPACING_PX - rowY;
+  const shiftY = rowY === undefined ? 0 : targetY - rowY;
   const buttons = spec.buttons.map((button) => {
     const item = children.find((child) => child.name === (button.clone?.of ?? button.instance));
     const text = item ? library.frameItems(item.characterId, 0).find((child) => child.depth === SETUP_BUTTON_LABEL_DEPTH) : undefined;
@@ -176,7 +176,7 @@ function bottomButton(children: readonly DisplayItem[], name: string): { readonl
 export function setupWindowLayout(library: SymbolLibrary, window: DisplayItem | undefined): SetupWindowLayout {
   const children = window ? library.frameItems(window.characterId, 0) : [];
   let index = 0;
-  const row = <Value>(spec: SetupRowSpec<Value>): SetupRowLayout<Value> => rowLayout(library, children, spec, index++);
+  const row = <Value>(spec: SetupRowSpec<Value>): SetupRowLayout<Value> => setupRowLayout(library, children, spec, SETUP_FIRST_ROW_Y + index++ * SETUP_ROW_SPACING_PX);
   const graphics = row(GRAPHICS_ROW);
   const roomDetail = row(ROOM_DETAIL_ROW);
   const volume = row(VOLUME_ROW);
@@ -273,24 +273,47 @@ export class SetupWindow {
   }
 
   private buttons<Value>(tree: OverrideTree, row: SetupRowLayout<Value>, current: Value, buttonState: ButtonStateOf): void {
-    for (const button of row.buttons) {
-      const path = [...WINDOW, button.spec.instance];
-      const frame = button.label;
-      const label = frame
-        ? placedText(this.library, { name: Child.ButtonLabel, depth: SETUP_ATTACHED_LABEL_DEPTH, style: TextStyles.OptionButton, anchorX: frame.centerX, top: frame.top })
-        : undefined;
-      tree.set(path, { ...(button.matrix ? { matrix: button.matrix } : {}), ...(label ? { attach: [label.item] } : {}) });
-      tree.set([...path, Child.Selected], { visible: current === button.spec.value });
-      tree.set(buttonPath(button.spec.instance), { buttonState: buttonState(buttonPath(button.spec.instance)) });
-      if (!label) continue;
-      tree.set([...path, depthKey(SETUP_BUTTON_LABEL_DEPTH)], { visible: false });
-      tree.set([...path, Child.ButtonLabel], { ...textOverride(label, t(button.spec.label), WHITE), ...(button.labelFilters ? { filters: button.labelFilters } : {}) });
-    }
+    drawSetupRowButtons(tree, this.library, WINDOW, row, current, buttonState);
   }
 
   private text(tree: OverrideTree, placement: Omit<TextPlacement, 'width'>, text: string, color: number): DisplayItem | undefined {
-    const placed = placedText(this.library, { ...placement, width: SETUP_INFO_WIDTH_PX });
-    if (placed) tree.set([...WINDOW, placement.name], textOverride(placed, text, color));
-    return placed?.item;
+    return placeSetupText(tree, this.library, WINDOW, placement, text, color);
   }
+}
+
+export function drawSetupRowButtons<Value>(
+  tree: OverrideTree,
+  library: SymbolLibrary,
+  window: readonly string[],
+  row: SetupRowLayout<Value>,
+  current: Value,
+  buttonState: ButtonStateOf,
+): void {
+  for (const button of row.buttons) {
+    const path = [...window, button.spec.instance];
+    const buttonPath = [...path, Child.Button];
+    const frame = button.label;
+    const label = frame
+      ? placedText(library, { name: Child.ButtonLabel, depth: SETUP_ATTACHED_LABEL_DEPTH, style: TextStyles.OptionButton, anchorX: frame.centerX, top: frame.top })
+      : undefined;
+    tree.set(path, { ...(button.matrix ? { matrix: button.matrix } : {}), ...(label ? { attach: [label.item] } : {}) });
+    tree.set([...path, Child.Selected], { visible: current === button.spec.value });
+    tree.set(buttonPath, { buttonState: buttonState(buttonPath) });
+    if (!label) continue;
+    tree.set([...path, depthKey(SETUP_BUTTON_LABEL_DEPTH)], { visible: false });
+    tree.set([...path, Child.ButtonLabel], { ...textOverride(label, t(button.spec.label), WHITE), ...(button.labelFilters ? { filters: button.labelFilters } : {}) });
+  }
+}
+
+export function placeSetupText(
+  tree: OverrideTree,
+  library: SymbolLibrary,
+  window: readonly string[],
+  placement: Omit<TextPlacement, 'width'>,
+  text: string,
+  color: number,
+): DisplayItem | undefined {
+  const placed = placedText(library, { ...placement, width: SETUP_INFO_WIDTH_PX });
+  if (placed) tree.set([...window, placement.name], textOverride(placed, text, color));
+  return placed?.item;
 }

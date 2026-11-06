@@ -5,8 +5,11 @@ import { GameMode } from '../domain/world/GameMode.ts';
 import {
   Difficulty,
   GameAmount,
+  DEFAULT_COOP_RESPAWN,
+  DEFAULT_DEATH_MATCH_RESPAWN,
   GameSpeed,
   PlayerCharacter,
+  RespawnTime,
   type GameOptions,
 } from '../domain/world/SimulationSettings.ts';
 import type { LobbyOptions } from '../net/protocol.ts';
@@ -17,7 +20,7 @@ import { DEFAULT_ROOM_DETAIL, RoomDetail } from './roomDetail.ts';
 import { LogEvent } from '../text/logEvents.ts';
 
 export const SETTINGS_STORAGE_KEY = 'boxhead2play.settings';
-export const SETTINGS_VERSION = 10;
+export const SETTINGS_VERSION = 11;
 export const FRAME_RATES = [0, 30, 60, 120] as const;
 export type FrameRate = (typeof FRAME_RATES)[number];
 export const UNCAPPED_FRAME_RATE: FrameRate = 0;
@@ -31,6 +34,7 @@ const PING_DISPLAY_VERSION = 6;
 const ROOM_DETAIL_VERSION = 7;
 const FLASHES_VERSION = 8;
 const SPACE_FIRE_KEYS_VERSION = 9;
+const JKL_KEYS_VERSION = 10;
 const LEGACY_ENABLED = 1;
 
 export const SOUND_VOLUME_MAX = 100;
@@ -74,6 +78,8 @@ export const UserSettingsSchema = z.object({
   collisionsActive: z.boolean(),
   damageActive: z.boolean(),
   gameAmount: enumValue(GameAmount),
+  coopRespawnSeconds: enumValue(RespawnTime),
+  deathMatchRespawnSeconds: enumValue(RespawnTime),
   levelIndex: z.object({ single: levelIndex, coop: levelIndex, deathMatch: levelIndex }),
   character: enumValue(PlayerCharacter),
   keys: PlayerKeysSchema,
@@ -148,6 +154,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   collisionsActive: true,
   damageActive: true,
   gameAmount: GameAmount.Kills10,
+  coopRespawnSeconds: DEFAULT_COOP_RESPAWN,
+  deathMatchRespawnSeconds: DEFAULT_DEATH_MATCH_RESPAWN,
   levelIndex: { single: DEFAULT_SINGLE_LEVEL, coop: 0, deathMatch: 0 },
   character: PlayerCharacter.Bambo,
   keys: DEFAULT_KEYS,
@@ -259,7 +267,16 @@ export function migrateFlashes(raw: Raw): Raw {
 }
 
 export function migrateSpaceFireKeys(raw: Raw): Raw {
-  return { ...raw, version: SETTINGS_VERSION, keys: sameKeys(raw.keys, SPACE_FIRE_KEYS) ? DEFAULT_KEYS : raw.keys };
+  return { ...raw, version: JKL_KEYS_VERSION, keys: sameKeys(raw.keys, SPACE_FIRE_KEYS) ? DEFAULT_KEYS : raw.keys };
+}
+
+export function migrateRespawnTimes(raw: Raw): Raw {
+  return {
+    ...raw,
+    version: SETTINGS_VERSION,
+    coopRespawnSeconds: DEFAULT_SETTINGS.coopRespawnSeconds,
+    deathMatchRespawnSeconds: DEFAULT_SETTINGS.deathMatchRespawnSeconds,
+  };
 }
 
 export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
@@ -273,6 +290,7 @@ export const MIGRATIONS: Readonly<Record<number, (raw: Raw) => Raw>> = {
   [ROOM_DETAIL_VERSION]: migrateRoomDetail,
   [FLASHES_VERSION]: migrateFlashes,
   [SPACE_FIRE_KEYS_VERSION]: migrateSpaceFireKeys,
+  [JKL_KEYS_VERSION]: migrateRespawnTimes,
 };
 
 function versionOf(raw: Raw): number {
@@ -331,6 +349,7 @@ export function toGameOptions(settings: UserSettings, gameMode: GameMode): GameO
     collisionsActive: settings.collisionsActive,
     damageActive: settings.damageActive,
     gameAmount: settings.gameAmount,
+    respawnSeconds: gameMode === GameMode.DeathMatch ? settings.deathMatchRespawnSeconds : settings.coopRespawnSeconds,
     playerCharacters: [settings.character],
     detail: settings.detail,
   };
@@ -344,6 +363,8 @@ export function toLobbyOptions(settings: UserSettings): LobbyOptions {
     collisionsActive: settings.collisionsActive,
     damageActive: settings.damageActive,
     gameAmount: settings.gameAmount,
+    coopRespawnSeconds: settings.coopRespawnSeconds,
+    deathMatchRespawnSeconds: settings.deathMatchRespawnSeconds,
     detail: settings.detail,
   };
 }

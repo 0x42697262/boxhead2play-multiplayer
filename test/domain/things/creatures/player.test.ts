@@ -16,7 +16,7 @@ import { CompletionState } from '../../../../src/domain/world/CompletionState.ts
 import { GameMode } from '../../../../src/domain/world/GameMode.ts';
 import { PlayerControl } from '../../../../src/domain/world/input.ts';
 import { InitKind } from '../../../../src/domain/world/RoomDefinition.ts';
-import { Difficulty } from '../../../../src/domain/world/SimulationSettings.ts';
+import { Difficulty, RespawnTime } from '../../../../src/domain/world/SimulationSettings.ts';
 import type { World } from '../../../../src/domain/world/World.ts';
 import { cellObject, room, solid, cellOf } from '../../support/fakes.ts';
 import { held, tickInput } from '../../support/input.ts';
@@ -226,6 +226,39 @@ describe('Player respawn countdown', () => {
     }
     expect(ticks).toBe(first);
     expect(player.hudStatus().respawnTicks).toBeUndefined();
+  });
+});
+
+describe('Player respawn time option', () => {
+  const RESPAWN_CASES = [GameMode.Coop, GameMode.DeathMatch].flatMap((gameMode) =>
+    [RespawnTime.Seconds3, RespawnTime.Seconds5, RespawnTime.Seconds10, RespawnTime.Seconds15].map((respawnSeconds) => ({ gameMode, respawnSeconds })),
+  );
+
+  it.each(RESPAWN_CASES)('$gameMode respawns $respawnSeconds s after the dead state starts, counted down from $respawnSeconds', ({ gameMode, respawnSeconds }) => {
+    const world = makeRealWorld(arena(), { options: { gameMode, respawnSeconds, playerCharacters: [0, 1] } });
+    const player = playerOf(world, 1);
+    kill(world, player);
+    for (let tick = 0; tick < 200 && player.state !== CreatureState.Dead; tick++) world.update();
+    const first = player.hudStatus().respawnTicks ?? 0;
+    expect(Math.ceil(first / world.ticksPerSecond)).toBe(respawnSeconds);
+    let ticks = 0;
+    while (player.state !== CreatureState.PlayerControl && ticks < 1000) {
+      world.update();
+      ticks++;
+    }
+    expect(ticks).toBe(first);
+    expect(ticks).toBe(respawnSeconds * world.ticksPerSecond);
+  });
+
+  it('keeps the full 4 s corpse in single play, whatever the respawn time', () => {
+    const world = makeRealWorld(arena(), { options: { respawnSeconds: RespawnTime.Seconds3 } });
+    const player = playerOf(world);
+    kill(world, player);
+    for (let tick = 0; tick < 200 && player.state !== CreatureState.Dead; tick++) world.update();
+    run(world, 3 * world.ticksPerSecond);
+    expect(world.completion).toBeUndefined();
+    run(world, world.ticksPerSecond);
+    expect(world.completion).toBe(CompletionState.PlayerDead);
   });
 });
 

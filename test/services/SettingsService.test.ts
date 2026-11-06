@@ -111,7 +111,7 @@ describe('settings reading', () => {
 
   it('keeps a stored room detail', () => {
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, roomDetail: RoomDetail.Low })).settings.roomDetail).toBe(RoomDetail.Low);
-    expect(SETTINGS_VERSION).toBe(10);
+    expect(SETTINGS_VERSION).toBe(11);
   });
 
   it('migrates version 8 to flashes on and keeps a stored choice', () => {
@@ -121,6 +121,17 @@ describe('settings reading', () => {
     expect(result.migratedFrom).toBe(8);
     expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, blood: false, flashes: true });
     expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, flashes: false })).settings.flashes).toBe(false);
+  });
+
+  it('migrates version 10 to 10 s coop and 5 s death match respawns, and keeps a stored choice', () => {
+    const v10: Record<string, unknown> = { ...DEFAULT_SETTINGS, version: 10, blood: false };
+    delete v10.coopRespawnSeconds;
+    delete v10.deathMatchRespawnSeconds;
+    const result = readSettings(JSON.stringify(v10));
+    expect(result.migratedFrom).toBe(10);
+    expect(result.settings).toEqual({ ...DEFAULT_SETTINGS, blood: false, coopRespawnSeconds: 10, deathMatchRespawnSeconds: 5 });
+    expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, deathMatchRespawnSeconds: 15 })).settings.deathMatchRespawnSeconds).toBe(15);
+    expect(readSettings(JSON.stringify({ ...DEFAULT_SETTINGS, coopRespawnSeconds: 7 })).rejected).toBeDefined();
   });
 
   it('migrates version 9 with the WASD + Space, E, Q keys to J, L, K, and keeps rebound keys', () => {
@@ -170,7 +181,18 @@ describe('SettingsService', () => {
     const settings = withLevelIndex(DEFAULT_SETTINGS, GameMode.DeathMatch, 3);
     expect(levelIndexFor(settings, GameMode.DeathMatch)).toBe(3);
     expect(levelIndexFor(settings, GameMode.Single)).toBe(8);
-    expect(toGameOptions(settings, GameMode.Coop)).toMatchObject({ gameMode: GameMode.Coop, playerCharacters: [3], detail: true });
-    expect(toLobbyOptions(settings)).toEqual({ difficulty: 0, gameSpeed: 1, devilsActive: true, collisionsActive: true, damageActive: true, gameAmount: 1, detail: true });
+    expect(toGameOptions(settings, GameMode.Coop)).toMatchObject({ gameMode: GameMode.Coop, playerCharacters: [3], detail: true, respawnSeconds: 10 });
+    expect(toGameOptions(settings, GameMode.DeathMatch)).toMatchObject({ respawnSeconds: 5 });
+    expect(toLobbyOptions(settings)).toEqual({
+      difficulty: 0,
+      gameSpeed: 1,
+      devilsActive: true,
+      collisionsActive: true,
+      damageActive: true,
+      gameAmount: 1,
+      coopRespawnSeconds: 10,
+      deathMatchRespawnSeconds: 5,
+      detail: true,
+    });
   });
 });

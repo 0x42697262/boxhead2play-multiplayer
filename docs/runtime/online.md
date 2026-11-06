@@ -115,7 +115,9 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby's options with only the changed value and also saves that value locally for
   the next HOST. While a match runs (`RoomPanel.configurable` false) the arrows and OPTIONS
   are hidden and changes are ignored, so the saved settings do not drift from a request the
-  server would refuse (`alreadyPlaying`). Clicking the level preview ("CLICK TO START GAME") starts the match.
+  server would refuse (`alreadyPlaying`). Lobby options carry both respawn times
+  (`coopRespawnSeconds`, `deathMatchRespawnSeconds`); `gameOptionsFor` hands the world the one
+  of the lobby's mode as `respawnSeconds`. Clicking the level preview ("CLICK TO START GAME") starts the match.
   Guests see the host's level and "WAITING FOR <HOST> TO START". The character arrows
   send `setCharacter`. The room texts are attached inside `_SubScreen_Container`, so the OPTIONS
   and CONTROLS windows draw over them. "Back to menu" leaves the game and returns to the online menu.
@@ -137,7 +139,7 @@ Every online screen is drawn from the SWF's own symbols, like the menus
   the lobby returns to waiting. The lobby room shows the result at the bottom. A player
   who lost the lobby (closed, expired) lands in the online menu with the reason.
 
-## Protocol (`src/net/protocol.ts`, version 10)
+## Protocol (`src/net/protocol.ts`, version 11)
 
 Client messages are JSON text. Server messages are binary delta frames
 (`src/net/serverWire.ts`, ADR 0007): one `ServerWireEncoder` per socket on the server, one

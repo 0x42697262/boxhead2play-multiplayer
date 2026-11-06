@@ -1,16 +1,23 @@
 import type { DisplayItem } from '../../../adapters/assets/schemas.ts';
-import { depthKey } from '../../../adapters/render/symbols/SymbolLibrary.ts';
+import { depthKey, type SymbolLibrary } from '../../../adapters/render/symbols/SymbolLibrary.ts';
 import type { GameMode } from '../../../domain/world/GameMode.ts';
 import { itemMatrix } from './MainMenuScreen.ts';
-import { OPTION_GROUPS, type OptionGroupSpec } from './tuning.ts';
+import { setupRowLayout, type SetupRowLayout } from './SetupWindow.ts';
+import { ADDED_OPTION_ROWS, OPTION_GROUPS, OPTION_ROW_SPACING_PX, type AddedOptionRowSpec, type OptionGroupSpec } from './tuning.ts';
 
 export interface OptionRowMove {
   readonly key: string;
   readonly matrix: DisplayItem['matrix'];
 }
 
+export interface AddedOptionRow {
+  readonly spec: AddedOptionRowSpec;
+  readonly layout: SetupRowLayout<number>;
+}
+
 export interface OptionRowsLayout {
   readonly groups: readonly OptionGroupSpec[];
+  readonly added: readonly AddedOptionRow[];
   readonly moves: readonly OptionRowMove[];
   readonly hidden: readonly string[];
 }
@@ -46,12 +53,23 @@ function movedRow(children: readonly DisplayItem[], row: PlacedRow, slotY: numbe
   });
 }
 
-export function optionRowsLayout(children: readonly DisplayItem[], mode: GameMode): OptionRowsLayout {
+function slotY(slots: readonly number[], index: number): number {
+  const last = slots.length - 1;
+  return slots[index] ?? (slots[last] ?? 0) + (index - last) * OPTION_ROW_SPACING_PX;
+}
+
+export function optionRowsLayout(library: SymbolLibrary, children: readonly DisplayItem[], mode: GameMode): OptionRowsLayout {
   const rows = placedRows(children);
+  const slots = rows.map((row) => row.y);
   const shown = rows.filter((row) => row.group.modes.includes(mode));
+  const added = ADDED_OPTION_ROWS.filter((spec) => spec.modes.includes(mode)).map((spec, index) => ({
+    spec,
+    layout: setupRowLayout(library, children, spec.row, slotY(slots, shown.length + index)),
+  }));
   return {
     groups: shown.map((row) => row.group),
-    moves: shown.flatMap((row, index) => movedRow(children, row, rows[index]?.y ?? row.y)),
+    added,
+    moves: shown.flatMap((row, index) => movedRow(children, row, slotY(slots, index))),
     hidden: rows.filter((row) => !shown.includes(row)).flatMap((row) => rowKeys(row.group)),
   };
 }
