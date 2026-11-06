@@ -350,6 +350,9 @@ Add one line per behavior change: what to do, and the result you expect.
   "Page 1 of 3", NEXT > and < PREV step through the pages, faded at the ends.
 * Character or level arrows -> the next frame with wraparound (BAMBO -> BON, 18/18 -> 1/18),
   kept after a reload; the game uses the chosen characters. Every level starts (no exclusive lock).
+* OPTIONS in single play or a coop lobby -> Difficulty, Object collision, Devils, Friendly fire
+  and Game speed, no "Number of games"; in a death match lobby -> Object collision, Game speed and
+  Number of games at the top of the window, no gaps.
 * OPTIONS (single play and lobby room) -> the italic info lines under Object collision, Devils
   and Friendly Fire end without "Forfeits hiscore!".
 * OPTIONS -> modal window; clicking a value moves the pink highlight and changes the game; RESET

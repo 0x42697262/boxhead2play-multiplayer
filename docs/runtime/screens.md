@@ -138,16 +138,22 @@ so the original has unlocked every level since late 2007. The port therefore alw
 
 ### Options window (`WindowOptions_Setup`)
 
-Six groups bound to `SettingsService` through `menuSettings.ts`:
+Six groups bound to `SettingsService` through `menuSettings.ts`. Each mode shows only the
+groups that change its game (`OptionGroupSpec.modes`, `optionRows.ts`):
 
-| Group | Buttons | Setting |
-|---|---|---|
-| Difficulty | `_Level_Beginner/Intermediate/Expert/Nightmare` | `difficulty` 0..3 |
-| Game speed | `_Speed_Slow/Normal/Fast` | `gameSpeed` 0..2 |
-| Devils | `_Devils_Off/On` | `devilsActive` |
-| Object collision | `_Collide_Off/On` | `collisionsActive` |
-| Friendly fire | `_Damage_Off/On` | `damageActive` |
-| Number of games | `_Game1..4` | `gameAmount` 0..3 |
+| Group | Buttons | Setting | Shown in |
+|---|---|---|---|
+| Difficulty | `_Level_Beginner/Intermediate/Expert/Nightmare` | `difficulty` 0..3 | single, coop |
+| Object collision | `_Collide_Off/On` | `collisionsActive` | every mode |
+| Devils | `_Devils_Off/On` | `devilsActive` | single, coop |
+| Friendly fire | `_Damage_Off/On` | `damageActive` | single, coop |
+| Game speed | `_Speed_Slow/Normal/Fast` | `gameSpeed` 0..2 | every mode |
+| Number of games | `_Game1..4` | `gameAmount` 0..3 | deathmatch |
+
+Deathmatch has no zombies or devils and always has friendly damage, so its window drops the
+zombie rows; single and coop never use the kill target. The remaining rows keep their
+original order and move up into the top row slots (buttons, title and info text shift by the
+same amount), so the window has no gaps. Hidden rows have no click targets.
 
 `RegisterButton_SetGroup` shows a button's `_Selected` clip (the pink highlight) when the
 stored value equals the button's value; there is no frame change. On/off options store
