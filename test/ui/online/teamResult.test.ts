@@ -4,7 +4,7 @@ import { RoomIndexSchema } from '../../../src/adapters/assets/schemas.ts';
 import { CompletionState } from '../../../src/domain/world/CompletionState.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
 import { Team, TeamBattle } from '../../../src/domain/world/TeamBattle.ts';
-import { ServerMessageType, type GameOver } from '../../../src/net/protocol.ts';
+import { LobbyState, ServerMessageType, type GameOver } from '../../../src/net/protocol.ts';
 import { MAX_LOBBY_PLAYERS } from '../../../src/net/tuning.ts';
 import { OnlineStatus, type OnlineState } from '../../../src/services/online/OnlineClient.ts';
 import { OnlineEnd, type OnlineSessionResult } from '../../../src/services/online/OnlineGameSession.ts';
@@ -29,6 +29,8 @@ describe.skipIf(!rooms)('approved Team Battle plan: every lobby member sees the 
     const state: OnlineState = { status: OnlineStatus.Online, clientId: victim.actorId, lobby: room, lobbies: [], error: undefined, leftReason: undefined, result: gameOver };
     const quit: OnlineSessionResult = { end: OnlineEnd.Quit, state: CompletionState.Quit, gameOver: undefined };
     const finished: OnlineSessionResult = { end: OnlineEnd.Finished, state: gameOver.state, gameOver };
+    const running = { ...room, state: LobbyState.Playing };
+    expect(roomPanel(running, { ...state, lobby: running }, rooms, quit).notice).toBe(resultText(quit));
     const spectator = roomPanel(room, state, rooms, quit);
     const participant = roomPanel(room, state, rooms, finished);
     expect(spectator.notice).not.toBe(resultText(quit));
