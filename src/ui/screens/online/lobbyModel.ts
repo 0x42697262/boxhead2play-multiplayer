@@ -141,7 +141,7 @@ export function joinList(mode: OnlineMode, state: OnlineState, joiningId: string
     running: summary.state === LobbyState.Playing,
   }));
   const notice = state.error ? t(`online.error.${state.error}`) : undefined;
-  const listInfo = pages > 1 ? t('online.join.paged', { page: page + 1, pages }) : t('online.join.info');
+  const listInfo = pages > 1 ? t('online.join.paged', { page: page + 1, pages }) : t(mode === GameMode.TeamBattle ? 'team.join.info' : 'online.join.info');
   const info = notice ?? (!online ? t(`online.status.${state.status}`) : games.length === 0 ? t('online.join.none') : listInfo);
   return { rows, info, page, pages };
 }
