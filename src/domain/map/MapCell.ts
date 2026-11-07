@@ -147,7 +147,7 @@ export class MapCell implements CellId {
     if (wall || line.test === LineTest.WallsOnly) return wall;
     for (let i = this.occupants.length - 1; i >= 0; i--) {
       const thing = this.occupants[i];
-      if (!thing || line.ownerId === thing.id || !(thing.affectFlags & line.affectFlags)) continue;
+      if (!thing || line.ownerId === thing.id || !(thing.affectFlags & line.affectFlags) || !line.accepts(thing)) continue;
       const { x, y } = thing.position;
       if (line.distanceToLineSquared(x, y) < thing.radiusSquared) {
         return { kind: LineHitKind.Thing, thing, poi: { x, y } };
@@ -160,7 +160,7 @@ export class MapCell implements CellId {
     const hits: Thing[] = [];
     for (let i = this.occupants.length - 1; i >= 0; i--) {
       const thing = this.occupants[i];
-      if (!thing || line.ownerId === thing.id || !(thing.affectFlags & line.affectFlags)) continue;
+      if (!thing || line.ownerId === thing.id || !(thing.affectFlags & line.affectFlags) || !line.accepts(thing)) continue;
       if (line.distanceToLineSquared(thing.position.x, thing.position.y) < thing.radiusSquared) hits.push(thing);
     }
     return hits.length > 0 ? hits : undefined;

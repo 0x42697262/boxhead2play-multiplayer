@@ -466,3 +466,19 @@ Add one line per behavior change: what to do, and the result you expect.
   exactly like the JSON encoding (protocol 10, now 11). `npm run bandwidth` -> coop 4 players wire and
   "as sent" about 4.3 KiB/s, no "decoded frames differ" line. Online coop with lasers, smoke,
   dying zombies and a devil -> everything looks as before.
+
+* TEAM BATTLE -> host a lobby, invite three players -> automatic 2 versus 2. Choose a team
+  before entering -> 3 versus 1 is allowed; a ninth team member and an empty opposing start
+  are refused. After entering, leave/rejoin or reconnect -> the team stays locked.
+* TEAM BATTLE -> shoot through a teammate at an opponent, then try rockets, grenades,
+  mines, charge packs and barrel chains -> no allied damage or knockback, opponent damage;
+  allied mines do not trigger. Old attacks retain team ownership after a slot is reused.
+* TEAM BATTLE OPTIONS -> Zombies and Devils start OFF. Test all four combinations -> only
+  enabled species spawn; waves progress, and all players keep deathmatch equipment rules.
+* TEAM BATTLE -> top-center team scores and real-time countdown, character team labels,
+  held player list, grouped scoreboard and returned lobby result agree on desktop and
+  landscape phone. At five real minutes -> higher team kills win, ties draw once, with
+  no overtime; losing a whole team -> no winner. Single, coop and deathmatch stay unchanged.
+* `npx vitest run test/domain/world/teamBattle.test.ts test/server/teamBattle.test.ts` ->
+  real extracted room/weapon scenarios, team lifecycle, delayed ownership, enemy switches
+  and injected-clock deadlines pass (extract assets first for these asset-backed checks).

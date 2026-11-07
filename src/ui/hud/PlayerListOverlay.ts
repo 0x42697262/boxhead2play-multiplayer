@@ -14,6 +14,8 @@ export const PlayerListClass = {
   Dot: 'player-dot',
   Name: 'player-name',
   NameText: 'player-name-text',
+  NameLine: 'player-name-line',
+  Team: 'player-team',
   Life: 'player-life',
   LifeFill: 'player-life-fill',
   Status: 'player-status',
@@ -84,7 +86,14 @@ export class PlayerListOverlay {
     const fill = this.element('span', PlayerListClass.LifeFill);
     fill.style.width = `${row.lifeRatio * PERCENT}%`;
     life.append(fill);
-    name.append(nameText, life);
+    if (row.team) {
+      const line = this.element('span', PlayerListClass.NameLine);
+      const team = this.element('span', PlayerListClass.Team);
+      team.textContent = t(`team.${row.team}`);
+      nameText.title = row.name;
+      line.append(nameText, team);
+      name.append(line, life);
+    } else name.append(nameText, life);
     const status = this.element('span', PlayerListClass.Status);
     status.textContent = statusText(row);
     const latency = this.element('span', PlayerListClass.Latency);

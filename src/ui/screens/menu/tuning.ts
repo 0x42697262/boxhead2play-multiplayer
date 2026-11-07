@@ -23,11 +23,13 @@ export const SUB_SCREEN_SYMBOLS: Readonly<Record<GameMode, string>> = {
   [GameMode.Single]: 'SubScreen_Single',
   [GameMode.Coop]: 'SubScreen_Coop',
   [GameMode.DeathMatch]: 'SubScreen_DeathMatch',
+  [GameMode.TeamBattle]: 'SubScreen_DeathMatch',
 };
 
 export const MAIN_MENU_BACKGROUND_DEPTH = 1;
 export const MAIN_MENU_TITLE_DEPTH = 82;
 export const JOIN_CODE_BUTTON = { name: 'mcJoinCode', depth: 90, matrix: [0.45, 0, 0, 0.5, 548, 452] } as const;
+export const TEAM_BATTLE_BUTTON = { name: 'mcTeamBattle', depth: 92, matrix: [0.75, 0, 0, 0.81, 320, 359.05] } as const;
 export const NAME_BUTTON = { name: 'mcName', depth: 91, matrix: [0.45, 0, 0, 0.5, 92, 452], labelWidth: 600 } as const;
 
 export const MainMenuChild = {
@@ -279,12 +281,14 @@ export interface OptionGroupSpec {
   readonly field: OptionField;
   readonly titleDepth: number;
   readonly infoDepth: number;
+  readonly title?: TextKey;
+  readonly info?: TextKey;
   readonly modes: readonly GameMode[];
   readonly buttons: readonly OptionButtonSpec[];
 }
 
 const ZOMBIE_MODES = [GameMode.Single, GameMode.Coop] as const;
-const EVERY_MODE = [GameMode.Single, GameMode.Coop, GameMode.DeathMatch] as const;
+const EVERY_MODE = [GameMode.Single, GameMode.Coop, GameMode.DeathMatch, GameMode.TeamBattle] as const;
 const DEATH_MATCH_ONLY = [GameMode.DeathMatch] as const;
 
 export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
@@ -292,7 +296,7 @@ export const OPTION_GROUPS: readonly OptionGroupSpec[] = [
     field: OptionField.Difficulty,
     titleDepth: 134,
     infoDepth: 135,
-    modes: ZOMBIE_MODES,
+    modes: [...ZOMBIE_MODES, GameMode.TeamBattle],
     buttons: [
       { instance: '_Level_Beginner', value: Difficulty.Beginner },
       { instance: '_Level_Intermediate', value: Difficulty.Intermediate },
@@ -394,13 +398,19 @@ export const ADDED_OPTION_ROWS: readonly AddedOptionRowSpec[] = [
   },
   {
     field: OptionField.DeathMatchRespawn,
-    modes: [GameMode.DeathMatch],
+    modes: [GameMode.DeathMatch, GameMode.TeamBattle],
     titleName: 'optionDeathMatchRespawnTitle',
     infoName: 'optionDeathMatchRespawnInfo',
     textDepth: 172,
     row: respawnRow('optionDeathMatchRespawn', 164),
   },
 ];
+
+export const TEAM_ENEMY_GROUPS: readonly OptionGroupSpec[] = OPTION_GROUPS.flatMap<OptionGroupSpec>((group) => {
+  if (group.field === OptionField.Damage) return [{ ...group, field: OptionField.TeamZombies, title: 'team.zombies.title', info: 'team.zombies.info', modes: [GameMode.TeamBattle] }];
+  if (group.field === OptionField.Devils) return [{ ...group, field: OptionField.TeamDevils, title: 'team.devils.title', info: 'team.devils.info', modes: [GameMode.TeamBattle] }];
+  return [];
+});
 
 export const OPTION_ROW_SPACING_PX = 45.2;
 
@@ -424,3 +434,6 @@ export const KEY_TEXT_PREFIX = 'tb';
 
 export const INVALID_KEY_PHASE_MS = 500;
 export const MS_PER_SECOND = 1000;
+
+export const TEAM_OPTION_LABEL_DEPTH = 180;
+export const TEAM_OPTION_LABEL_PREFIX = 'teamOption';

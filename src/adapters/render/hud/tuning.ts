@@ -80,3 +80,10 @@ export const PING_SLOW_COLOR = 0xff0000;
 export const RESPAWN_TEXT_POSITION = { x: 320, y: 200 } as const;
 export const RESPAWN_TEXT_SCALE = 2;
 export const RESPAWN_TEXT_COLOR = 0xffffff;
+
+export const TEAM_SCORE_FONT_PX = 14;
+export const TEAM_SCORE_WIDTH_PX = 360;
+export const TEAM_SCORE_POSITION = { x: 320, y: 6 } as const;
+export const TEAM_CLOCK_SECONDS_PER_MINUTE = 60;
+
+export const TEAM_LABEL_OFFSET_Y_PX = PLAYER_NAME_OFFSET_Y_PX + PLAYER_NAME_FONT_PX;

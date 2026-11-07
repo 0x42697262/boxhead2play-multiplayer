@@ -1,3 +1,5 @@
+import { GameMode } from '../../domain/world/GameMode.ts';
+import type { Team } from '../../domain/world/TeamBattle.ts';
 import type { SessionToken } from '../../adapters/net/TabSession.ts';
 import type { MultiplierListEntry } from '../../domain/upgrades/Upgrades.ts';
 import type { PlayerCharacter } from '../../domain/world/SimulationSettings.ts';
@@ -172,6 +174,10 @@ export class OnlineClient {
     this.send({ type: ClientMessageType.ConfigureLobby, roomId, options });
   }
 
+  setTeam(team: Team): void {
+    this.send({ type: ClientMessageType.SetTeam, team });
+  }
+
   setCharacter(character: PlayerCharacter): void {
     this.send({ type: ClientMessageType.SetCharacter, character });
   }
@@ -285,7 +291,7 @@ export class OnlineClient {
     if (this.enterMatchOf !== lobby.id) return;
     this.enterMatchOf = undefined;
     const self = lobby.members.find((member) => member.id === this.current.clientId);
-    if (lobby.state === LobbyState.Playing && self?.playerIndex === null) this.play();
+    if (lobby.mode !== GameMode.TeamBattle && lobby.state === LobbyState.Playing && self?.playerIndex === null) this.play();
   }
 
   private halt(): void {

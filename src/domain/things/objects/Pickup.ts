@@ -4,7 +4,7 @@ import { CollideFlag } from '../../map/CollideFlag.ts';
 import type { MapCell } from '../../map/MapCell.ts';
 import { SoundId } from '../../sounds.ts';
 import { OPAQUE_ALPHA, type Visual } from '../../visuals.ts';
-import { GameMode } from '../../world/GameMode.ts';
+import { usesDeathMatchEquipment } from '../../world/GameMode.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { animationClip, clipAnimator, ClipSymbol } from '../clipVisual.ts';
 import { isPlayer } from '../PlayerThing.ts';
@@ -109,7 +109,7 @@ export class Pickup extends Thing {
       return;
     }
     this.world.map.mapwho.deleteThing(this);
-    const seconds = this.world.settings.gameMode === GameMode.DeathMatch ? PICKUP.deathMatchReappearSeconds : PICKUP.reappearSeconds;
+    const seconds = usesDeathMatchEquipment(this.world.settings.gameMode) ? PICKUP.deathMatchReappearSeconds : PICKUP.reappearSeconds;
     this.reappearCount = this.world.ticksPerSecond * seconds;
     this.phase = PickupPhase.Reappearing;
   }

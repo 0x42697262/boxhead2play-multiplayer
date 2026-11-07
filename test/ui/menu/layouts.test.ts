@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS } from '../../../src/services/SettingsService.ts';
 import { OverrideTree } from '../../../src/ui/screens/menu/overrideTree.ts';
 import { SetupWindow } from '../../../src/ui/screens/menu/SetupWindow.ts';
 import { GameMode } from '../../../src/domain/world/GameMode.ts';
+import { TEAM_BATTLE_BUTTON } from '../../../src/ui/screens/menu/tuning.ts';
 import { mainMenuLayout } from '../../../src/ui/screens/menu/MainMenuScreen.ts';
 import { selectWorldLayout } from '../../../src/ui/screens/menu/SelectWorldScreen.ts';
 import { JOIN_CODE_BUTTON, MainMenuChild, NAME_BUTTON } from '../../../src/ui/screens/menu/tuning.ts';
@@ -13,10 +14,10 @@ import { OnlineMenuChild } from '../../../src/ui/screens/online/tuning.ts';
 import { assetsMissing, assetSymbols } from '../../adapters/assets/support.ts';
 
 describe('menu layouts from the real library', () => {
-  it.skipIf(assetsMissing)('main menu keeps the background, the title, the mode buttons, SETTINGS in the INSTRUCTIONS slot and the options window', () => {
+  it.skipIf(assetsMissing)('approved Team Battle plan: main menu adds its own entry and retains the existing modes, settings and options window', () => {
     const library = new SymbolLibrary(assetSymbols());
     const layout = mainMenuLayout(library);
-    expect(layout.items.map((item) => item.depth)).toEqual([1, 8, 10, 12, 14, 82, 90, 91, 207]);
+    expect(layout.items.map((item) => item.depth)).toEqual([1, 8, 10, 12, 14, 82, 90, 91, TEAM_BATTLE_BUTTON.depth, 207]);
     expect(layout.settingsLabel).toBeDefined();
     const { graphics, roomDetail, volume, flashes, ping, hidden } = layout.setup;
     expect(graphics.buttons.map((button) => button.spec.instance)).toEqual(['_Level_Beginner', '_Level_Intermediate', '_Level_Expert']);

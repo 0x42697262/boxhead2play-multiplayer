@@ -1,3 +1,5 @@
+import { GameMode } from '../domain/world/GameMode.ts';
+import { Team, TEAMS, TEAM_BATTLE_RULES, type Combatant } from '../domain/world/TeamBattle.ts';
 import { CompletionState } from '../domain/world/CompletionState.ts';
 import type { PlayerCharacter } from '../domain/world/SimulationSettings.ts';
 import type { ControlMasks } from '../net/controlMask.ts';
@@ -35,6 +37,7 @@ export interface LobbyMember {
   readonly client: LobbyClient;
   character: PlayerCharacter;
   playerIndex: number | undefined;
+  team?: Team;
 }
 
 export interface LobbyDependencies {
@@ -62,6 +65,7 @@ export class Lobby {
   readonly mode: OnlineMode;
   private roomId: string;
   private options: LobbyOptions;
+  private readonly lockedTeams = new Map<string, Team>();
   private readonly members: LobbyMember[] = [];
   private hostId: string;
   private match: Match | undefined = undefined;
@@ -81,9 +85,9 @@ export class Lobby {
     this.createdMs = deps.clock.now();
     this.mode = setup.mode;
     this.roomId = setup.roomId;
-    this.options = setup.options;
+    this.options = setup.mode === GameMode.TeamBattle ? { ...setup.options, teamZombiesActive: false, teamDevilsActive: false } : setup.options;
     this.hostId = host.id;
-    this.members.push({ client: host, character, playerIndex: undefined });
+    this.members.push({ client: host, character, playerIndex: undefined, ...(this.mode === GameMode.TeamBattle ? { team: Team.A } : {}) });
   }
 
   get state(): LobbyState {
@@ -131,6 +135,7 @@ export class Lobby {
         host: member.client.id === this.hostId,
         connected: member.client.connected,
         playerIndex: member.playerIndex ?? null,
+        ...(member.team ? { team: member.team, teamLocked: this.lockedTeams.has(member.client.id) } : {}),
       })),
     };
   }
@@ -141,10 +146,46 @@ export class Lobby {
 
   add(client: LobbyClient, character: PlayerCharacter): ErrorReason | undefined {
     if (this.has(client)) return undefined;
-    if (this.full) return ErrorReason.LobbyFull;
-    this.members.push({ client, character, playerIndex: undefined });
+    const error = this.admissionError(client);
+    if (error) return error;
+    const team = this.mode === GameMode.TeamBattle ? this.joiningTeam(client.id) : undefined;
+    this.members.push({ client, character, playerIndex: undefined, ...(team ? { team } : {}) });
     this.changed();
     return undefined;
+  }
+
+  admissionError(client: LobbyClient): ErrorReason | undefined {
+    if (this.full) return ErrorReason.LobbyFull;
+    if (this.mode === GameMode.TeamBattle && this.teamCount(this.joiningTeam(client.id)) >= TEAM_BATTLE_RULES.maximumPerTeam) return ErrorReason.TeamFull;
+    return undefined;
+  }
+
+  setTeam(client: LobbyClient, team: Team): ErrorReason | undefined {
+    const member = this.member(client.id);
+    if (!member) return ErrorReason.NotInLobby;
+    if (this.mode !== GameMode.TeamBattle) return ErrorReason.BadMessage;
+    if (member.team === team) return undefined;
+    if (this.lockedTeams.has(client.id)) return ErrorReason.TeamLocked;
+    if (this.teamCount(team) >= TEAM_BATTLE_RULES.maximumPerTeam) return ErrorReason.TeamFull;
+    member.team = team;
+    this.changed();
+    return undefined;
+  }
+
+  private teamCount(team: Team): number {
+    return this.members.filter((member) => member.team === team).length;
+  }
+
+  private joiningTeam(clientId: string): Team {
+    return this.lockedTeams.get(clientId) ?? (this.teamCount(Team.A) <= this.teamCount(Team.B) ? Team.A : Team.B);
+  }
+
+  private combatant(member: LobbyMember): Combatant | undefined {
+    return member.team ? { actorId: member.client.id, team: member.team } : undefined;
+  }
+
+  private lockTeam(member: LobbyMember): void {
+    if (member.team) this.lockedTeams.set(member.client.id, member.team);
   }
 
   remove(client: LobbyClient, reason: LeaveReason): void {
@@ -188,9 +229,10 @@ export class Lobby {
     if (!member) return ErrorReason.NotInLobby;
     if (!this.match) return member.client.id === this.hostId ? this.startMatch() : ErrorReason.NotHost;
     if (member.playerIndex !== undefined) return undefined;
-    const index = this.match.join(member.character);
+    const index = this.match.join(member.character, this.combatant(member));
     if (index === undefined) return ErrorReason.LobbyFull;
     member.playerIndex = index;
+    this.lockTeam(member);
     this.sendStart(member, this.match);
     this.changed();
     return undefined;
@@ -241,15 +283,19 @@ export class Lobby {
 
   private startMatch(): ErrorReason | undefined {
     const players = this.members.filter((member) => member.client.connected);
+    if (this.mode === GameMode.TeamBattle && TEAMS.some((team) => !players.some((member) => member.team === team))) return ErrorReason.TeamsRequired;
+    const combatants = players.flatMap((member) => { const combatant = this.combatant(member); return combatant ? [combatant] : []; });
     const match = Match.start(
-      { id: this.deps.newId(), mode: this.mode, roomId: this.roomId, options: this.options, characters: players.map((member) => member.character), seed: this.deps.newSeed() },
+      { id: this.deps.newId(), mode: this.mode, roomId: this.roomId, options: this.options, characters: players.map((member) => member.character), seed: this.deps.newSeed(), ...(this.mode === GameMode.TeamBattle ? { combatants } : {}) },
       this.deps.content,
+      this.deps.clock.now(),
     );
     if (!match) return ErrorReason.RoomUnknown;
     this.match = match;
     this.matchStartedMs = this.deps.clock.now();
     players.forEach((member, index) => {
       member.playerIndex = index;
+      this.lockTeam(member);
       this.sendStart(member, match);
     });
     this.stopTicking = this.deps.ticker.start(match.ticksPerSecond, () => this.tick(match));
@@ -301,7 +347,7 @@ export class Lobby {
   private step(match: Match): void {
     let step: MatchStep;
     try {
-      step = match.step();
+      step = match.step(this.deps.clock.now());
     } catch (error) {
       this.deps.logger.error(LogEvent.ServerFailed, { lobby: this.id, match: match.setup.id, error: String(error) });
       this.finish(match, { state: CompletionState.Error, winnerIndex: undefined, score: match.world.hud.totalScore });
@@ -326,8 +372,8 @@ export class Lobby {
   private finish(match: Match, result: MatchResult): void {
     const winner = this.members.find((member) => member.playerIndex !== undefined && member.playerIndex === result.winnerIndex);
     for (const member of this.members) {
-      if (member.playerIndex === undefined) continue;
-      member.client.send({ type: ServerMessageType.GameOver, matchId: match.setup.id, state: result.state, winnerName: winner?.client.name ?? null, score: result.score });
+      if (member.playerIndex === undefined && !result.teamResult) continue;
+      member.client.send({ type: ServerMessageType.GameOver, matchId: match.setup.id, state: result.state, winnerName: winner?.client.name ?? null, score: result.score, ...(result.teamResult ? { teamResult: result.teamResult } : {}) });
     }
     this.deps.logger.info(LogEvent.MatchEnded, { lobby: this.id, match: match.setup.id, state: result.state, score: result.score, ticks: match.world.tick });
     this.stopMatch();
@@ -339,6 +385,11 @@ export class Lobby {
     if (!match || member.playerIndex === undefined) return;
     match.leave(member.playerIndex);
     member.playerIndex = undefined;
+    if (this.mode === GameMode.TeamBattle && TEAMS.some((team) => !this.members.some((other) => other.playerIndex !== undefined && other.team === team))) {
+      const result = match.abandonTeams();
+      if (result) this.finish(match, result);
+      return;
+    }
     if (this.members.every((other) => other.playerIndex === undefined)) {
       this.deps.logger.info(LogEvent.MatchEnded, { lobby: this.id, match: match.setup.id, state: MATCH_ABANDONED, ticks: match.world.tick });
       this.stopMatch();
@@ -349,6 +400,7 @@ export class Lobby {
     this.stopTicking?.();
     this.stopTicking = undefined;
     this.match = undefined;
+    this.lockedTeams.clear();
     for (const member of this.members) member.playerIndex = undefined;
   }
 

@@ -1,4 +1,4 @@
-import { GameMode } from './GameMode.ts';
+import { GameMode, usesDeathMatchEquipment } from './GameMode.ts';
 import { BASE_TICKS_PER_SECOND, MAX_PLAYERS, SLOW_SPEED_FACTOR } from './tuning.ts';
 
 export const Difficulty = {
@@ -53,6 +53,7 @@ export interface GameOptions {
   readonly difficulty: Difficulty;
   readonly gameSpeed: GameSpeed;
   readonly devilsActive: boolean;
+  readonly zombiesActive?: boolean;
   readonly collisionsActive: boolean;
   readonly damageActive: boolean;
   readonly gameAmount: GameAmount;
@@ -97,7 +98,7 @@ export function createSimulationSettings(options: GameOptions, host: SimulationH
     ...options,
     presentAmbience: host.presentAmbience,
     playerCharacters: Object.freeze(options.playerCharacters.slice(0, MAX_PLAYERS)),
-    damageActive: options.gameMode === GameMode.DeathMatch ? true : options.damageActive,
+    damageActive: usesDeathMatchEquipment(options.gameMode) ? true : options.damageActive,
     ticksPerSecond: BASE_TICKS_PER_SECOND * speedFactor(options.gameSpeed),
     loadTicksPerSecond: BASE_TICKS_PER_SECOND,
   });

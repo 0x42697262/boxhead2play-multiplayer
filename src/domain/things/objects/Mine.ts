@@ -6,11 +6,11 @@ import type { MapCell } from '../../map/MapCell.ts';
 import { SoundId } from '../../sounds.ts';
 import type { UpgradableObject } from '../../upgrades/contracts.ts';
 import type { Visual } from '../../visuals.ts';
-import { GameMode } from '../../world/GameMode.ts';
+import { GameMode, usesDeathMatchEquipment } from '../../world/GameMode.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { animationClip, clipAnimator, ClipSymbol } from '../clipVisual.ts';
 import { Explosion } from '../effects/Explosion.ts';
-import { Thing } from '../Thing.ts';
+import { protectsTeammate, Thing } from '../Thing.ts';
 import { ThingClass } from '../ThingClass.ts';
 import { ThingFlag } from '../ThingFlag.ts';
 import { MINE } from './tuning.ts';
@@ -87,7 +87,7 @@ export class Mine extends PlacedExplosive {
     switch (this.phase) {
       case ExplosivePhase.Init: {
         this.place();
-        const deathMatch = this.world.settings.gameMode === GameMode.DeathMatch;
+        const deathMatch = usesDeathMatchEquipment(this.world.settings.gameMode);
         this.triggerFlags = CollideFlag.Creature | (deathMatch ? CollideFlag.Player : CollideFlag.None);
         this.phase = deathMatch ? ExplosivePhase.Arming : ExplosivePhase.Armed;
         if (deathMatch) this.arm();
@@ -107,6 +107,12 @@ export class Mine extends PlacedExplosive {
   }
 
   private triggered(): boolean {
+    if (this.world.settings.gameMode === GameMode.TeamBattle) {
+      return this.currentCell?.things.some((thing) =>
+        (thing.classId === ThingClass.Player || thing.classId === ThingClass.Zombie || thing.classId === ThingClass.Devil) &&
+        !thing.hasFlag(ThingFlag.Dead) && !protectsTeammate(this, thing),
+      ) ?? false;
+    }
     return ((this.currentCell?.collide ?? CollideFlag.None) & this.triggerFlags) !== 0;
   }
 

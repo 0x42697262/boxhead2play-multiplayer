@@ -10,11 +10,11 @@ validated with Zod and written back on every change (`CSaveData` flushed on ever
 Unreadable storage or a failed write is logged (`save.rejected`, `save.write_failed`) and
 the game continues with the values in memory.
 
-## Version 9
+## Version 12
 
 | Field | Type | Default | Original |
 |---|---|---|---|
-| `version` | `9` | | |
+| `version` | `12` | | |
 | `soundVolume` | 0..100 | 100 | `mSoundActive` (on/off) |
 | `graphics` | `sharp`, `smooth`, `pixelated` | `sharp` | none (ADR 0006) |
 | `roomDetail` | `auto`, `high`, `low` | `auto` | none (ADR 0008) |
@@ -31,7 +31,7 @@ the game continues with the values in memory.
 | `gameAmount` | 0..3 | 1 | `mGameAmount` (5/10/20/50 kills) |
 | `coopRespawnSeconds` | 3, 5, 10, 15 | 10 | none (seconds from death to respawn in coop) |
 | `deathMatchRespawnSeconds` | 3, 5, 10, 15 | 5 | none (the same in deathmatch) |
-| `levelIndex.single/coop/deathMatch` | integer >= 0 | 8 / 0 / 0 | `mLevelIndex_*` |
+| `levelIndex.single/coop/deathMatch/teamBattle` | integer >= 0 | 8 / 0 / 0 / 0 | `mLevelIndex_*` |
 | `character` | 0..3 | 3 | `mPlayer1_CharacterIndex` (0 SWAT, 1 Bond, 2 GI Joe, 3 Bambo) |
 | `keys` | Flash key codes 0..255 for up, down, left, right, fire, nextWeapon, prevWeapon | W, S, A, D, J, L, K | `mPlayer1_Key*` |
 | `playerName` | string, at most 16 characters | `''` | none (the online name; the server shows "Player" for an empty one) |
@@ -76,5 +76,10 @@ back immediately (`save.migrated`). Invalid JSON, a non-object, an unknown versi
 failed validation falls back to the defaults (`save.rejected`) without overwriting the
 stored blob until the next change.
 
-To add version 12: bump `SETTINGS_VERSION`, change the schema, and add `MIGRATIONS[11]`
-that turns a version 11 object into a version 12 object.
+* Version 11 had no Team Battle options or saved level. Migration adds
+  `teamZombiesActive: false`, `teamDevilsActive: false` and `levelIndex.teamBattle: 0`,
+  retaining every existing setting. Team Battle hosts still start with both enemy
+  switches off; these saved option values cannot override a new lobby's defaults.
+
+To add another settings format, increment `SETTINGS_VERSION`, change the schema and add
+one migration from the previous format. See `../domain/team-battle.md` for mode rules.

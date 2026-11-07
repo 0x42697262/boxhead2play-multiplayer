@@ -13,7 +13,7 @@ export function bounceStep(shot: Shot): void {
     shot.position.z = 0;
     bounced = true;
   }
-  if (shot.world.map.collide.bounceCollide(shot)) {
+  if (shot.world.map.collide.bounceCollide(shot, shot)) {
     bounced = true;
     delta.scale2D(GRENADE.wallBounce);
   }

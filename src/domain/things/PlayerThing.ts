@@ -1,5 +1,6 @@
 import type { TextKey } from '../../text/i18n.ts';
 import type { WeaponName } from '../weapons/WeaponName.ts';
+import type { AttackSource } from '../world/TeamBattle.ts';
 import type { Thing } from './Thing.ts';
 import { ThingClass } from './ThingClass.ts';
 
@@ -13,6 +14,7 @@ export interface PlayerHudStatus {
 
 export interface PlayerCapabilities {
   readonly playerIndex: number;
+  readonly lastAttackSource?: AttackSource | undefined;
   readonly lastAttackerIndex: number | undefined;
   readonly lastAttackerClass: ThingClass | undefined;
   readonly deathLogged: boolean;

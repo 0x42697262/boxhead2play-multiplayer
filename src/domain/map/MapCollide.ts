@@ -1,5 +1,5 @@
 import type { Position } from '../math/Position.ts';
-import type { Thing } from '../things/Thing.ts';
+import { protectsTeammate, type Thing } from '../things/Thing.ts';
 import { ThingFlag } from '../things/ThingFlag.ts';
 import { CellRect } from './CellRect.ts';
 import { CollideFlag, CollideMask } from './CollideFlag.ts';
@@ -64,11 +64,11 @@ export class MapCollide {
     return result;
   }
 
-  bounceCollide(body: MovingBody): boolean {
+  bounceCollide(body: MovingBody, source?: Thing): boolean {
     this.collided = false;
     const { position } = body;
     const step = body.delta.clone();
-    const pushed = this.collideMapwhoHeight(position.add(step), body.radius, body.id);
+    const pushed = this.collideMapwhoHeight(position.add(step), body.radius, body.id, source);
     step.x = pushed.x - position.x;
     step.y = pushed.y - position.y;
     const resolved = this.collideMap(position, step, body.radius);
@@ -116,8 +116,8 @@ export class MapCollide {
     return this.pushOut(position, radius, ownerId, false);
   }
 
-  collideMapwhoHeight(position: Position, radius: number, ownerId: number): Position {
-    return this.pushOut(position, radius, ownerId, true);
+  collideMapwhoHeight(position: Position, radius: number, ownerId: number, source?: Thing): Position {
+    return this.pushOut(position, radius, ownerId, true, source);
   }
 
   collideLine(owner: Thing, from: Position, to: Position, radius: number, affectFlags: number, mapOnly = false): LineHit | undefined {
@@ -126,7 +126,7 @@ export class MapCollide {
     const area = CellRect.around(from.x, from.y, radius);
     const stepX = span.x / remaining;
     const stepY = span.y / remaining;
-    const line = new LineProbe(from.x, from.y, to.x, to.y, owner.id, affectFlags, mapOnly ? LineTest.WallsOnly : LineTest.ThingsAndWalls);
+    const line = new LineProbe(from.x, from.y, to.x, to.y, owner.id, affectFlags, mapOnly ? LineTest.WallsOnly : LineTest.ThingsAndWalls, owner);
     const session = this.map.nextSessionId();
     let hit: LineHit | undefined;
     while (remaining > 0) {
@@ -151,11 +151,11 @@ export class MapCollide {
     body.delta.y = pushed.y - body.position.y;
   }
 
-  private pushOut(start: Position, radius: number, ownerId: number, checkHeight: boolean): Position {
+  private pushOut(start: Position, radius: number, ownerId: number, checkHeight: boolean, source?: Thing): Position {
     let position = start;
     for (const cell of this.map.cellsInArea(CellRect.around(start.x, start.y, radius))) {
       for (const other of cell.newestFirst()) {
-        if (!(other.flags & ThingFlag.Collidable) || ownerId === other.id) continue;
+        if (!(other.flags & ThingFlag.Collidable) || ownerId === other.id || protectsTeammate(source, other)) continue;
         const distance = other.position.distance2D(position);
         if (distance >= radius + other.radius) continue;
         if (checkHeight && !(position.z < other.position.z + other.height)) continue;

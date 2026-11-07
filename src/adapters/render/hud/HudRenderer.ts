@@ -1,7 +1,8 @@
+import type { Team } from '../../../domain/world/TeamBattle.ts';
 import type { Point2, ScoreAwarded } from '../../../domain/events.ts';
 import type { MultiplierListEntry } from '../../../domain/upgrades/Upgrades.ts';
 import { OPAQUE_ALPHA } from '../../../domain/visuals.ts';
-import { GameMode } from '../../../domain/world/GameMode.ts';
+import { type GameMode, usesDeathMatchEquipment } from '../../../domain/world/GameMode.ts';
 import { SCREEN_HEIGHT_PX, SCREEN_WIDTH_PX } from '../../../domain/world/tuning.ts';
 import { t } from '../../../text/i18n.ts';
 import type { DisplayItem } from '../../assets/schemas.ts';
@@ -48,6 +49,11 @@ import {
   PING_FONT_PX,
   PING_POSITION,
   PING_SLOW_COLOR,
+  TEAM_SCORE_FONT_PX,
+  TEAM_SCORE_WIDTH_PX,
+  TEAM_SCORE_POSITION,
+  TEAM_LABEL_OFFSET_Y_PX,
+  TEAM_CLOCK_SECONDS_PER_MINUTE,
 } from './tuning.ts';
 
 export const HudAction = {
@@ -71,6 +77,7 @@ export function pingColor(latencyMs: number): number {
 }
 
 export interface PlayerLabel {
+  readonly team?: Team;
   readonly playerIndex: number;
   readonly screen: Point2;
   readonly lifeRatio: number;
@@ -137,7 +144,7 @@ export class HudRenderer {
   }
 
   addScore(event: ScoreAwarded): void {
-    if (this.gameMode === GameMode.DeathMatch) return;
+    if (usesDeathMatchEquipment(this.gameMode)) return;
     this.popups.add(event.points, event.screenPosition, SCORE_TOTAL_POSITION);
   }
 
@@ -165,7 +172,7 @@ export class HudRenderer {
 
   showUpgrades(upgrades: readonly MultiplierListEntry[] | undefined): void {
     this.panelShown = upgrades !== undefined;
-    if (this.gameMode === GameMode.DeathMatch) return;
+    if (usesDeathMatchEquipment(this.gameMode)) return;
     const key = upgrades ? JSON.stringify(upgrades) : undefined;
     if (key === this.upgradeListKey) return;
     this.upgradeListKey = key;
@@ -175,7 +182,8 @@ export class HudRenderer {
 
   drawLive(ctx: Context2D): void {
     const totals = this.totals;
-    if (totals && this.gameMode !== GameMode.DeathMatch) this.drawScoreTotal(ctx, totals);
+    if (totals && !usesDeathMatchEquipment(this.gameMode)) this.drawScoreTotal(ctx, totals);
+    if (totals?.teamBattle) this.drawTeamScore(ctx, totals.teamBattle);
     if (totals) this.drawRespawnCountdown(ctx, totals);
     if (totals?.latencyMs !== undefined) this.drawPing(ctx, totals.latencyMs);
     for (const label of this.labels) {
@@ -184,6 +192,10 @@ export class HudRenderer {
       if (bitmap) blit(ctx, bitmap, label.screen, 1, OPAQUE_ALPHA, this.currentResolution);
       const name = label.name ? this.textClip({ text: label.name, color: label.local ? LOCAL_PLAYER_NAME_COLOR : OTHER_PLAYER_NAME_COLOR, fontPx: PLAYER_NAME_FONT_PX, boxWidthPx: PLAYER_NAME_BOX_WIDTH_PX, rightAligned: false }) : undefined;
       if (name) blit(ctx, name, { x: label.screen.x, y: label.screen.y + PLAYER_NAME_OFFSET_Y_PX }, 1, OPAQUE_ALPHA, this.currentResolution);
+      if (label.team) {
+        const team = this.textClip({ text: t(`team.${label.team}`), color: label.local ? LOCAL_PLAYER_NAME_COLOR : OTHER_PLAYER_NAME_COLOR, fontPx: PLAYER_NAME_FONT_PX, boxWidthPx: PLAYER_NAME_BOX_WIDTH_PX, rightAligned: false });
+        if (team) blit(ctx, team, { x: label.screen.x, y: label.screen.y + TEAM_LABEL_OFFSET_Y_PX }, 1, OPAQUE_ALPHA, this.currentResolution);
+      }
     }
     const panel = this.panelSurface();
     if (panel) {
@@ -227,6 +239,14 @@ export class HudRenderer {
   private blitScoreTotal(ctx: Context2D, overrides: Overrides, key: string): void {
     const bitmap = this.clip(HudSymbol.ScoreTotal, overrides, key, LIVE_CLIP_INFLATE_PX);
     if (bitmap) blit(ctx, bitmap, SCORE_TOTAL_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
+  }
+
+  private drawTeamScore(ctx: Context2D, match: NonNullable<HudFrame['teamBattle']>): void {
+    const minutes = Math.floor(match.remainingSeconds / TEAM_CLOCK_SECONDS_PER_MINUTE);
+    const seconds = String(match.remainingSeconds % TEAM_CLOCK_SECONDS_PER_MINUTE).padStart(String(TEAM_CLOCK_SECONDS_PER_MINUTE).length, '0');
+    const text = t('team.score', { ...match.scores, minutes, seconds });
+    const bitmap = this.textClip({ text, color: OTHER_PLAYER_NAME_COLOR, fontPx: TEAM_SCORE_FONT_PX, boxWidthPx: TEAM_SCORE_WIDTH_PX, rightAligned: false });
+    if (bitmap) blit(ctx, bitmap, TEAM_SCORE_POSITION, 1, OPAQUE_ALPHA, this.currentResolution);
   }
 
   private drawRespawnCountdown(ctx: Context2D, totals: HudFrame): void {
@@ -311,7 +331,7 @@ export class HudRenderer {
   private panelSurface(): Surface | undefined {
     if (!this.panelShown) return undefined;
     const totals = this.totals;
-    if (this.gameMode !== GameMode.DeathMatch) return this.upgradeList;
+    if (!usesDeathMatchEquipment(this.gameMode)) return this.upgradeList;
     if (!totals) return undefined;
     const rows = scoreboardRows(totals, (playerIndex) => playerDisplayName(totals, playerIndex));
     const key = JSON.stringify(rows);
@@ -357,7 +377,14 @@ export class HudRenderer {
     const titleOverrides: Overrides = { [HudChild.MessageText]: { text: t('hud.scoreboard.title'), textColor: UPGRADE_COLOR } };
     const { x, y } = SCOREBOARD_TITLE_POSITION;
     if (titleId !== undefined) this.renderer.draw(base.surface.ctx, titleId, 0, multiply(base.toDevice, [1, 0, 0, 1, x, y]), { overrides: titleOverrides, resolution: this.currentResolution });
-    rows.forEach((entry, row) => {
+    let row = 0;
+    let team: ScoreboardRow['team'];
+    rows.forEach((entry) => {
+      if (entry.team && entry.team !== team) {
+        team = entry.team;
+        const column = SCOREBOARD_COLUMNS[0];
+        if (column) this.drawPanelRow(base, column, row++, { [HudChild.UpgradeText]: { text: t(`team.${team}`), textColor: UPGRADE_COLOR }, [HudChild.UpgradeIndex]: { text: '' } }, OPAQUE);
+      }
       const color = entry.local ? LOCAL_PLAYER_NAME_COLOR : UPGRADE_COLOR;
       const cells: readonly (readonly [string, string])[] = [
         [String(entry.rank), entry.name],
@@ -369,6 +396,7 @@ export class HudRenderer {
         if (name === undefined) return;
         this.drawPanelRow(base, name, row, { [HudChild.UpgradeText]: { text, textColor: color }, [HudChild.UpgradeIndex]: { text: index } }, OPAQUE);
       });
+      row++;
     });
     return base.surface;
   }

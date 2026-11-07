@@ -316,6 +316,8 @@ export class Hub {
         return undefined;
       case ClientMessageType.ConfigureLobby:
         return session.lobby ? session.lobby.configure(session, message.roomId, message.options) : ErrorReason.NotInLobby;
+      case ClientMessageType.SetTeam:
+        return session.lobby?.setTeam(session, message.team) ?? (session.lobby ? undefined : ErrorReason.NotInLobby);
       case ClientMessageType.SetCharacter:
         session.lobby?.setCharacter(session, message.character);
         return undefined;
@@ -366,7 +368,8 @@ export class Hub {
     const lobby = this.lobbies.get(lobbyId);
     if (!lobby) return ErrorReason.LobbyNotFound;
     if (session.lobby === lobby) return undefined;
-    if (lobby.full) return ErrorReason.LobbyFull;
+    const admission = lobby.admissionError(session);
+    if (admission) return admission;
     this.leaveLobby(session);
     const error = lobby.add(session, character);
     if (error) return error;

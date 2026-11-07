@@ -8,6 +8,7 @@ import type { MapCell } from '../../map/MapCell.ts';
 import { SoundId } from '../../sounds.ts';
 import type { UpgradableCreature } from '../../upgrades/contracts.ts';
 import { OPAQUE_ALPHA, type Visual } from '../../visuals.ts';
+import type { AttackSource } from '../../world/TeamBattle.ts';
 import type { WorldContext } from '../../world/WorldContext.ts';
 import { AffectType } from '../affects/AffectType.ts';
 import { affectorsInProcessingOrder, resolveHit, type HitTarget } from '../affects/hitReaction.ts';
@@ -60,6 +61,7 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
   targetDirection = 0;
   hitAngle: Angle | undefined = undefined;
   lastAttackerIndex: number | undefined = undefined;
+  lastAttackSource: AttackSource | undefined = undefined;
   lastAttackerClass: ThingClass | undefined = undefined;
   currentCell: MapCell | undefined = undefined;
   deathLogged = false;
@@ -214,6 +216,7 @@ export abstract class Creature extends Thing implements MovingBody, HitTarget, U
       for (const affect of affectorsInProcessingOrder(this.affectors)) {
         const reaction = resolveHit(affect, this, this.world.settings.damageActive);
         if (!reaction) continue;
+        this.lastAttackSource = affect.affector.attackSource;
         const source = rootOwner(affect.owner);
         this.lastAttackerIndex = source && isPlayer(source) ? source.playerIndex : undefined;
         this.lastAttackerClass = source?.classId;

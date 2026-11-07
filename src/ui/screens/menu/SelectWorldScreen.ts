@@ -4,6 +4,7 @@ import { depthKey, type SymbolLibrary } from '../../../adapters/render/symbols/S
 import type { Rng } from '../../../domain/math/Rng.ts';
 import { SoundId } from '../../../domain/sounds.ts';
 import type { GameMode } from '../../../domain/world/GameMode.ts';
+import type { Team } from '../../../domain/world/TeamBattle.ts';
 import { PlayerCharacter } from '../../../domain/world/SimulationSettings.ts';
 import type { Logger } from '../../../observability/logger.ts';
 import {
@@ -38,6 +39,11 @@ import {
   ROOM_PROMPT_DEPTH,
   ROW_LABEL_COLOR,
   RoomChild,
+  ROOM_TEAM_CHOICES,
+  TEAM_OBJECTIVE,
+  TEAM_OBJECTIVE_INFO,
+  TEAM_OBJECTIVE_COLOR,
+  TEAM_OBJECTIVE_TEXT,
   TextStyles,
   WINDOW_TEXT_COLOR,
 } from '../online/tuning.ts';
@@ -78,6 +84,7 @@ export const SelectAction = {
   Level: 'level',
   Play: 'play',
   CopyLink: 'copyLink',
+  Team: 'team',
 } as const;
 
 export type SelectAction =
@@ -92,7 +99,8 @@ export type SelectAction =
   | { readonly kind: typeof SelectAction.Character; readonly delta: number }
   | { readonly kind: typeof SelectAction.Level; readonly delta: number }
   | { readonly kind: typeof SelectAction.Play }
-  | { readonly kind: typeof SelectAction.CopyLink };
+  | { readonly kind: typeof SelectAction.CopyLink }
+  | { readonly kind: typeof SelectAction.Team; readonly team: Team };
 
 export interface SelectWorldDependencies {
   readonly kit: MenuKit;
@@ -231,7 +239,7 @@ export class SelectWorldScreen implements Screen {
 
   get shownOptions(): UserSettings {
     const panel = this.roomPanel;
-    return panel ? { ...this.deps.settings.settings, ...panel.lobbyOptions } : this.deps.settings.settings;
+    return panel ? { ...this.deps.settings.settings, ...panel.lobbyOptions, teamZombiesActive: panel.lobbyOptions.teamZombiesActive ?? false, teamDevilsActive: panel.lobbyOptions.teamDevilsActive ?? false } : this.deps.settings.settings;
   }
 
   get roomPanel(): RoomPanel | undefined {
@@ -302,6 +310,9 @@ export class SelectWorldScreen implements Screen {
         this.play();
         audio.play(SoundId.Click);
         return;
+      case SelectAction.Team:
+        this.deps.room?.chooseTeam?.(action.team);
+        return;
       case SelectAction.CopyLink:
         audio.play(SoundId.Click);
         this.deps.room?.copyLink();
@@ -371,6 +382,7 @@ export class SelectWorldScreen implements Screen {
       ...(playable ? [release([...LEVEL_ICONS, Child.Button], { kind: SelectAction.Play })] : []),
       ...(panel ? [release([...SUB, RoomChild.Invite], { kind: SelectAction.CopyLink })] : []),
       ...(this.deps.room ? [release([ROOM_NAME_BUTTON.name], { kind: SelectAction.EditName })] : []),
+      ...(panel?.teamChoice && !panel.teamChoice.locked ? ROOM_TEAM_CHOICES.map((choice) => release([...SUB, choice.name], { kind: SelectAction.Team, team: choice.team })) : []),
       ...cards,
     ];
   }
@@ -450,7 +462,7 @@ export class SelectWorldScreen implements Screen {
 
   private configure(options: UserSettings, levelIndex: number): void {
     const roomId = roomIdForLevel(this.deps.rooms, levelIndex);
-    if (roomId !== undefined) this.deps.room?.configure(roomId, toLobbyOptions(options));
+    if (roomId !== undefined) this.deps.room?.configure(roomId, toLobbyOptions(options, this.deps.mode));
   }
 
   private sceneRoom(tree: OverrideTree): DisplayItem[] {
@@ -477,6 +489,22 @@ export class SelectWorldScreen implements Screen {
       items.push(placed.item);
       tree.set([...SUB, placed.item.name], textOverride(placed, text, color));
     };
+    if (panel.teamChoice) {
+      for (const choice of ROOM_TEAM_CHOICES) {
+        const selected = choice.team === panel.teamChoice.team;
+        const text = t(panel.teamChoice.locked ? 'team.locked' : selected ? 'team.selected' : 'team.choose', { team: t(`team.${choice.team}`) });
+        if (!panel.teamChoice.locked || selected) add(placedText(library, { ...choice, style: TextStyles.Small }), text, MENU_TEXT_COLOR);
+      }
+      const subId = this.layout.subScreenId;
+      if (subId !== undefined) {
+        for (const item of library.frameItems(subId, 0)) {
+          const text = library.staticText(item.characterId)?.text;
+          if (text && TEAM_OBJECTIVE_TEXT.some((prefix) => text.startsWith(prefix))) tree.set([...SUB, item.name ?? depthKey(item.depth)], { visible: false });
+        }
+      }
+      add(placedText(library, { ...TEAM_OBJECTIVE, style: TextStyles.MenuLabel }), t('team.objective'), TEAM_OBJECTIVE_COLOR);
+      add(placedText(library, { ...TEAM_OBJECTIVE_INFO, style: TextStyles.Heading }), t('team.objectiveInfo'), TEAM_OBJECTIVE_COLOR);
+    }
     panel.members.forEach((line, index) => {
       const style = index === 0 ? TextStyles.ListHeading : TextStyles.ListItem;
       const top = ROOM_MEMBERS.top + index * ROOM_MEMBERS.lineHeight;
@@ -548,6 +576,13 @@ export class SelectWorldScreen implements Screen {
       }
     }
     this.addedOptionRows(tree, settings);
+    const library = this.deps.kit.renderer.library;
+    const labels = rows.labels.flatMap((label) => {
+      tree.set([...OPTIONS, label.original], { visible: false });
+      const item = placeSetupText(tree, library, OPTIONS, { name: label.name, depth: label.depth, style: label.title ? TextStyles.OptionTitle : TextStyles.OptionInfo, anchorX: label.frame.left, top: label.frame.top }, t(label.text), label.title ? WINDOW_TEXT_COLOR : MENU_TEXT_COLOR);
+      return item ? [item] : [];
+    });
+    if (labels.length) tree.set(OPTIONS, { attach: [...(tree.at(OPTIONS).attach ?? []), ...labels] });
     this.windowButtons(tree, OPTIONS);
     for (const { key, clip } of this.layout.optionInfoClips) tree.set([...OPTIONS, key], { clip });
   }
