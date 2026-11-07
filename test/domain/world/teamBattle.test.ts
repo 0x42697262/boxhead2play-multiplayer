@@ -271,9 +271,11 @@ describe.skipIf(!definition || !animations)('approved Team Battle plan: actual r
     expect(world.things.count(ThingClass.Zombie) > 0).toBe(zombies);
     if (zombies) {
       const firstLevel = world.upgrades.levelNumber;
+      let sawCreaturePickupCounter = false;
       const level = world.upgrades.level;
       const progressionBudget = level.zombieTotalCount * (level.zombieSpawnRate + world.ticksPerSecond * CORPSE_SECONDS) + level.devilSpawnRate;
       runUntil(world, () => {
+        if (world.upgrades.multipleKill > 0) sawCreaturePickupCounter = true;
         if (world.upgrades.levelNumber > firstLevel) return true;
         for (const zombie of world.things.filter((thing) => thing instanceof Zombie && thing.life > 0)) {
           if (zombie instanceof Zombie) world.things.add(new Explosion(world, zombie.position.clone(), new Angle(0), undefined, zombie.maxLife));
@@ -281,6 +283,7 @@ describe.skipIf(!definition || !animations)('approved Team Battle plan: actual r
         return false;
       }, progressionBudget);
       expect(world.upgrades.levelNumber).toBeGreaterThan(firstLevel);
+      expect(sawCreaturePickupCounter).toBe(true);
     }
     if (devils) runUntil(world, () => world.things.count(ThingClass.Devil) > 0, world.upgrades.level.devilSpawnRate + world.ticksPerSecond);
     expect(world.things.count(ThingClass.Devil) > 0).toBe(devils);
