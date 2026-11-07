@@ -201,6 +201,7 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
   const { clientId } = state;
   const host = lobby.members.some((member) => member.host && member.id === clientId);
   const self = lobby.members.find((member) => member.id === clientId);
+  const resultForRoom: OnlineSessionResult | undefined = state.result?.teamResult ? { end: OnlineEnd.Finished, state: state.result.state, gameOver: state.result } : result;
   return {
     ...(self?.team ? { teamChoice: { team: self.team, locked: self.teamLocked ?? false } } : {}),
     host,
@@ -211,7 +212,7 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
     members: memberLines(lobby, clientId),
     ownName: lobby.members.find((member) => member.id === clientId)?.name,
     options: optionsSummary(lobby.mode, lobby.options),
-    notice: noticeText(state, result) ?? (state.result?.teamResult ? resultText({ end: OnlineEnd.Finished, state: state.result.state, gameOver: state.result }) : undefined),
+    notice: noticeText(state, resultForRoom),
     invite: t(linkCopied ? 'invite.roomCopied' : 'invite.roomCopy', { code: lobby.code }),
   };
 }
