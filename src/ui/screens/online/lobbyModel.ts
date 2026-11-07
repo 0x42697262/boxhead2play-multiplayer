@@ -201,7 +201,7 @@ export function roomPanel(lobby: LobbyDto, state: OnlineState, rooms: RoomIndex,
   const { clientId } = state;
   const host = lobby.members.some((member) => member.host && member.id === clientId);
   const self = lobby.members.find((member) => member.id === clientId);
-  const resultForRoom: OnlineSessionResult | undefined = state.result?.teamResult ? { end: OnlineEnd.Finished, state: state.result.state, gameOver: state.result } : result;
+  const resultForRoom: OnlineSessionResult | undefined = lobby.state === LobbyState.Waiting && state.result?.teamResult ? { end: OnlineEnd.Finished, state: state.result.state, gameOver: state.result } : result;
   return {
     ...(self?.team ? { teamChoice: { team: self.team, locked: self.teamLocked ?? false } } : {}),
     host,
