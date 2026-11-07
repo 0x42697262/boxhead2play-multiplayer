@@ -163,8 +163,8 @@ export class Upgrades {
     } else {
       this.spawnEnemies();
     }
-    if (this.host.settings.gameMode === GameMode.TeamBattle) return;
     if (this.multipleKillTick-- < 0) this.setMultipleKill(0);
+    if (this.host.settings.gameMode === GameMode.TeamBattle) return;
     if (this.multiplierTick-- < 0) this.setMultiplier(this.multiplierIndex - 1);
   }
 
@@ -197,10 +197,9 @@ export class Upgrades {
   }
 
   logKills(count: number): void {
-    if (this.host.settings.gameMode === GameMode.TeamBattle) return;
     for (let i = 0; i < count; i++) {
       this.setMultipleKill(this.multipleKillIndex + 1);
-      this.setMultiplier(this.multiplierIndex + 1);
+      if (this.host.settings.gameMode !== GameMode.TeamBattle) this.setMultiplier(this.multiplierIndex + 1);
     }
   }
 

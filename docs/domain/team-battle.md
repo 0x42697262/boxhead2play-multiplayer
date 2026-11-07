@@ -54,7 +54,8 @@ Every new Team Battle lobby starts with Zombies and Devils independently off. On
 host can change them before starting. Either, neither or both can be enabled. Difficulty
 selects the existing creature waves; disabled species have no remaining quotas, so a wave
 cannot wait forever for a disabled species. Creatures threaten both teams. Creature kills
-advance enabled waves without changing the deathmatch equipment progression.
+advance enabled waves and the existing creature-pickup kill counter without changing
+the deathmatch equipment progression.
 
 Weapon upgrades, inventory resets, pickups, self damage and camera recovery use existing
 deathmatch behavior. The existing author-provided random spawn search and respawn state
