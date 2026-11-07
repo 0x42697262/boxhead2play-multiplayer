@@ -390,5 +390,6 @@
   "team.result.won": "{team} WINS · {a} – {b}",
   "team.result.draw": "DRAW · {a} – {b}",
   "team.result.abandoned": "MATCH ENDED · A TEAM LEFT · {a} – {b}",
-  "team.difficulty.info": "Sets creature waves. Equipment stays the same as deathmatch."
+  "team.difficulty.info": "Sets creature waves. Equipment stays the same as deathmatch.",
+  "team.join.info": "Click JOIN, choose a team in the room, then enter the match."
 }
