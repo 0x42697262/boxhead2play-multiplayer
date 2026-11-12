@@ -65,6 +65,7 @@ The commands assume:
 export AWS_REGION=ap-southeast-2
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 export REPO=0x42697262/boxhead2play-multiplayer
+export SUB_PREFIX=$(gh api repos/$REPO/actions/oidc/customization/sub --jq .sub_claim_prefix)
 ```
 
 ### 1. Cloudflare tunnel
@@ -122,7 +123,12 @@ aws iam create-open-id-connect-provider --url https://token.actions.githubuserco
   --client-id-list sts.amazonaws.com
 ```
 
-The role trusts only pushes to `main` of this repository:
+The role trusts only runs on `main` of this repository. The repository uses GitHub's
+immutable OIDC subject, which names the owner and repository by ID as well as by name
+(`repo:<owner>@<owner id>/<repo>@<repo id>`), so a renamed or recreated repository with
+the same name cannot assume the role. `SUB_PREFIX` holds that value; a subject in the
+plain `repo:<owner>/<repo>` form is rejected with `Not authorized to perform
+sts:AssumeRoleWithWebIdentity`.
 
 ```sh
 aws iam create-role --role-name boxhead2play-github-deploy --assume-role-policy-document "{
@@ -133,7 +139,7 @@ aws iam create-role --role-name boxhead2play-github-deploy --assume-role-policy-
     \"Action\": \"sts:AssumeRoleWithWebIdentity\",
     \"Condition\": {\"StringEquals\": {
       \"token.actions.githubusercontent.com:aud\": \"sts.amazonaws.com\",
-      \"token.actions.githubusercontent.com:sub\": \"repo:${REPO}:ref:refs/heads/main\"
+      \"token.actions.githubusercontent.com:sub\": \"${SUB_PREFIX}:ref:refs/heads/main\"
     }}
   }]
 }"
