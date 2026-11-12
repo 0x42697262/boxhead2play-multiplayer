@@ -140,20 +140,3 @@ Caddy forwards `/__monitor` like every other path.
   `withoutSecrets` the service starts, the journal has the missing-file warning at warning
   priority and `server.started` with `"monitor":false`; on `machine` it has
   `"monitor":true` and no such warning.
-
-## Binary cache
-
-`.github/workflows/nix.yml` builds `packages.<system>.boxhead2play` for `x86_64-linux` and
-`aarch64-linux` on every push to `main` and pushes the results to Cachix, so deploy hosts
-download the package instead of running the npm build and the asset extraction themselves.
-A small server (around 2 GiB of RAM) otherwise needs swap and `--max-jobs 1` to build it.
-
-Repository settings:
-
-* Variable `CACHIX_CACHE`: the cache name.
-* Secret `CACHIX_AUTH_TOKEN`: a Cachix auth token with write access to that cache.
-
-Consumers get a cache hit only when they build the same derivation, so they must not set
-`inputs.boxhead2play.inputs.nixpkgs.follows`: that rebuilds the package against their own
-nixpkgs. They also add the cache to `nix.settings.substituters` and its public key to
-`nix.settings.trusted-public-keys`.
