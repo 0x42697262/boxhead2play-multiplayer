@@ -37,7 +37,7 @@ proxies WebSocket upgrades. The domain's DNS must be on Cloudflare.
 ## Files
 
 * `deploy/ecs/task-definition.json`: the task definition template. `${ACCOUNT_ID}` and
-  `${AWS_REGION}` are filled in once with `envsubst` when registering the first revision.
+  `${AWS_REGION}` are filled in once with `sed` when registering the first revision.
 * `.github/workflows/ecs.yml`: on every push to `main` (and on manual dispatch) it builds the
   image on an arm64 runner, pushes it to ECR tagged with the commit SHA, takes the service's
   current task definition, swaps in the new image and deploys it. The job is skipped until
@@ -59,10 +59,17 @@ requests, so a fork or a pull request cannot assume the deploy role.
 
 ## One-time setup
 
+The commands assume the variables below. Every regional resource (the parameters, the ECR
+repository, the log group, the cluster) must be in the same region as the service, because a
+task reads its secrets, image and logs only from its own region. `AWS_DEFAULT_REGION` makes
+commands without `--region` use it too; AWS CloudShell otherwise uses the region selected in
+the console. CloudShell has no `envsubst`, so the template is filled in with `sed`.
+
 The commands assume:
 
 ```sh
-export AWS_REGION=ap-southeast-2
+export AWS_REGION=ap-southeast-1
+export AWS_DEFAULT_REGION=$AWS_REGION
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 export REPO=0x42697262/boxhead2play-multiplayer
 export SUB_PREFIX=$(gh api repos/$REPO/actions/oidc/customization/sub --jq .sub_claim_prefix)
@@ -167,7 +174,8 @@ Register the first revision. Its image tag `bootstrap` does not exist yet, which
 because the service starts with no tasks:
 
 ```sh
-envsubst '${ACCOUNT_ID} ${AWS_REGION}' < deploy/ecs/task-definition.json > /tmp/boxhead2play-td.json
+sed -e "s/\${ACCOUNT_ID}/$ACCOUNT_ID/g" -e "s/\${AWS_REGION}/$AWS_REGION/g" \
+  deploy/ecs/task-definition.json > /tmp/boxhead2play-td.json
 aws ecs register-task-definition --cli-input-json file:///tmp/boxhead2play-td.json
 ```
 
@@ -193,7 +201,7 @@ Settings, Secrets and variables, Actions, Variables:
 | Variable | Value |
 |---|---|
 | `AWS_ROLE_ARN` | `arn:aws:iam::<account>:role/boxhead2play-github-deploy` |
-| `AWS_REGION` | `ap-southeast-2` |
+| `AWS_REGION` | `ap-southeast-1` |
 | `ECR_REPOSITORY` | `boxhead2play` |
 | `ECS_CLUSTER` | `boxhead2play` |
 | `ECS_SERVICE` | `boxhead2play` |
