@@ -53,6 +53,7 @@ Keys can be rebound in CONTROLS on the level select screen.
 |---|---|
 | `npm run dev` | Extract assets if needed, then start the dev server |
 | `npm run build` | Extract assets if needed, typecheck, build the client into `dist/` and the server into `dist-server/` |
+| `npm run build:dist` | The same build without the asset step and the typecheck (used by the Nix package) |
 | `npm start` | Serve `dist/` and the game server on one port (`PORT`, default 8080) |
 | `npm run preview` | Serve the `dist/` build without the game server |
 | `npm run ci` | Lint, typecheck and test (zero warnings) |

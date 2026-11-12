@@ -21,6 +21,8 @@ buildNpmPackage {
 
   nodejs = nodejs_24;
 
+  npmBuildScript = "build:dist";
+
   nativeBuildInputs = [
     makeWrapper
     jre

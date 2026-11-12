@@ -25,8 +25,10 @@ cannot download FFDec itself:
   constants or changing their quoting breaks the evaluation with a clear message.
 * The package sets `FFDEC_JAR` to that jar, puts a JRE in `nativeBuildInputs` and sets
   `HOME=$TMPDIR` (FFDec writes its configuration under the home directory). `preBuild` runs
-  `npm run setup:assets`, which extracts the assets inside the sandbox, then `npm run build`
-  builds the client and the server.
+  `npm run setup:assets`, which extracts the assets inside the sandbox, then
+  `npm run build:dist` builds the client and the server. It skips `tsc --noEmit`: the
+  typecheck emits nothing, is covered by `npm run ci`, and is the largest memory peak of the
+  build (about 1.4 GiB), which matters on small deploy hosts that build the package themselves.
 * `installPhase` prunes dev dependencies, removes the empty scope directories `npm prune`
   leaves behind, and wraps `node dist-server/main.js` with `BOXHEAD_STATIC_DIR` and
   `BOXHEAD_ASSET_DIR` defaulting to the store paths (`--set-default`, so they can still be
