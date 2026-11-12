@@ -89,6 +89,13 @@ docker build -t boxhead2play .
 docker run -p 8080:8080 boxhead2play                 # then open http://localhost:8080
 ```
 
+## Amazon ECS
+
+The same image runs on ECS Fargate as one task with a `cloudflared` sidecar, so Cloudflare
+serves HTTPS and WebSockets without a load balancer. `.github/workflows/ecs.yml` builds and
+deploys on every push to `main` once the repository is configured. The AWS and Cloudflare
+setup is in `docs/deployment/ecs.md`.
+
 ## Nix
 
 The repository is a Nix flake with a package, a `nix run` app, a dev shell and a NixOS

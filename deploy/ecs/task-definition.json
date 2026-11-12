@@ -1,0 +1,72 @@
+{
+  "family": "boxhead2play",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/boxhead2play-ecs-execution",
+  "containerDefinitions": [
+    {
+      "name": "boxhead2play",
+      "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/boxhead2play:bootstrap",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [
+        { "name": "HOST", "value": "127.0.0.1" },
+        { "name": "PORT", "value": "8080" },
+        { "name": "BOXHEAD_TRUST_PROXY", "value": "true" }
+      ],
+      "secrets": [
+        {
+          "name": "BOXHEAD_MONITOR_TOKEN",
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${ACCOUNT_ID}:parameter/boxhead2play/monitor-token"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+        ],
+        "interval": 15,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 10
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/boxhead2play",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "game"
+        }
+      }
+    },
+    {
+      "name": "cloudflared",
+      "image": "cloudflare/cloudflared:latest",
+      "essential": true,
+      "command": ["tunnel", "--no-autoupdate", "run"],
+      "secrets": [
+        {
+          "name": "TUNNEL_TOKEN",
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${ACCOUNT_ID}:parameter/boxhead2play/tunnel-token"
+        }
+      ],
+      "dependsOn": [{ "containerName": "boxhead2play", "condition": "HEALTHY" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/boxhead2play",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "tunnel"
+        }
+      }
+    }
+  ]
+}
